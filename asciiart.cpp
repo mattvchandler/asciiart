@@ -16,8 +16,14 @@
 #include FT_FREETYPE_H
 
 #define HAS_PNG
+#define HAS_JPEG
+
 #ifdef HAS_PNG
 #include <png.h>
+#endif
+
+#ifdef HAS_JPEG
+#include <jpeglib.h>
 #endif
 
 struct Args
@@ -331,10 +337,10 @@ public:
     size_t get_width() const override { return width_; }
     size_t get_height() const override { return height_; }
 private:
-    std::array<char, 12>  header_;
+    const std::array<char, 12> & header_;
     std::istream & input_;
 
-    std::size_t bytes_read_ {0};
+    std::size_t header_bytes_read_ {0};
 
     size_t width_{0};
     size_t height_{0};
@@ -344,11 +350,11 @@ private:
     void read_fn(png_bytep data, png_size_t length) noexcept
     {
         std::size_t png_ind = 0;
-        while(bytes_read_ < std::size(header_) && png_ind < length)
-            data[png_ind++] = header_[bytes_read_++];
+        while(header_bytes_read_ < std::size(header_) && png_ind < length)
+            data[png_ind++] = header_[header_bytes_read_++];
 
         input_.read(reinterpret_cast<char *>(data) + png_ind, length - png_ind);
-        if(input_.fail())
+        if(input_.bad())
         {
             std::cerr<<"FATAL ERROR: Could not read PNG image\n";
             std::exit(EXIT_FAILURE);
@@ -366,6 +372,147 @@ private:
 
         png->read_fn(data, length);
     }
+};
+#endif
+
+#ifdef HAS_JPEG
+class Jpeg final: public Image
+{
+public:
+    Jpeg(const std::array<char, 12> & header, std::istream & input)
+    {
+        jpeg_decompress_struct cinfo;
+        my_jpeg_error jerr;
+
+        cinfo.err = jpeg_std_error(&jerr);
+        jerr.error_exit = my_jpeg_error::exit;
+
+        my_jpeg_source source(header, input);
+
+        jpeg_create_decompress(&cinfo);
+
+        if(setjmp(jerr.setjmp_buffer))
+        {
+            jpeg_destroy_decompress(&cinfo);
+            throw std::runtime_error{"Error reading with libjpg"};
+        }
+
+        cinfo.src = &source;
+
+        jpeg_read_header(&cinfo, true);
+        cinfo.out_color_space = JCS_GRAYSCALE;
+
+        jpeg_start_decompress(&cinfo);
+
+        width_ = cinfo.output_width;
+        height_ = cinfo.output_height;
+
+        image_data_.resize(height_);
+        for(auto && row: image_data_)
+            row.resize(width_);
+
+        if(cinfo.output_width * cinfo.output_components != width_)
+            throw std::runtime_error{"JPEG bytes per row incorrect"};
+
+        while(cinfo.output_scanline < cinfo.output_height)
+        {
+            auto buffer = std::data(image_data_[cinfo.output_scanline]);
+            jpeg_read_scanlines(&cinfo, &buffer, 1);
+        }
+
+        jpeg_finish_decompress(&cinfo);
+        jpeg_destroy_decompress(&cinfo);
+    }
+
+    unsigned char get_pix(std::size_t row, std::size_t col) const override
+    {
+        return image_data_[row][col];
+    }
+
+    size_t get_width() const override { return width_; }
+    size_t get_height() const override { return height_; }
+private:
+
+    struct my_jpeg_error: public jpeg_error_mgr
+    {
+        jmp_buf setjmp_buffer;
+        static void exit(j_common_ptr cinfo) noexcept
+        {
+            cinfo->err->output_message(cinfo);
+            std::longjmp(static_cast<my_jpeg_error *>(cinfo->err)->setjmp_buffer, 1);
+        }
+    };
+
+    class my_jpeg_source: public jpeg_source_mgr
+    {
+    public:
+        my_jpeg_source(const std::array<char, 12> & header, std::istream & input):
+            header_{header},
+            input_{input}
+        {
+            init_source = [](j_decompress_ptr){};
+            fill_input_buffer = my_fill_input_buffer;
+            skip_input_data = my_skip_input_data;
+            resync_to_restart = jpeg_resync_to_restart;
+            term_source = [](j_decompress_ptr){};
+            bytes_in_buffer = 0;
+            next_input_byte = nullptr;
+        }
+    private:
+
+        static boolean my_fill_input_buffer(j_decompress_ptr cinfo)
+        {
+            auto &src = *static_cast<my_jpeg_source*>(cinfo->src);
+
+            std::size_t jpeg_ind = 0;
+            while(src.header_bytes_read_ < std::size(src.header_) && jpeg_ind < std::size(src.buffer_))
+                src.buffer_[jpeg_ind++] = src.header_[src.header_bytes_read_++];
+
+            src.input_.read(reinterpret_cast<char *>(std::data(src.buffer_)) + jpeg_ind, std::size(src.buffer_) - jpeg_ind);
+
+            src.next_input_byte = std::data(src.buffer_);
+            src.bytes_in_buffer = src.input_.gcount() + jpeg_ind;
+
+            if(src.input_.bad() || src.bytes_in_buffer == 0)
+            {
+                std::cerr<<"ERROR: Could not read JPEG image\n";
+                src.buffer_[0] = 0xFF;
+                src.buffer_[1] = JPEG_EOI;
+                src.bytes_in_buffer = 2;
+            }
+
+            return true;
+        }
+        static void my_skip_input_data(j_decompress_ptr cinfo, long num_bytes)
+        {
+            if(num_bytes > 0)
+            {
+                auto &src = *static_cast<my_jpeg_source*>(cinfo->src);
+
+                while(src.bytes_in_buffer < static_cast<decltype(src.bytes_in_buffer)>(num_bytes))
+                {
+                    num_bytes -= src.bytes_in_buffer;
+                    my_fill_input_buffer(cinfo);
+                }
+
+                src.next_input_byte += num_bytes;
+                src.bytes_in_buffer -= num_bytes;
+            }
+        }
+
+        const std::array<char, 12> & header_;
+        std::istream & input_;
+        std::array<JOCTET, 4096> buffer_;
+        JOCTET * buffer_p_ { std::data(buffer_) };
+
+        std::size_t header_bytes_read_ {0};
+    };
+
+    size_t width_{0};
+    size_t height_{0};
+
+    std::vector<std::vector<unsigned char>> image_data_;
+
 };
 #endif
 
@@ -412,8 +559,7 @@ private:
             && std::equal(std::begin(jpeg_header4_2), std::end(jpeg_header4_2), std::begin(header) + std::size(jpeg_header4_1) + 2, header_cmp)))
     {
     #ifdef HAS_JPEG
-        // return std::make_unique<Jpeg>(header, input);
-        throw std::runtime_error{"JPEG not yet supported\n"};
+        return std::make_unique<Jpeg>(header, input);
     #else
         throw std::runtime_error{"Not compiled with JPEG support"};
     #endif
