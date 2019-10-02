@@ -7,6 +7,7 @@
 #include <numeric>
 #include <vector>
 
+#include <cmath>
 #include <csetjmp>
 
 #include <cxxopts.hpp>
@@ -15,15 +16,16 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
-#define HAS_PNG
-#define HAS_JPEG
-
 #ifdef HAS_PNG
 #include <png.h>
 #endif
 
 #ifdef HAS_JPEG
 #include <jpeglib.h>
+#endif
+
+#ifdef HAS_GIF
+#include <gif_lib.h>
 #endif
 
 struct Args
@@ -254,13 +256,14 @@ public:
     virtual unsigned char get_pix(std::size_t row, std::size_t col) const = 0;
     virtual size_t get_width() const = 0;
     virtual size_t get_height() const = 0;
+    using Header = std::array<char, 12>;
 };
 
 #ifdef HAS_PNG
 class Png final: public Image
 {
 public:
-    Png(const std::array<char, 12> & header, std::istream & input):
+    Png(const Header & header, std::istream & input):
         header_{header},
         input_{input}
     {
@@ -337,7 +340,7 @@ public:
     size_t get_width() const override { return width_; }
     size_t get_height() const override { return height_; }
 private:
-    const std::array<char, 12> & header_;
+    const Header & header_;
     std::istream & input_;
 
     std::size_t header_bytes_read_ {0};
@@ -366,7 +369,7 @@ private:
         Png * png = static_cast<Png *>(png_get_io_ptr(png_ptr));
         if(!png)
         {
-            std::cerr<<"FATAL ERROR: Could not get Png struct pointer\n";
+            std::cerr<<"FATAL ERROR: Could not get PNG struct pointer\n";
             std::exit(EXIT_FAILURE);
         }
 
@@ -379,7 +382,7 @@ private:
 class Jpeg final: public Image
 {
 public:
-    Jpeg(const std::array<char, 12> & header, std::istream & input)
+    Jpeg(const Header & header, std::istream & input)
     {
         jpeg_decompress_struct cinfo;
         my_jpeg_error jerr;
@@ -431,6 +434,7 @@ public:
 
     size_t get_width() const override { return width_; }
     size_t get_height() const override { return height_; }
+
 private:
 
     struct my_jpeg_error: public jpeg_error_mgr
@@ -446,7 +450,7 @@ private:
     class my_jpeg_source: public jpeg_source_mgr
     {
     public:
-        my_jpeg_source(const std::array<char, 12> & header, std::istream & input):
+        my_jpeg_source(const Header & header, std::istream & input):
             header_{header},
             input_{input}
         {
@@ -458,6 +462,7 @@ private:
             bytes_in_buffer = 0;
             next_input_byte = nullptr;
         }
+
     private:
 
         static boolean my_fill_input_buffer(j_decompress_ptr cinfo)
@@ -500,7 +505,7 @@ private:
             }
         }
 
-        const std::array<char, 12> & header_;
+        const Header & header_;
         std::istream & input_;
         std::array<JOCTET, 4096> buffer_;
         JOCTET * buffer_p_ { std::data(buffer_) };
@@ -512,7 +517,143 @@ private:
     size_t height_{0};
 
     std::vector<std::vector<unsigned char>> image_data_;
+};
+#endif
 
+#ifdef HAS_GIF
+class Gif final: public Image
+{
+public:
+    Gif(const Header & header, std::istream & input):
+        header_{header},
+        input_{input}
+    {
+        int error_code = GIF_OK;
+        GifFileType * gif = DGifOpen(this, read_fn, &error_code);
+        if(!gif)
+            throw std::runtime_error{"Error setting up GIF: " + std::string{GifErrorString(error_code)}};
+
+        if(DGifSlurp(gif) != GIF_OK)
+        {
+            DGifCloseFile(gif, NULL);
+            throw std::runtime_error{"Error reading GIF: " + std::string{GifErrorString(gif->Error)}};
+        }
+
+        auto pal = gif->SavedImages[0].ImageDesc.ColorMap;
+        if(!pal)
+        {
+            pal = gif->SColorMap;
+            if(!pal)
+            {
+                DGifCloseFile(gif, NULL);
+                throw std::runtime_error{"Could not find color map"};
+            }
+        }
+
+        std::vector<unsigned char> gray_pal(pal->ColorCount);
+        for(std::size_t i = 0; i < std::size(gray_pal); ++i)
+        {
+            // formulas from https://www.w3.org/TR/WCAG20/
+            std::array<float, 3> luminance_color = {
+                pal->Colors[i].Red   / 255.0f,
+                pal->Colors[i].Green / 255.0f,
+                pal->Colors[i].Blue  / 255.0f
+            };
+
+            for(auto && c: luminance_color)
+                c = (c <= 0.03928f) ? c / 12.92f : std::pow((c + 0.055f) / 1.055f, 2.4f);
+
+            auto luminance = 0.2126f * luminance_color[0] + 0.7152f * luminance_color[1] + 0.0722f * luminance_color[2];
+
+            gray_pal[i] = luminance * 255;
+        }
+
+        int background_ind = gif->SBackGroundColor;
+        int transparency_ind = -1;
+        GraphicsControlBlock gcb;
+        if(DGifSavedExtensionToGCB(gif, 0, &gcb) == GIF_OK)
+            transparency_ind = gcb.TransparentColor;
+
+        width_ = gif->SWidth;
+        height_ = gif->SHeight;
+
+        if(gif->SavedImages[0].ImageDesc.Left != 0 || gif->SavedImages[0].ImageDesc.Top != 0
+                || static_cast<std::size_t>(gif->SavedImages[0].ImageDesc.Width) != width_
+                || static_cast<std::size_t>(gif->SavedImages[0].ImageDesc.Height) != height_)
+        {
+            throw std::runtime_error{"GIF has wrong size or offset"};
+        }
+
+        auto & im = gif->SavedImages[0].RasterBits;
+
+        image_data_.resize(height_);
+        for(auto && row: image_data_)
+        {
+            row.resize(width_);
+        }
+
+        for(std::size_t row = 0; row < height_; ++row)
+        {
+            for(std::size_t col = 0; col < width_; ++col)
+            {
+                auto index = im[row * width_ + col];
+
+                if(index == transparency_ind)
+                    index = background_ind;
+
+                image_data_[row][col] = gray_pal[index];
+            }
+        }
+
+        DGifCloseFile(gif, NULL);
+    }
+
+    unsigned char get_pix(std::size_t row, std::size_t col) const override
+    {
+        return image_data_[row][col];
+    }
+
+    size_t get_width() const override { return width_; }
+    size_t get_height() const override { return height_; }
+
+private:
+    const Header & header_;
+    std::istream & input_;
+
+    std::size_t header_bytes_read_ {0};
+
+    int read_fn(GifByteType * data, int length) noexcept
+    {
+        std::size_t gif_ind = 0;
+        while(header_bytes_read_ < std::size(header_) && gif_ind < static_cast<std::size_t>(length))
+            data[gif_ind++] = header_[header_bytes_read_++];
+
+        input_.read(reinterpret_cast<char *>(data) + gif_ind, length - gif_ind);
+        if(input_.bad())
+        {
+            std::cerr<<"FATAL ERROR: Could not read GIF image\n";
+            return GIF_ERROR;
+        }
+
+        return input_.gcount() + gif_ind;
+    }
+
+    static int read_fn(GifFileType* gif_file, GifByteType * data, int length) noexcept
+    {
+        auto gif = static_cast<Gif*>(gif_file->UserData);
+        if(!gif)
+        {
+            std::cerr<<"FATAL ERROR: Could not get GIF struct pointer\n";
+            return GIF_ERROR;
+        }
+
+        return gif->read_fn(data, length);
+    }
+
+    size_t width_{0};
+    size_t height_{0};
+
+    std::vector<std::vector<unsigned char>> image_data_;
 };
 #endif
 
@@ -526,7 +667,7 @@ private:
     if(!input)
         throw std::runtime_error{"Could not open input file: " + std::string{std::strerror(errno)}};
 
-    std::array<char, 12> header;
+    Image::Header header;
 
     input.read(std::data(header), std::size(header));
     if(!input)
@@ -568,8 +709,7 @@ private:
          || std::equal(std::begin(gif_header2), std::end(gif_header2), std::begin(header), header_cmp))
     {
     #ifdef HAS_GIF
-        // return std::make_unique<Gif>(header, input);
-        throw std::runtime_error{"GIF not yet supported\n"};
+        return std::make_unique<Gif>(header, input);
     #else
         throw std::runtime_error{"Not compiled with GIF support"};
     #endif
