@@ -143,8 +143,8 @@ private:
             ("h,help",   "Show this message and quit")
             ("f,font",   "Font name to render. Uses fontconfig to find",                                  cxxopts::value<std::string>()->default_value("monospace"),  "FONT_PATTERN")
             ("s,size",   "Font size, in points",                                                          cxxopts::value<float>()->default_value("12.0"),             "")
-            ("r,rows",   "# of outout rows. Enter a negative value to preserve aspect ratio with --cols", cxxopts::value<int>()->default_value("-1"),                 "ROWS")
-            ("c,cols",   "# of outout cols",                                                              cxxopts::value<int>()->default_value("80"),                 "COLS")
+            ("r,rows",   "# of output rows. Enter a negative value to preserve aspect ratio with --cols", cxxopts::value<int>()->default_value("-1"),                 "ROWS")
+            ("c,cols",   "# of output cols",                                                              cxxopts::value<int>()->default_value("80"),                 "COLS")
             ("o,output", "Output text file path. Output to stdout if '-'",                                cxxopts::value<std::string>()->default_value("-"),          "OUTPUT_FILE");
 
         options.add_positionals()
@@ -855,11 +855,18 @@ int main(int argc, char * argv[])
     if(!args)
         return EXIT_FAILURE;
 
-    auto font_path = get_font_path(args->font_name);
-    auto values = get_char_values(font_path, args->font_size);
+    try
+    {
+        auto font_path = get_font_path(args->font_name);
+        auto values = get_char_values(font_path, args->font_size);
 
-    auto img = get_image_data(args->input_filename);
-    write_ascii(*img, values, args->output_filename, args->rows, args->cols);
+        auto img = get_image_data(args->input_filename);
+        write_ascii(*img, values, args->output_filename, args->rows, args->cols);
+    }
+    catch(const std::runtime_error & e)
+    {
+        std::cerr<<e.what()<<'\n';
+    }
 
     return EXIT_SUCCESS;
 }
