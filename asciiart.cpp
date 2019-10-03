@@ -786,7 +786,9 @@ private:
     Image::Header header;
 
     input.read(std::data(header), std::size(header));
-    if(!input)
+    if(input.eof())
+        throw std::runtime_error{"Could not read file header: not enough bytes"};
+    else if(!input)
         throw std::runtime_error{"Could not read input file: " + std::string{std::strerror(errno)}};
 
     auto header_cmp = [](unsigned char a, char b) { return a == static_cast<unsigned char>(b); };
