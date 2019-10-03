@@ -36,6 +36,7 @@ struct Args
     float       font_size;       // font size requested, in points
     int rows;                    // output rows
     int cols;                    // output cols
+    int bg;                      // BG color value
 };
 
 class Optional_pos: public cxxopts::Options
@@ -145,6 +146,7 @@ private:
             ("s,size",   "Font size, in points",                                                          cxxopts::value<float>()->default_value("12.0"),             "")
             ("r,rows",   "# of output rows. Enter a negative value to preserve aspect ratio with --cols", cxxopts::value<int>()->default_value("-1"),                 "ROWS")
             ("c,cols",   "# of output cols",                                                              cxxopts::value<int>()->default_value("80"),                 "COLS")
+            ("b,bg",     "Background color value for transparent images(0-255)",                          cxxopts::value<int>()->default_value("0"),                  "BG")
             ("o,output", "Output text file path. Output to stdout if '-'",                                cxxopts::value<std::string>()->default_value("-"),          "OUTPUT_FILE");
 
         options.add_positionals()
@@ -169,13 +171,20 @@ private:
             return {};
         }
 
+        if(args["bg"].as<int>() < 0 || args["bg"].as<int>() > 255)
+        {
+            std::cerr<<options.help("Value for --bg must be within 0-255")<<'\n';
+            return {};
+        }
+
         return Args{
             args["input"].as<std::string>(),
             args["output"].as<std::string>(),
             args["font"].as<std::string>(),
             args["size"].as<float>(),
             args["rows"].as<int>(),
-            args["cols"].as<int>()
+            args["cols"].as<int>(),
+            args["bg"].as<int>(),
         };
     }
     catch(const cxxopts::OptionException & e)
@@ -356,7 +365,7 @@ public:
 class Png final: public Image
 {
 public:
-    Png(const Header & header, std::istream & input):
+    Png(const Header & header, std::istream & input, int bg):
         header_{header},
         input_{input}
     {
@@ -394,8 +403,8 @@ public:
         if(color_type == PNG_COLOR_TYPE_RGB || color_type == PNG_COLOR_TYPE_RGBA)
             png_set_rgb_to_gray_fixed(png_ptr, 1, -1, -1);
 
-        if(color_type == PNG_COLOR_TYPE_RGBA || color_type == PNG_COLOR_TYPE_GRAY_ALPHA)
-            png_set_strip_alpha(png_ptr);
+        if(color_type == PNG_COLOR_TYPE_RGB || color_type == PNG_COLOR_TYPE_GRAY_ALPHA)
+            png_set_add_alpha(png_ptr, 0xFF, PNG_FILLER_AFTER);
 
         if(bit_depth == 16)
             png_set_strip_16(png_ptr);
@@ -407,20 +416,33 @@ public:
 
         png_read_update_info(png_ptr, info_ptr);
 
-        if(png_get_rowbytes(png_ptr, info_ptr) != width_)
+        if(png_get_rowbytes(png_ptr, info_ptr) != width_ * 2)
             throw std::runtime_error{"PNG bytes per row incorrect"};
 
         image_data_.resize(height_);
         for(auto && row: image_data_)
             row.resize(width_);
 
+        // buffer for Gray + Alpha pixels
+        std::vector<unsigned char> row_buffer(width_ * 2);
+
         for(decltype(number_of_passes) pass = 0; pass < number_of_passes; ++pass)
         {
             for(size_t row = 0; row < height_; ++row)
             {
-                png_read_row(png_ptr, std::data(image_data_[row]), NULL);
+                png_read_row(png_ptr, std::data(row_buffer), NULL);
+                for(std::size_t col = 0; col < width_; ++col)
+                {
+                    // alpha blending w/ background
+                    auto val   = row_buffer[col * 2]     / 255.0f;
+                    auto alpha = row_buffer[col * 2 + 1] / 255.0f;
+
+                    image_data_[row][col] = static_cast<unsigned char>((val * alpha + (bg / 255.0f) * (1.0f - alpha)) * 255.0f);
+                }
             }
         }
+
+        std::cout<<(int)image_data_[0][0]<<'\n';
 
         png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
     }
@@ -617,7 +639,7 @@ private:
 class Gif final: public Image
 {
 public:
-    Gif(const Header & header, std::istream & input):
+    Gif(const Header & header, std::istream & input, int bg):
         header_{header},
         input_{input}
     {
@@ -661,7 +683,6 @@ public:
             gray_pal[i] = luminance * 255;
         }
 
-        int background_ind = gif->SBackGroundColor;
         int transparency_ind = -1;
         GraphicsControlBlock gcb;
         if(DGifSavedExtensionToGCB(gif, 0, &gcb) == GIF_OK)
@@ -691,10 +712,12 @@ public:
             {
                 auto index = im[row * width_ + col];
 
-                if(index == transparency_ind)
-                    index = background_ind;
+                auto val = gray_pal[index];
 
-                image_data_[row][col] = gray_pal[index];
+                if(index == transparency_ind)
+                    val = bg;
+
+                image_data_[row][col] = val;
             }
         }
 
@@ -750,7 +773,7 @@ private:
 };
 #endif
 
-[[nodiscard]] std::unique_ptr<Image> get_image_data(std::string & input_filename)
+[[nodiscard]] std::unique_ptr<Image> get_image_data(std::string & input_filename, int bg)
 {
     std::ifstream input_file;
     if(input_filename != "-")
@@ -780,7 +803,7 @@ private:
     if(std::equal(std::begin(png_header), std::end(png_header), std::begin(header), header_cmp))
     {
     #ifdef HAS_PNG
-        return std::make_unique<Png>(header, input);
+        return std::make_unique<Png>(header, input, bg);
     #else
         throw std::runtime_error{"Not compiled with PNG support"};
     #endif
@@ -802,7 +825,7 @@ private:
          || std::equal(std::begin(gif_header2), std::end(gif_header2), std::begin(header), header_cmp))
     {
     #ifdef HAS_GIF
-        return std::make_unique<Gif>(header, input);
+        return std::make_unique<Gif>(header, input, bg);
     #else
         throw std::runtime_error{"Not compiled with GIF support"};
     #endif
@@ -860,7 +883,7 @@ int main(int argc, char * argv[])
         auto font_path = get_font_path(args->font_name);
         auto values = get_char_values(font_path, args->font_size);
 
-        auto img = get_image_data(args->input_filename);
+        auto img = get_image_data(args->input_filename, args->bg);
         write_ascii(*img, values, args->output_filename, args->rows, args->cols);
     }
     catch(const std::runtime_error & e)
