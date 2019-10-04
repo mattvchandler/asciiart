@@ -20,7 +20,11 @@ find_package(GIF)
 pkg_check_modules(FONTCONFIG fontconfig REQUIRED)
 
 add_executable(asciiart
-    asciiart.cpp)
+    args.cpp
+    asciiart.cpp
+    font.cpp
+    image.cpp
+    )
 
 target_include_directories(asciiart PRIVATE
     ${FREETYPE_INCLUDE_DIRS}
@@ -33,16 +37,19 @@ target_link_libraries(asciiart
     )
 
 if(PNG_FOUND)
+    target_sources(asciiart PRIVATE png.cpp)
     target_compile_definitions(asciiart PRIVATE "-DHAS_PNG")
     target_include_directories(asciiart PRIVATE ${PNG_INCLUDE_DIRS})
     target_link_libraries(asciiart ${PNG_LIBRARIES})
 endif()
 if(JPEG_FOUND)
+    target_sources(asciiart PRIVATE jpeg.cpp)
     target_compile_definitions(asciiart PRIVATE "-DHAS_JPEG")
     target_include_directories(asciiart PRIVATE ${JPEG_INCLUDE_DIRS})
     target_link_libraries(asciiart ${JPEG_LIBRARIES})
 endif()
 if(GIF_FOUND)
+    target_sources(asciiart PRIVATE gif.cpp)
     target_compile_definitions(asciiart PRIVATE "-DHAS_GIF")
     target_include_directories(asciiart PRIVATE ${GIF_INCLUDE_DIRS})
     target_link_libraries(asciiart ${GIF_LIBRARIES})
