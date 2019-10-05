@@ -6,7 +6,7 @@
 
 #include "args.hpp"
 #include "font.hpp"
-#include "image.hpp"
+#include "decoders/image.hpp"
 
 void write_ascii(const Image & img,
                  const Char_vals & char_vals,

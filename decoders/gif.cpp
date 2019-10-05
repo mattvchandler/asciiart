@@ -1,6 +1,6 @@
 #include "gif.hpp"
 
-#include <cmath>
+#include <iostream>
 
 Gif::Gif(const Header & header, std::istream & input, int bg):
     header_{header},
@@ -31,19 +31,11 @@ Gif::Gif(const Header & header, std::istream & input, int bg):
     std::vector<unsigned char> gray_pal(pal->ColorCount);
     for(std::size_t i = 0; i < std::size(gray_pal); ++i)
     {
-        // formulas from https://www.w3.org/TR/WCAG20/
-        std::array<float, 3> luminance_color = {
-            pal->Colors[i].Red   / 255.0f,
-            pal->Colors[i].Green / 255.0f,
-            pal->Colors[i].Blue  / 255.0f
-        };
-
-        for(auto && c: luminance_color)
-            c = (c <= 0.03928f) ? c / 12.92f : std::pow((c + 0.055f) / 1.055f, 2.4f);
-
-        auto luminance = 0.2126f * luminance_color[0] + 0.7152f * luminance_color[1] + 0.0722f * luminance_color[2];
-
-        gray_pal[i] = luminance * 255;
+        gray_pal[i] = rgb_to_gray(
+            pal->Colors[i].Red,
+            pal->Colors[i].Green,
+            pal->Colors[i].Blue
+            );
     }
 
     int transparency_ind = -1;

@@ -4,6 +4,7 @@
 #ifdef HAS_PNG
 #include "image.hpp"
 
+#include <istream>
 #include <vector>
 
 #include <png.h>

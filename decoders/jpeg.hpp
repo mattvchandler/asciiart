@@ -4,6 +4,7 @@
 #ifdef HAS_JPEG
 #include "image.hpp"
 
+#include <istream>
 #include <vector>
 
 #include <csetjmp>

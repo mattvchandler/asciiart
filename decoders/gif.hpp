@@ -4,7 +4,7 @@
 #ifdef HAS_GIF
 #include "image.hpp"
 
-#include <iostream>
+#include <istream>
 #include <vector>
 
 #include <gif_lib.h>
