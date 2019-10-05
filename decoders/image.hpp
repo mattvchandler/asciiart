@@ -20,6 +20,7 @@ public:
     virtual size_t get_width() const = 0;
     virtual size_t get_height() const = 0;
     using Header = std::array<char, max_header_len>;
+    static bool header_cmp(unsigned char a, char b);
 };
 
 class Header_buf: public std::streambuf
