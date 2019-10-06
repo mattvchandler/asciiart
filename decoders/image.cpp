@@ -38,7 +38,14 @@ float rgb_to_gray(float r, float g, float b)
     return static_cast<unsigned char>(luminance * 255.0f);
 }
 
-Header_buf::Header_buf(const Image::Header & header, std::istream & input): input_{input}
+bool Image::header_cmp(unsigned char a, char b){ return a == static_cast<unsigned char>(b); };
+
+Header_stream::Header_stream(const Image::Header & header, std::istream & input):
+    std::istream{&buf_}, buf_{header, input}
+{
+}
+
+Header_stream::Header_buf::Header_buf(const Image::Header & header, std::istream & input): input_{input}
 {
     static_assert(buffer_size >= std::size(Image::Header()));
 
@@ -46,26 +53,42 @@ Header_buf::Header_buf(const Image::Header & header, std::istream & input): inpu
     input_.read(std::data(buffer_) + std::size(header), std::size(buffer_) - std::size(header));
 
     auto buffer_size = input_.gcount() + std::size(header);
+    pos_ = buffer_size;
     setg(std::data(buffer_), std::data(buffer_), std::data(buffer_) + buffer_size);
 }
 
-int Header_buf::underflow()
+int Header_stream::Header_buf::underflow()
 {
+    if(gptr() < egptr())
+        return traits_type::to_int_type(*gptr());
+
     input_.read(std::data(buffer_), std::size(buffer_));
     if(input_.bad())
         return traits_type::eof();
 
     auto buffer_size = input_.gcount();
+    pos_ += buffer_size;
 
     if(buffer_size == 0)
         return traits_type::eof();
 
     setg(std::data(buffer_), std::data(buffer_), std::data(buffer_) + buffer_size);
 
-    return buffer_[0];
+    return traits_type::to_int_type(*gptr());
 }
 
-bool Image::header_cmp(unsigned char a, char b){ return a == static_cast<unsigned char>(b); };
+Header_stream::pos_type Header_stream::Header_buf::seekoff(off_type off, std::ios_base::seekdir dir, std::ios_base::openmode which)
+{
+    if(off == 0 && dir == std::ios_base::cur && which == std::ios_base::in)
+        return pos_ - off_type{egptr() - gptr()};
+    else
+        return off_type{-1};
+}
+
+template<typename T> void readb(std::istream & i, T& t)
+{
+    i.read(reinterpret_cast<char *>(&t), sizeof(T));
+}
 
 [[nodiscard]] std::unique_ptr<Image> get_image_data(std::string & input_filename, int bg)
 {

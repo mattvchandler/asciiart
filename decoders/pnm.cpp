@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <bitset>
-#include <iostream>
 
 std::string read_skip_comments(std::istream & in)
 {
@@ -39,9 +38,7 @@ unsigned char read_val(std::istream & in)
 
 Pnm::Pnm(const Header & header, std::istream & input)
 {
-    Header_buf header_buf {header, input};
-    std::istream header_stream{&header_buf};
-    header_stream.exceptions(std::ios::failbit | std::ios::badbit);
+    Header_stream header_stream{header, input};;
 
     std::string type;
     try

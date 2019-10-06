@@ -23,18 +23,39 @@ public:
     static bool header_cmp(unsigned char a, char b);
 };
 
-class Header_buf: public std::streambuf
+class Header_stream: public std::istream
 {
 public:
-    Header_buf(const Image::Header & header, std::istream & input);
+    Header_stream(const Image::Header & header, std::istream & input);
 
-protected:
-    int underflow() override;
+    template<typename T> void readb(T & t)
+    {
+        read(reinterpret_cast<char *>(&t), sizeof(T));
+    }
+    template<typename T> T readb()
+    {
+        T t;
+        readb(t);
+        return t;
+    }
 
 private:
-    static const std::size_t buffer_size {2048};
-    std::array<char, buffer_size> buffer_;
-    std::istream & input_;
+    class Header_buf: public std::streambuf
+    {
+    public:
+        Header_buf(const Image::Header & header, std::istream & input);
+
+    protected:
+        virtual int underflow() override;
+        virtual pos_type seekoff(off_type off, std::ios_base::seekdir dir, std::ios_base::openmode which) override;
+
+    private:
+        static const std::size_t buffer_size {2048};
+        std::array<char, buffer_size> buffer_;
+        std::istream & input_;
+        pos_type pos_{0};
+    };
+    Header_buf buf_;
 };
 
 [[nodiscard]] std::unique_ptr<Image> get_image_data(std::string & input_filename, int bg);
