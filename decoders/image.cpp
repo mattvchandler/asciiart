@@ -19,6 +19,7 @@
 #include "gif.hpp"
 #endif
 
+#include "bmp.hpp"
 #include "pnm.hpp"
 
 unsigned char rgb_to_gray(unsigned char r, unsigned char g, unsigned char b)
@@ -131,6 +132,10 @@ template<typename T> void readb(std::istream & i, T& t)
     #else
         throw std::runtime_error{"Not compiled with GIF support"};
     #endif
+    }
+    else if(is_bmp(header))
+    {
+        return std::make_unique<Bmp>(header, input, bg);
     }
     else if(is_pnm(header))
     {

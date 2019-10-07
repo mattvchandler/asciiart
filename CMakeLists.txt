@@ -24,6 +24,7 @@ add_executable(asciiart
     asciiart.cpp
     font.cpp
     decoders/image.cpp
+    decoders/bmp.cpp
     decoders/pnm.cpp
     )
 
