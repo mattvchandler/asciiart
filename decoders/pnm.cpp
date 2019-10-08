@@ -39,6 +39,7 @@ unsigned char read_val(std::istream & in)
 Pnm::Pnm(const Header & header, std::istream & input)
 {
     Header_stream header_stream{header, input};;
+    header_stream.exceptions(std::ios_base::badbit | std::ios_base::failbit);
 
     std::string type;
     try
