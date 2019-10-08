@@ -113,6 +113,7 @@ private:
             ("r,rows",   "# of output rows. Enter a negative value to preserve aspect ratio with --cols", cxxopts::value<int>()->default_value("-1"),                 "ROWS")
             ("c,cols",   "# of output cols",                                                              cxxopts::value<int>()->default_value("80"),                 "COLS")
             ("b,bg",     "Background color value for transparent images(0-255)",                          cxxopts::value<int>()->default_value("0"),                  "BG")
+            ("i,invert", "Invert colors")
             ("o,output", "Output text file path. Output to stdout if '-'",                                cxxopts::value<std::string>()->default_value("-"),          "OUTPUT_FILE");
 
         options.add_positionals()
@@ -151,6 +152,7 @@ private:
             args["rows"].as<int>(),
             args["cols"].as<int>(),
             args["bg"].as<int>(),
+            static_cast<bool>(args.count("invert")),
         };
     }
     catch(const cxxopts::OptionException & e)

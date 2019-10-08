@@ -13,6 +13,7 @@ struct Args
     int rows;                    // output rows
     int cols;                    // output cols
     int bg;                      // BG color value
+    bool invert;                 // invert colors
 };
 
 [[nodiscard]] std::optional<Args> parse_args(int argc, char * argv[]);

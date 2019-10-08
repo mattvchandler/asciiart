@@ -11,7 +11,7 @@
 void write_ascii(const Image & img,
                  const Char_vals & char_vals,
                  const std::string & output_filename,
-                 int rows, int cols)
+                 int rows, int cols, bool invert_colors)
 {
     std::ofstream output_file;
     if(output_filename != "-")
@@ -45,7 +45,7 @@ void write_ascii(const Image & img,
             {
                 for(float x = col; x < col + px_col && x < img.get_width(); ++x)
                 {
-                    pix_sum += img.get_pix(y, x);
+                    pix_sum += invert_colors ? 255 - img.get_pix(y, x) : img.get_pix(y, x);
                     ++cell_sum;
                 }
             }
@@ -67,7 +67,7 @@ int main(int argc, char * argv[])
         auto values = get_char_values(font_path, args->font_size);
 
         auto img = get_image_data(args->input_filename, args->bg);
-        write_ascii(*img, values, args->output_filename, args->rows, args->cols);
+        write_ascii(*img, values, args->output_filename, args->rows, args->cols, args->invert);
     }
     catch(const std::runtime_error & e)
     {
