@@ -18,6 +18,7 @@ find_package(PNG)
 find_package(JPEG)
 find_package(GIF)
 pkg_check_modules(FONTCONFIG fontconfig REQUIRED)
+pkg_check_modules(XPM xpm)
 
 add_executable(asciiart
     args.cpp
@@ -56,7 +57,9 @@ if(GIF_FOUND)
     target_include_directories(asciiart PRIVATE ${GIF_INCLUDE_DIRS})
     target_link_libraries(asciiart ${GIF_LIBRARIES})
 endif()
-
-if(NOT PNG_FOUND AND NOT JPEG_FOUND AND NOT GIF_FOUND)
-    message(FATAL_ERROR "No image library found. Please install at least one of libpng, libjpeg, or giflib")
+if(XPM_FOUND)
+    target_sources(asciiart PRIVATE decoders/xpm.cpp)
+    target_compile_definitions(asciiart PRIVATE "-DHAS_XPM")
+    target_include_directories(asciiart PRIVATE ${XPM_INCLUDE_DIRS})
+    target_link_libraries(asciiart ${XPM_LIBRARIES})
 endif()

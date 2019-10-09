@@ -14,6 +14,13 @@ struct Args
     int cols;                    // output cols
     int bg;                      // BG color value
     bool invert;                 // invert colors
+    enum class Force_file
+    {
+        detect,                  // detect filetype by header
+    #ifdef HAS_XPM
+        xpm,
+    #endif
+    } force_file { Force_file::detect };
 };
 
 [[nodiscard]] std::optional<Args> parse_args(int argc, char * argv[]);

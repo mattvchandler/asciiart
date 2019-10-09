@@ -19,6 +19,10 @@
 #include "gif.hpp"
 #endif
 
+#ifdef HAS_XPM
+#include "xpm.hpp"
+#endif
+
 #include "bmp.hpp"
 #include "pnm.hpp"
 
@@ -91,12 +95,12 @@ template<typename T> void readb(std::istream & i, T& t)
     i.read(reinterpret_cast<char *>(&t), sizeof(T));
 }
 
-[[nodiscard]] std::unique_ptr<Image> get_image_data(std::string & input_filename, int bg)
+[[nodiscard]] std::unique_ptr<Image> get_image_data(const Args & args)
 {
     std::ifstream input_file;
-    if(input_filename != "-")
-        input_file.open(input_filename, std::ios_base::in | std::ios_base::binary);
-    std::istream & input = (input_filename == "-") ? std::cin : input_file;
+    if(args.input_filename != "-")
+        input_file.open(args.input_filename, std::ios_base::in | std::ios_base::binary);
+    std::istream & input = (args.input_filename == "-") ? std::cin : input_file;
 
     if(!input)
         throw std::runtime_error{"Could not open input file: " + std::string{std::strerror(errno)}};
@@ -109,40 +113,50 @@ template<typename T> void readb(std::istream & i, T& t)
     else if(!input)
         throw std::runtime_error{"Could not read input file: " + std::string{std::strerror(errno)}};
 
-    if(is_png(header))
+    switch(args.force_file)
     {
-    #ifdef HAS_PNG
-        return std::make_unique<Png>(header, input, bg);
-    #else
-        throw std::runtime_error{"Not compiled with PNG support"};
+    case Args::Force_file::detect:
+        if(is_png(header))
+        {
+            #ifdef HAS_PNG
+            return std::make_unique<Png>(header, input, args.bg);
+            #else
+            throw std::runtime_error{"Not compiled with PNG support"};
+            #endif
+        }
+        else if(is_jpeg(header))
+        {
+            #ifdef HAS_JPEG
+            return std::make_unique<Jpeg>(header, input);
+            #else
+            throw std::runtime_error{"Not compiled with JPEG support"};
+            #endif
+        }
+        else if(is_gif(header))
+        {
+            #ifdef HAS_GIF
+            return std::make_unique<Gif>(header, input, args.bg);
+            #else
+            throw std::runtime_error{"Not compiled with GIF support"};
+            #endif
+        }
+        else if(is_bmp(header))
+        {
+            return std::make_unique<Bmp>(header, input, args.bg);
+        }
+        else if(is_pnm(header))
+        {
+            return std::make_unique<Pnm>(header, input);
+        }
+        else
+        {
+            throw std::runtime_error{"Unknown input file format\n"};
+        }
+        break;
+    #ifdef HAS_XPM
+    case Args::Force_file::xpm:
+        return std::make_unique<Xpm>(header, input, args.bg);
+        break;
     #endif
-    }
-    else if(is_jpeg(header))
-    {
-    #ifdef HAS_JPEG
-        return std::make_unique<Jpeg>(header, input);
-    #else
-        throw std::runtime_error{"Not compiled with JPEG support"};
-    #endif
-    }
-    else if(is_gif(header))
-    {
-    #ifdef HAS_GIF
-        return std::make_unique<Gif>(header, input, bg);
-    #else
-        throw std::runtime_error{"Not compiled with GIF support"};
-    #endif
-    }
-    else if(is_bmp(header))
-    {
-        return std::make_unique<Bmp>(header, input, bg);
-    }
-    else if(is_pnm(header))
-    {
-        return std::make_unique<Pnm>(header, input);
-    }
-    else
-    {
-        throw std::runtime_error{"Unknown input file format\n"};
     }
 }

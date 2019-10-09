@@ -10,19 +10,18 @@
 
 void write_ascii(const Image & img,
                  const Char_vals & char_vals,
-                 const std::string & output_filename,
-                 int rows, int cols, bool invert_colors)
+                 const Args & args)
 {
     std::ofstream output_file;
-    if(output_filename != "-")
-        output_file.open(output_filename);
-    std::ostream & out = (output_filename == "-") ? std::cout : output_file;
+    if(args.output_filename != "-")
+        output_file.open(args.output_filename);
+    std::ostream & out = (args.output_filename == "-") ? std::cout : output_file;
 
     if(!out)
         throw std::runtime_error{"Could not open output file: " + std::string{std::strerror(errno)}};
 
-    const auto px_col = static_cast<float>(img.get_width()) / cols;
-    const auto px_row = rows > 0 ? static_cast<float>(img.get_height()) / rows : px_col * 2.0f;
+    const auto px_col = static_cast<float>(img.get_width()) / args.cols;
+    const auto px_row = args.rows > 0 ? static_cast<float>(img.get_height()) / args.rows : px_col * 2.0f;
 
     std::ofstream pgm("out.pgm");
     pgm<<"P2\n"<<img.get_width()<<' '<<img.get_height()<<"\n255\n";
@@ -45,7 +44,7 @@ void write_ascii(const Image & img,
             {
                 for(float x = col; x < col + px_col && x < img.get_width(); ++x)
                 {
-                    pix_sum += invert_colors ? 255 - img.get_pix(y, x) : img.get_pix(y, x);
+                    pix_sum += args.invert ? 255 - img.get_pix(y, x) : img.get_pix(y, x);
                     ++cell_sum;
                 }
             }
@@ -66,8 +65,8 @@ int main(int argc, char * argv[])
         auto font_path = get_font_path(args->font_name);
         auto values = get_char_values(font_path, args->font_size);
 
-        auto img = get_image_data(args->input_filename, args->bg);
-        write_ascii(*img, values, args->output_filename, args->rows, args->cols, args->invert);
+        auto img = get_image_data(*args);
+        write_ascii(*img, values, *args);
     }
     catch(const std::runtime_error & e)
     {

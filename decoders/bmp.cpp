@@ -268,7 +268,6 @@ void read_uncompressed(Header_stream & in, bmp_data & bmp, int bg, std::vector<s
                 image_data[im_row][col] = static_cast<unsigned char>((val * alpha + (bg / 255.0f) * (1.0f - alpha)) * 255.0f);
             }
         }
-        // std::cout<<'\n';
     }
 }
 

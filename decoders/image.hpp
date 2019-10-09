@@ -6,6 +6,8 @@
 #include <memory>
 #include <string>
 
+#include "../args.hpp"
+
 unsigned char rgb_to_gray(unsigned char r, unsigned char g, unsigned char b);
 float rgb_to_gray(float r, float g, float b);
 
@@ -58,6 +60,6 @@ private:
     Header_buf buf_;
 };
 
-[[nodiscard]] std::unique_ptr<Image> get_image_data(std::string & input_filename, int bg);
+[[nodiscard]] std::unique_ptr<Image> get_image_data(const Args & args);
 
 #endif // IMAGE_HPP
