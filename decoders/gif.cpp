@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-Gif::Gif(const Header & header, std::istream & input, int bg):
+Gif::Gif(const Header & header, std::istream & input, unsigned char bg):
     header_{header},
     input_{input}
 {

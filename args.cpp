@@ -116,8 +116,9 @@ private:
             ("i,invert", "Invert colors")
             ("o,output", "Output text file path. Output to stdout if '-'",                                cxxopts::value<std::string>()->default_value("-"),          "OUTPUT_FILE");
 
+        const std::string filetype_group ="Input file detection overide";
     #ifdef HAS_XPM
-        options.add_options()("xpm", "Interpret input as an XPM file");
+        options.add_options(filetype_group)("xpm", "Interpret input as an XPM file");
     #endif
 
         options.add_positionals()
@@ -148,12 +149,21 @@ private:
             return {};
         }
 
-    #ifdef HAS_XPM
         auto filetype {Args::Force_file::detect};
-        if(args.count("xpm"))
+
+        if(0
+    #ifdef HAS_XPM
+                + args.count("xpm")
+    #endif
+                > 1)
         {
-            filetype = Args::Force_file::xpm;
+            std::cerr<<options.help("Only one file format flag may be specified")<<'\n';
+            return {};
         }
+
+    #ifdef HAS_XPM
+        if(args.count("xpm"))
+            filetype = Args::Force_file::xpm;
     #endif
 
         return Args{
@@ -163,7 +173,7 @@ private:
             args["size"].as<float>(),
             args["rows"].as<int>(),
             args["cols"].as<int>(),
-            args["bg"].as<int>(),
+            static_cast<unsigned char>(args["bg"].as<int>()),
             static_cast<bool>(args.count("invert")),
             filetype,
         };

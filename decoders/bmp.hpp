@@ -15,7 +15,7 @@ inline bool is_bmp(const Image::Header & header)
 class Bmp final: public Image
 {
 public:
-    Bmp(const Header & header, std::istream & input, int bg);
+    Bmp(const Header & header, std::istream & input, unsigned char bg);
 
     unsigned char get_pix(std::size_t row, std::size_t col) const override
     {

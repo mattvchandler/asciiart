@@ -97,9 +97,15 @@ template<typename T> void readb(std::istream & i, T& t)
 
 [[nodiscard]] std::unique_ptr<Image> get_image_data(const Args & args)
 {
+    std::string extension;
     std::ifstream input_file;
     if(args.input_filename != "-")
+    {
         input_file.open(args.input_filename, std::ios_base::in | std::ios_base::binary);
+        auto pos = args.input_filename.find_last_of('.');
+        if(pos != std::string::npos)
+            extension = args.input_filename.substr(pos);
+    }
     std::istream & input = (args.input_filename == "-") ? std::cin : input_file;
 
     if(!input)
@@ -148,9 +154,17 @@ template<typename T> void readb(std::istream & i, T& t)
         {
             return std::make_unique<Pnm>(header, input);
         }
+        else if(extension == ".xpm")
+        {
+            #ifdef HAS_XPM
+            return std::make_unique<Xpm>(header, input, args.bg);
+            #else
+            throw std::runtime_error{"Not compiled with XPM support"};
+            #endif
+        }
         else
         {
-            throw std::runtime_error{"Unknown input file format\n"};
+            throw std::runtime_error{"Unknown input file format"};
         }
         break;
     #ifdef HAS_XPM
@@ -158,5 +172,7 @@ template<typename T> void readb(std::istream & i, T& t)
         return std::make_unique<Xpm>(header, input, args.bg);
         break;
     #endif
+    default:
+        throw std::runtime_error{"Unhandled file format switch"};
     }
 }

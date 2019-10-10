@@ -669,7 +669,7 @@ const std::map<std::string, Color> color_names
     {"lightgreen",           {144, 238, 144}},
 };
 
-Xpm::Xpm(const Header & header, std::istream & input, int bg)
+Xpm::Xpm(const Header & header, std::istream & input, unsigned char bg)
 {
     // read whole into memory
     std::vector<char> data(std::begin(header), std::end(header));

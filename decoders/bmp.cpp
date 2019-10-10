@@ -22,7 +22,7 @@ struct bmp_data
     std::vector<color> palette;
 };
 
-bmp_data read_header(Header_stream & in)
+bmp_data read_bmp_header(Header_stream & in)
 {
     bmp_data bmp;
 
@@ -145,7 +145,7 @@ bmp_data read_header(Header_stream & in)
     return bmp;
 }
 
-void read_uncompressed(Header_stream & in, bmp_data & bmp, int bg, std::vector<std::vector<unsigned char>> & image_data)
+void read_uncompressed(Header_stream & in, bmp_data & bmp, unsigned char bg, std::vector<std::vector<unsigned char>> & image_data)
 {
     std::vector<char> rowbuf((bmp.bpp * bmp.width + 31) / 32  * 4);
     for(std::size_t row = 0; row < bmp.height; ++row)
@@ -190,8 +190,8 @@ void read_uncompressed(Header_stream & in, bmp_data & bmp, int bg, std::vector<s
                 {
                     //5.5.5.0.1 format
                     // bbbbbggg ggrrrrrx
-                    b = (hi >> 2);
-                    g = ((hi & 0x07) << 2) | (lo >> 6);
+                    b = ((hi & 0xF8) >> 3);
+                    g = ((hi & 0x07) << 2) | ((lo & 0xC0) >> 6);
                     r = (lo & 0x3E) >> 1;
                 }
                 else // BI_BITFIELDS
@@ -362,13 +362,13 @@ void read_rle(Header_stream & in, bmp_data & bmp, std::vector<std::vector<unsign
     }
 }
 
-Bmp::Bmp(const Header & header, std::istream & input, int bg)
+Bmp::Bmp(const Header & header, std::istream & input, unsigned char bg)
 {
     Header_stream in {header, input};
     in.exceptions(std::ios_base::badbit | std::ios_base::failbit);
     try
     {
-        auto bmp = read_header(in);
+        auto bmp = read_bmp_header(in);
 
         width_ = bmp.width;
         height_ = bmp.height;

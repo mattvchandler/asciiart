@@ -20,7 +20,7 @@ inline bool is_png(const Image::Header & header)
 class Png final: public Image
 {
 public:
-    Png(const Header & header, std::istream & input, int bg);
+    Png(const Header & header, std::istream & input, unsigned char bg);
 
     unsigned char get_pix(std::size_t row, std::size_t col) const override
     {

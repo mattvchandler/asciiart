@@ -9,7 +9,7 @@
 class Xpm final: public Image
 {
 public:
-    Xpm(const Header & header, std::istream & input, int bg);
+    Xpm(const Header & header, std::istream & input, unsigned char bg);
 
     unsigned char get_pix(std::size_t row, std::size_t col) const override
     {

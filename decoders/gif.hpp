@@ -23,7 +23,7 @@ inline bool is_gif(const Image::Header & header)
 class Gif final: public Image
 {
 public:
-    Gif(const Header & header, std::istream & input, int bg);
+    Gif(const Header & header, std::istream & input, unsigned char bg);
 
     unsigned char get_pix(std::size_t row, std::size_t col) const override
     {

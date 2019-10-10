@@ -1,8 +1,8 @@
 #ifndef ARGS_HPP
 #define ARGS_HPP
 
-#include <string>
 #include <optional>
+#include <string>
 
 struct Args
 {
@@ -12,7 +12,7 @@ struct Args
     float       font_size;       // font size requested, in points
     int rows;                    // output rows
     int cols;                    // output cols
-    int bg;                      // BG color value
+    unsigned char bg;            // BG color value
     bool invert;                 // invert colors
     enum class Force_file
     {

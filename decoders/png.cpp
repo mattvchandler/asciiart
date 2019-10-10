@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-Png::Png(const Header & header, std::istream & input, int bg):
+Png::Png(const Header & header, std::istream & input, unsigned char bg):
     header_{header},
     input_{input}
 {
@@ -78,8 +78,6 @@ Png::Png(const Header & header, std::istream & input, int bg):
             }
         }
     }
-
-    std::cout<<(int)image_data_[0][0]<<'\n';
 
     png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
 }
