@@ -117,6 +117,8 @@ private:
             ("o,output", "Output text file path. Output to stdout if '-'",                                cxxopts::value<std::string>()->default_value("-"),          "OUTPUT_FILE");
 
         const std::string filetype_group ="Input file detection overide";
+        options.add_options(filetype_group)("tga",      "Interpret input as a TGA file");
+
     #ifdef HAS_XPM
         options.add_options(filetype_group)("xpm", "Interpret input as an XPM file");
     #endif
@@ -151,7 +153,7 @@ private:
 
         auto filetype {Args::Force_file::detect};
 
-        if(0
+        if(args.count("tga")
     #ifdef HAS_XPM
                 + args.count("xpm")
     #endif
@@ -161,8 +163,11 @@ private:
             return {};
         }
 
+
+        if(args.count("tga"))
+            filetype = Args::Force_file::tga;
     #ifdef HAS_XPM
-        if(args.count("xpm"))
+        else if(args.count("xpm"))
             filetype = Args::Force_file::xpm;
     #endif
 

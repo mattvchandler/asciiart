@@ -190,9 +190,9 @@ void read_uncompressed(Header_stream & in, bmp_data & bmp, unsigned char bg, std
                 {
                     //5.5.5.0.1 format
                     // bbbbbggg ggrrrrrx
-                    b = ((hi & 0xF8) >> 3);
-                    g = ((hi & 0x07) << 2) | ((lo & 0xC0) >> 6);
-                    r = (lo & 0x3E) >> 1;
+                    b = hi & 0xF8;
+                    g = ((hi & 0x07) << 5) | ((lo & 0xC0) >> 3);
+                    r = (lo & 0x3E) << 2;
                 }
                 else // BI_BITFIELDS
                 {

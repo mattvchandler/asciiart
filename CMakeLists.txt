@@ -27,6 +27,7 @@ add_executable(asciiart
     decoders/image.cpp
     decoders/bmp.cpp
     decoders/pnm.cpp
+    decoders/tga.cpp
     )
 
 target_include_directories(asciiart PRIVATE

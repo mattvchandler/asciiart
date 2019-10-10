@@ -25,6 +25,7 @@
 
 #include "bmp.hpp"
 #include "pnm.hpp"
+#include "tga.hpp"
 
 unsigned char rgb_to_gray(unsigned char r, unsigned char g, unsigned char b)
 {
@@ -90,11 +91,6 @@ Header_stream::pos_type Header_stream::Header_buf::seekoff(off_type off, std::io
         return off_type{-1};
 }
 
-template<typename T> void readb(std::istream & i, T& t)
-{
-    i.read(reinterpret_cast<char *>(&t), sizeof(T));
-}
-
 [[nodiscard]] std::unique_ptr<Image> get_image_data(const Args & args)
 {
     std::string extension;
@@ -154,6 +150,10 @@ template<typename T> void readb(std::istream & i, T& t)
         {
             return std::make_unique<Pnm>(header, input);
         }
+        else if(extension == ".tga")
+        {
+            return std::make_unique<Tga>(header, input, args.bg);
+        }
         else if(extension == ".xpm")
         {
             #ifdef HAS_XPM
@@ -166,6 +166,9 @@ template<typename T> void readb(std::istream & i, T& t)
         {
             throw std::runtime_error{"Unknown input file format"};
         }
+        break;
+    case Args::Force_file::tga:
+        return std::make_unique<Tga>(header, input, args.bg);
         break;
     #ifdef HAS_XPM
     case Args::Force_file::xpm:

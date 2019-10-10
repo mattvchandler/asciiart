@@ -17,6 +17,7 @@ struct Args
     enum class Force_file
     {
         detect,                  // detect filetype by header
+        tga,
     #ifdef HAS_XPM
         xpm,
     #endif
