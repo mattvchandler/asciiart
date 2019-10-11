@@ -101,6 +101,9 @@ Header_stream::pos_type Header_stream::Header_buf::seekoff(off_type off, std::io
 
 Header_stream::pos_type Header_stream::Header_buf::seekpos(pos_type pos, std::ios_base::openmode which)
 {
+    if(which != std::ios_base::in)
+        return off_type{-1};
+
     auto current = current_pos();
 
     auto buff_start = pos_ - off_type{buffer_size};
