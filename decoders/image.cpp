@@ -12,6 +12,7 @@
 #include "jpeg.hpp"
 #include "png.hpp"
 #include "pnm.hpp"
+#include "tiff.hpp"
 #include "tga.hpp"
 #include "webp.hpp"
 #include "xpm.hpp"
@@ -193,6 +194,14 @@ Header_stream::pos_type Header_stream::Header_buf::current_pos() const
             return std::make_unique<Webp>(header, input, args.bg);
             #else
             throw std::runtime_error{"Not compiled with WEBP support"};
+            #endif
+        }
+        else if(is_tiff(header))
+        {
+            #ifdef HAS_TIFF
+            return std::make_unique<Tiff>(header, input, args.bg);
+            #else
+            throw std::runtime_error{"Not compiled with TIFF support"};
             #endif
         }
         else if(is_bmp(header))

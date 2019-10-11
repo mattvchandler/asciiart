@@ -23,17 +23,6 @@ void write_ascii(const Image & img,
     const auto px_col = static_cast<float>(img.get_width()) / args.cols;
     const auto px_row = args.rows > 0 ? static_cast<float>(img.get_height()) / args.rows : px_col * 2.0f;
 
-    std::ofstream pgm("out.pgm");
-    pgm<<"P2\n"<<img.get_width()<<' '<<img.get_height()<<"\n255\n";
-    for(std::size_t row = 0; row < img.get_height(); ++row)
-    {
-        for(std::size_t col = 0; col < img.get_width(); ++col)
-        {
-            pgm<<(int)img.get_pix(row, col)<<' ';
-        }
-        pgm<<'\n';
-    }
-
     for(float row = 0.0f; row < img.get_height(); row += px_row)
     {
         for(float col = 0.0f; col < img.get_width(); col += px_col)
