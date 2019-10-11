@@ -37,8 +37,7 @@ bool Image::header_cmp(unsigned char a, char b){ return a == static_cast<unsigne
 
 Header_stream::Header_stream(const Image::Header & header, std::istream & input):
     std::istream{&buf_}, buf_{header, input}
-{
-}
+{}
 
 Header_stream::Header_buf::Header_buf(const Image::Header & header, std::istream & input): input_{input}
 {
@@ -74,10 +73,67 @@ int Header_stream::Header_buf::underflow()
 
 Header_stream::pos_type Header_stream::Header_buf::seekoff(off_type off, std::ios_base::seekdir dir, std::ios_base::openmode which)
 {
-    if(off == 0 && dir == std::ios_base::cur && which == std::ios_base::in)
-        return pos_ - off_type{egptr() - gptr()};
-    else
+    if(which != std::ios_base::in)
         return off_type{-1};
+
+    // shortcut for tellg
+    if(off == 0 && dir == std::ios_base::cur)
+        return current_pos();
+
+    switch(dir)
+    {
+        case std::ios_base::beg:
+            return seekpos(off, which);
+        case std::ios_base::end:
+            return off_type{-1}; // we can't tell where the stream ends
+            break;
+        case std::ios_base::cur:
+            return seekpos(current_pos() + off, which);
+            break;
+        default:
+            return off_type{-1};
+            break;
+    }
+
+    return off_type{-1};
+}
+
+Header_stream::pos_type Header_stream::Header_buf::seekpos(pos_type pos, std::ios_base::openmode which)
+{
+    auto current = current_pos();
+
+    auto buff_start = pos_ - off_type{buffer_size};
+    auto buff_end = pos_;
+    auto offset = pos - current;
+
+    if(pos < buff_start)
+    {
+        // can't go back any further
+        return off_type{-1};
+    }
+    else if(pos >= buff_start && pos < buff_end)
+    {
+        // within current buffer
+        setg(eback(), gptr() + offset, egptr());
+    }
+    else if(pos >= buff_end)
+    {
+        // read until we're at pos
+        while(pos >= pos_)
+        {
+            setg(eback(), egptr(), egptr());
+            underflow();
+        }
+
+        setg(eback(), gptr() + (pos - current_pos()), egptr());
+    }
+
+    return current_pos();
+}
+
+Header_stream::pos_type Header_stream::Header_buf::current_pos() const
+{
+    return pos_ - off_type{egptr() - gptr()};
 }
 
 [[nodiscard]] std::unique_ptr<Image> get_image_data(const Args & args)

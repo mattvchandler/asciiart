@@ -50,8 +50,10 @@ private:
     protected:
         virtual int underflow() override;
         virtual pos_type seekoff(off_type off, std::ios_base::seekdir dir, std::ios_base::openmode which) override;
+        virtual pos_type seekpos(pos_type pos, std::ios_base::openmode which) override;
 
     private:
+        pos_type current_pos() const;
         static const std::size_t buffer_size {2048};
         std::array<char, buffer_size> buffer_;
         std::istream & input_;

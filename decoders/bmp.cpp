@@ -385,7 +385,7 @@ Bmp::Bmp(const Header & header, std::istream & input, unsigned char bg)
         else if(bmp.compression == bmp_data::Compression::BI_RLE8 || bmp.compression == bmp_data::Compression::BI_RLE4)
             read_rle(in, bmp, image_data_);
     }
-    catch(std::ios_base::failure & e)
+    catch(std::ios_base::failure&)
     {
         if(in.bad())
             throw std::runtime_error{"Error reading BMP: could not read file"};
