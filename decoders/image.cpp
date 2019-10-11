@@ -7,25 +7,14 @@
 #include <cmath>
 #include <cstring>
 
-#ifdef HAS_PNG
-#include "png.hpp"
-#endif
-
-#ifdef HAS_JPEG
-#include "jpeg.hpp"
-#endif
-
-#ifdef HAS_GIF
-#include "gif.hpp"
-#endif
-
-#ifdef HAS_XPM
-#include "xpm.hpp"
-#endif
-
 #include "bmp.hpp"
+#include "gif.hpp"
+#include "jpeg.hpp"
+#include "png.hpp"
 #include "pnm.hpp"
 #include "tga.hpp"
+#include "webp.hpp"
+#include "xpm.hpp"
 
 unsigned char rgb_to_gray(unsigned char r, unsigned char g, unsigned char b)
 {
@@ -140,6 +129,14 @@ Header_stream::pos_type Header_stream::Header_buf::seekoff(off_type off, std::io
             return std::make_unique<Gif>(header, input, args.bg);
             #else
             throw std::runtime_error{"Not compiled with GIF support"};
+            #endif
+        }
+        else if(is_webp(header))
+        {
+            #ifdef HAS_WEBP
+            return std::make_unique<Webp>(header, input, args.bg);
+            #else
+            throw std::runtime_error{"Not compiled with WEBP support"};
             #endif
         }
         else if(is_bmp(header))
