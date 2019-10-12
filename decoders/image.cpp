@@ -78,12 +78,15 @@ void Image::set_size(std::size_t w, std::size_t h)
     Image::Header header;
 
     input.read(std::data(header), std::size(header));
-    input.seekg(0); // rewind
 
     if(input.eof()) // technically, some image files could be smaller than 12 bytes, but they wouldn't be interesting images
         throw std::runtime_error{"Could not read file header: not enough bytes"};
     else if(!input)
         throw std::runtime_error{"Could not read input file: " + std::string{std::strerror(errno)}};
+
+    input.seekg(0); // rewind
+    if(input.bad())
+        throw std::runtime_error{"Unable to rewind stream"};
 
     switch(args.force_file)
     {

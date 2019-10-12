@@ -272,11 +272,14 @@ void read_rle(std::istream & in, bmp_data & bmp, std::vector<std::vector<unsigne
     std::size_t row = 0, col = 0;
     auto im_row = bmp.bottom_to_top ? bmp.height - row - 1 : row;
 
-    while(true)
+    auto check_bounds = [&row, &col, &bmp]()
     {
         if(row >= bmp.height || col >= bmp.width)
             throw std::runtime_error {"BMP data out of range"};
+    };
 
+    while(true)
+    {
         unsigned char count = in.get();
 
         if(count == 0)
@@ -293,7 +296,7 @@ void read_rle(std::istream & in, bmp_data & bmp, std::vector<std::vector<unsigne
             {
                 break;
             }
-            else if(escape == 2) // delta - not supported
+            else if(escape == 2) // delta
             {
                 unsigned char horiz = in.get();
                 unsigned char vert = in.get();
@@ -319,6 +322,7 @@ void read_rle(std::istream & in, bmp_data & bmp, std::vector<std::vector<unsigne
                             color = bmp.palette[idx & 0xF];
                         }
 
+                        check_bounds();
                         image_data[im_row][col++] = rgb_to_gray(color.r, color.g, color.b);
                     }
                 }
@@ -327,6 +331,7 @@ void read_rle(std::istream & in, bmp_data & bmp, std::vector<std::vector<unsigne
                     for(auto i = 0; i < escape; ++i)
                     {
                         auto color = bmp.palette[in.get()];
+                        check_bounds();
                         image_data[im_row][col++] = rgb_to_gray(color.r, color.g, color.b);
                     }
                 }
@@ -343,6 +348,7 @@ void read_rle(std::istream & in, bmp_data & bmp, std::vector<std::vector<unsigne
                 for(auto i = 0; i < count; ++i)
                 {
                     auto color = bmp.palette[(i % 2 == 0) ? (idx >> 4) : (idx & 0x4)];
+                    check_bounds();
                     image_data[im_row][col++] = rgb_to_gray(color.r, color.g, color.b);
                 }
             }
@@ -351,6 +357,7 @@ void read_rle(std::istream & in, bmp_data & bmp, std::vector<std::vector<unsigne
                 for(auto i = 0; i < count; ++i)
                 {
                     auto color = bmp.palette[idx];
+                    check_bounds();
                     image_data[im_row][col++] = rgb_to_gray(color.r, color.g, color.b);
                 }
             }
