@@ -46,9 +46,7 @@ unsigned char read_pixel(const unsigned char * byte, Tga_data::Color color, uint
             break;
         }
 
-        auto val = rgb_to_gray(r, g, b) / 255.0f;
-        auto alpha = a / 255.0f;
-        return static_cast<unsigned char>((val * alpha + (bg / 255.0f) * (1.0f - alpha)) * 255.0f);
+        return rgba_to_gray(r, g, b, a, bg);
     }
     else if(color == Tga_data::Color::indexed)
     {
@@ -229,12 +227,7 @@ Tga::Tga(const Header & header, std::istream & input, unsigned char bg)
     {
         auto tga = read_tga_header(in, bg);
 
-        width_ = tga.width;
-        height_ = tga.height;
-
-        image_data_.resize(height_);
-        for(auto && row: image_data_)
-            row.resize(width_);
+        set_size(tga.width, tga.height);
 
         if(tga.rle_compressed)
             read_compressed(in, tga, image_data_, bg);

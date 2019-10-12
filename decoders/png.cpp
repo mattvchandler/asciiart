@@ -2,9 +2,42 @@
 
 #include <iostream>
 
-Png::Png(const Header & header, std::istream & input, unsigned char bg):
-    header_{header},
-    input_{input}
+#include <png.h>
+
+struct Png_reader
+{
+    Png_reader(const Image::Header & header, std::istream & input):
+        header_{header}, input_{input}
+    {}
+
+    const Image::Header & header_;
+    std::istream & input_;
+
+    std::size_t header_bytes_read_ {0};
+};
+
+void read_fn(png_structp png_ptr, png_bytep data, png_size_t length) noexcept
+{
+    auto png = static_cast<Png_reader *>(png_get_io_ptr(png_ptr));
+    if(!png)
+    {
+        std::cerr<<"FATAL ERROR: Could not get PNG struct pointer\n";
+        std::exit(EXIT_FAILURE);
+    }
+
+    std::size_t png_ind = 0;
+    while(png->header_bytes_read_ < std::size(png->header_) && png_ind < length)
+        data[png_ind++] = png->header_[png->header_bytes_read_++];
+
+    png->input_.read(reinterpret_cast<char *>(data) + png_ind, length - png_ind);
+    if(png->input_.bad())
+    {
+        std::cerr<<"FATAL ERROR: Could not read PNG image\n";
+        std::exit(EXIT_FAILURE);
+    }
+
+}
+Png::Png(const Header & header, std::istream & input, unsigned char bg)
 {
     auto png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
     if(!png_ptr)
@@ -24,15 +57,17 @@ Png::Png(const Header & header, std::istream & input, unsigned char bg):
     }
 
     // set custom read callback (to read from header / c++ istream)
-    png_set_read_fn(png_ptr, this, read_fn);
+    Png_reader reader{header, input};
+    png_set_read_fn(png_ptr, &reader, read_fn);
 
     // don't care about non-image data
     png_set_keep_unknown_chunks(png_ptr, PNG_HANDLE_CHUNK_NEVER, nullptr, 0);
 
     // get image properties
     png_read_info(png_ptr, info_ptr);
-    height_ = png_get_image_height(png_ptr, info_ptr);
-    width_ = png_get_image_width(png_ptr, info_ptr);
+
+    set_size(png_get_image_width(png_ptr, info_ptr), png_get_image_height(png_ptr, info_ptr));
+
     auto bit_depth = png_get_bit_depth(png_ptr, info_ptr);
     auto color_type = png_get_color_type(png_ptr, info_ptr);
 
@@ -56,10 +91,6 @@ Png::Png(const Header & header, std::istream & input, unsigned char bg):
     if(png_get_rowbytes(png_ptr, info_ptr) != width_ * 2)
         throw std::runtime_error{"PNG bytes per row incorrect"};
 
-    image_data_.resize(height_);
-    for(auto && row: image_data_)
-        row.resize(width_);
-
     // buffer for Gray + Alpha pixels
     std::vector<unsigned char> row_buffer(width_ * 2);
 
@@ -71,39 +102,10 @@ Png::Png(const Header & header, std::istream & input, unsigned char bg):
             for(std::size_t col = 0; col < width_; ++col)
             {
                 // alpha blending w/ background
-                auto val   = row_buffer[col * 2]     / 255.0f;
-                auto alpha = row_buffer[col * 2 + 1] / 255.0f;
-
-                image_data_[row][col] = static_cast<unsigned char>((val * alpha + (bg / 255.0f) * (1.0f - alpha)) * 255.0f);
+                image_data_[row][col] = ga_blend(row_buffer[col * 2], row_buffer[col * 2 + 1], bg);
             }
         }
     }
 
     png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
-}
-
-void Png::read_fn(png_bytep data, png_size_t length) noexcept
-{
-    std::size_t png_ind = 0;
-    while(header_bytes_read_ < std::size(header_) && png_ind < length)
-        data[png_ind++] = header_[header_bytes_read_++];
-
-    input_.read(reinterpret_cast<char *>(data) + png_ind, length - png_ind);
-    if(input_.bad())
-    {
-        std::cerr<<"FATAL ERROR: Could not read PNG image\n";
-        std::exit(EXIT_FAILURE);
-    }
-}
-
-void Png::read_fn(png_structp png_ptr, png_bytep data, png_size_t length) noexcept
-{
-    Png * png = static_cast<Png *>(png_get_io_ptr(png_ptr));
-    if(!png)
-    {
-        std::cerr<<"FATAL ERROR: Could not get PNG struct pointer\n";
-        std::exit(EXIT_FAILURE);
-    }
-
-    png->read_fn(data, length);
 }

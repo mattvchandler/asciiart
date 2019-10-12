@@ -20,12 +20,7 @@ Webp::Webp(const Header & header, std::istream & input, unsigned char bg)
     if(!WebPGetInfo(reinterpret_cast<uint8_t *>(std::data(data)), std::size(data), &width, &height))
         throw std::runtime_error{"Invalid WEBP header\n"};
 
-    width_ = width;
-    height_ = height;
-
-    image_data_.resize(height_);
-    for(auto && row: image_data_)
-        row.resize(width_);
+    set_size(width, height);
 
     uint8_t * pix_data = WebPDecodeRGBA(reinterpret_cast<uint8_t *>(std::data(data)), std::size(data), &width, &height);
 
@@ -38,9 +33,7 @@ Webp::Webp(const Header & header, std::istream & input, unsigned char bg)
             auto b = pix_data[4 * (row * width_ + col) + 2];
             auto a = pix_data[4 * (row * width_ + col) + 3];
 
-            auto val = rgb_to_gray(r, g, b) / 255.0f;
-            auto alpha = a / 255.0f;
-            image_data_[row][col] = static_cast<unsigned char>((val * alpha + (bg / 255.0f) * (1.0f - alpha)) * 255.0f);
+            image_data_[row][col] = rgba_to_gray(r, g, b, a, bg);
         }
     }
 

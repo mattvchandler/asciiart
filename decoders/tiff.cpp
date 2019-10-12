@@ -82,12 +82,7 @@ Tiff::Tiff(const Header & header, std::istream & input, unsigned char bg)
         throw std::runtime_error{"Error reading TIFF data"};
     }
 
-    width_ = w;
-    height_ = h;
-
-    image_data_.resize(height_);
-    for(auto && row: image_data_)
-        row.resize(width_);
+    set_size(w, h);
 
     for(std::size_t row = 0; row < height_; ++row)
     {
@@ -99,9 +94,7 @@ Tiff::Tiff(const Header & header, std::istream & input, unsigned char bg)
             unsigned char b = TIFFGetB(pix);
             unsigned char a = TIFFGetA(pix);
 
-            auto val = rgb_to_gray(r, g, b) / 255.0f;
-            auto alpha = a / 255.0f;
-            image_data_[row][col] = static_cast<unsigned char>((val * alpha + (bg / 255.0f) * (1.0f - alpha)) * 255.0f);
+            image_data_[row][col] = rgba_to_gray(r, g, b, a, bg);
         }
     }
 

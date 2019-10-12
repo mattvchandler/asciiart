@@ -217,9 +217,7 @@ void read_uncompressed(Header_stream & in, bmp_data & bmp, unsigned char bg, std
                         a = 0xFF;
                 }
 
-                auto val = rgb_to_gray(r, g, b) / 255.0f;
-                auto alpha = a / 255.0f;
-                image_data[im_row][col] = static_cast<unsigned char>((val * alpha + (bg / 255.0f) * (1.0f - alpha)) * 255.0f);
+                image_data[im_row][col] = rgba_to_gray(r, g, b, a, bg);
             }
             else if(bmp.bpp == 24)
             {
@@ -263,9 +261,7 @@ void read_uncompressed(Header_stream & in, bmp_data & bmp, unsigned char bg, std
                         a = 0xFF;
                 }
 
-                auto val = rgb_to_gray(r, g, b) / 255.0f;
-                auto alpha = a / 255.0f;
-                image_data[im_row][col] = static_cast<unsigned char>((val * alpha + (bg / 255.0f) * (1.0f - alpha)) * 255.0f);
+                image_data[im_row][col] = rgba_to_gray(r, g, b, a, bg);
             }
         }
     }
@@ -369,16 +365,7 @@ Bmp::Bmp(const Header & header, std::istream & input, unsigned char bg)
     try
     {
         auto bmp = read_bmp_header(in);
-
-        width_ = bmp.width;
-        height_ = bmp.height;
-
-        image_data_.resize(height_);
-        for(auto && row: image_data_)
-        {
-            row.resize(width_);
-            std::fill(std::begin(row), std::end(row), 0);
-        }
+        set_size(bmp.width, bmp.height);
 
         if(bmp.compression == bmp_data::Compression::BI_RGB || bmp.compression == bmp_data::Compression::BI_BITFIELDS)
             read_uncompressed(in, bmp, bg, image_data_);

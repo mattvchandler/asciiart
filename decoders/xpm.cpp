@@ -752,19 +752,10 @@ Xpm::Xpm(const Header & header, std::istream & input, unsigned char bg)
             }
         }
 
-        auto val = rgb_to_gray(r, g, b) / 255.0f;
-        auto alpha = a / 255.0f;
-        colors.push_back(static_cast<unsigned char>((val * alpha + (bg / 255.0f) * (1.0f - alpha)) * 255.0f));
+        colors.push_back(rgba_to_gray(r, g, b, a, bg));
     }
 
-    width_  = img.width;
-    height_ = img.height;
-    image_data_.resize(height_);
-    for(auto && row: image_data_)
-    {
-        row.resize(width_);
-        std::fill(std::begin(row), std::end(row), 0);
-    }
+    set_size(img.width, img.height);
 
     for(std::size_t row = 0; row < height_; ++row)
     {

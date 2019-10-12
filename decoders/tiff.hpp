@@ -1,11 +1,6 @@
 #ifndef TIFF_HPP
 #define TIFF_HPP
 
-#ifdef HAS_TIFF
-#include <istream>
-#include <vector>
-#endif
-
 #include "image.hpp"
 
 inline bool is_tiff(const Image::Header & header)
@@ -22,20 +17,6 @@ class Tiff final: public Image
 {
 public:
     Tiff(const Header & header, std::istream & input, unsigned char bg);
-
-    unsigned char get_pix(std::size_t row, std::size_t col) const override
-    {
-        return image_data_[row][col];
-    }
-
-    std::size_t get_width() const override { return width_; }
-    std::size_t get_height() const override { return height_; }
-
-private:
-    std::size_t width_{0};
-    std::size_t height_{0};
-
-    std::vector<std::vector<unsigned char>> image_data_;
 };
 #endif
 #endif // TIFF_HPP

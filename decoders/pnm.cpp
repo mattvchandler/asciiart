@@ -48,8 +48,9 @@ Pnm::Pnm(const Header & header, std::istream & input)
 
         try
         {
-            width_ = std::stoull(read_skip_comments(header_stream));
-            height_ = std::stoull(read_skip_comments(header_stream));
+            auto width = std::stoull(read_skip_comments(header_stream));
+            auto height = std::stoull(read_skip_comments(header_stream));
+            set_size(width, height);
         }
         catch(const std::invalid_argument & e)
         {
@@ -64,10 +65,6 @@ Pnm::Pnm(const Header & header, std::istream & input)
     {
         throw std::runtime_error{"Error reading PNM header: could not read file"};
     }
-
-    image_data_.resize(height_);
-    for(auto && row: image_data_)
-        row.resize(width_);
 
     try
     {
@@ -159,7 +156,7 @@ void Pnm::read_P3(std::istream & input)
             if(r > max_val || g > max_val || b > max_val)
                 throw std::runtime_error{"Error reading PPM: pixel value out of range"};
 
-            image_data_[row][col] = rgb_to_gray(r / max_val, g / max_val, b / max_val);
+            image_data_[row][col] = rgb_to_gray(r / max_val, g / max_val, b / max_val) * 255.0f;
         }
     }
 }
@@ -217,7 +214,7 @@ void Pnm::read_P6(std::istream & input)
             auto r = static_cast<unsigned char>(rowbuf[3 * col]);
             auto g = static_cast<unsigned char>(rowbuf[3 * col + 1]);
             auto b = static_cast<unsigned char>(rowbuf[3 * col + 2]);
-            image_data_[row][col] = rgb_to_gray(r / max_val, g / max_val, b / max_val);
+            image_data_[row][col] = rgb_to_gray(r / max_val, g / max_val, b / max_val) * 255.0f;
         }
     }
 }

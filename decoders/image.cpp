@@ -33,12 +33,35 @@ float rgb_to_gray(float r, float g, float b)
 
     return static_cast<unsigned char>(luminance * 255.0f);
 }
+unsigned char rgba_to_gray(unsigned char r, unsigned char g, unsigned char b, unsigned char a, unsigned char bg)
+{
+    auto val = rgb_to_gray(r / 255.0f, g / 255.0f, b / 255.0f);
+    auto alpha = a / 255.0f;
+    return static_cast<unsigned char>((val * alpha + (bg / 255.0f) * (1.0f - alpha)) * 255.0f);
+}
+unsigned char ga_blend(unsigned char g, unsigned char a, unsigned char bg)
+{
+    auto val = g / 255.0f;
+    auto alpha = a / 255.0f;
+    return static_cast<unsigned char>((val * alpha + (bg / 255.0f) * (1.0f - alpha)) * 255.0f);
+}
 
 bool Image::header_cmp(unsigned char a, char b){ return a == static_cast<unsigned char>(b); };
 
 Header_stream::Header_stream(const Image::Header & header, std::istream & input):
     std::istream{&buf_}, buf_{header, input}
 {}
+
+void Image::set_size(std::size_t w, std::size_t h)
+{
+    width_ = w; height_ = h;
+    image_data_.resize(height_);
+    for(auto && row: image_data_)
+    {
+        row.resize(width_);
+        std::fill(std::begin(row), std::end(row), 0);
+    }
+}
 
 Header_stream::Header_buf::Header_buf(const Image::Header & header, std::istream & input): input_{input}
 {
