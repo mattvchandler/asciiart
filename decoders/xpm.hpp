@@ -6,6 +6,6 @@
 class Xpm final: public Image
 {
 public:
-    Xpm(const Header & header, std::istream & input, unsigned char bg);
+    Xpm(std::istream & input, unsigned char bg);
 };
 #endif // XPM_HPP

@@ -7,8 +7,7 @@
 
 struct Tiff_reader
 {
-    Tiff_reader(const Image::Header & header, std::istream & input):
-        data(std::begin(header), std::end(header))
+    Tiff_reader(std::istream & input)
     {
         std::array<char, 4096> buffer;
         while(input)
@@ -58,11 +57,11 @@ toff_t tiff_size(thandle_t hnd)
 }
 
 
-Tiff::Tiff(const Header & header, std::istream & input, unsigned char bg)
+Tiff::Tiff(std::istream & input, unsigned char bg)
 {
     // libtiff does kind of a stupid thing and will seek backwards, which Header_stream doesn't support (because we can read from a pipe)
     // read the whole, huge file into memory instead
-    Tiff_reader tiff_reader(header, input);
+    Tiff_reader tiff_reader(input);
 
     TIFFSetWarningHandler(nullptr);
 

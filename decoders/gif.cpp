@@ -4,46 +4,29 @@
 
 #include <gif_lib.h>
 
-struct Gif_reader
-{
-    Gif_reader(const Image::Header & header, std::istream & input):
-        header_{header}, input_{input}
-    {}
-
-    const Image::Header & header_;
-    std::istream & input_;
-
-    std::size_t header_bytes_read_ {0};
-};
-
 int read_fn(GifFileType* gif_file, GifByteType * data, int length) noexcept
 {
-    auto gif = static_cast<Gif_reader *>(gif_file->UserData);
-    if(!gif)
+    auto in = static_cast<std::istream *>(gif_file->UserData);
+    if(!in)
     {
-        std::cerr<<"FATAL ERROR: Could not get GIF struct pointer\n";
+        std::cerr<<"FATAL ERROR: Could not get GIF input stream\n";
         return GIF_ERROR;
     }
 
-    std::size_t gif_ind = 0;
-    while(gif->header_bytes_read_ < std::size(gif->header_) && gif_ind < static_cast<std::size_t>(length))
-        data[gif_ind++] = gif->header_[gif->header_bytes_read_++];
-
-    gif->input_.read(reinterpret_cast<char *>(data) + gif_ind, length - gif_ind);
-    if(gif->input_.bad())
+    in->read(reinterpret_cast<char *>(data), length);
+    if(in->bad())
     {
         std::cerr<<"FATAL ERROR: Could not read GIF image\n";
         return GIF_ERROR;
     }
 
-    return gif->input_.gcount() + gif_ind;
+    return in->gcount();
 }
 
-Gif::Gif(const Header & header, std::istream & input, unsigned char bg)
+Gif::Gif(std::istream & input, unsigned char bg)
 {
     int error_code = GIF_OK;
-    Gif_reader reader{header, input};
-    GifFileType * gif = DGifOpen(&reader, read_fn, &error_code);
+    GifFileType * gif = DGifOpen(&input, read_fn, &error_code);
     if(!gif)
         throw std::runtime_error{"Error setting up GIF: " + std::string{GifErrorString(error_code)}};
 

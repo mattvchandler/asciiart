@@ -669,15 +669,19 @@ const std::map<std::string, Color> color_names
     {"lightgreen",           {144, 238, 144}},
 };
 
-Xpm::Xpm(const Header & header, std::istream & input, unsigned char bg)
+Xpm::Xpm(std::istream & input, unsigned char bg)
 {
     // read whole into memory
-    std::vector<char> data(std::begin(header), std::end(header));
-    std::copy(std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>(),
-            std::back_inserter(data));
+    std::vector<char> data;
+    std::array<char, 4096> buffer;
+    while(input)
+    {
+        input.read(std::data(buffer), std::size(buffer));
+        if(input.bad())
+            throw std::runtime_error {"Error reading WEBP file"};
 
-    if(input.bad())
-        throw std::runtime_error {"Error reading XPM file"};
+        data.insert(std::end(data), std::begin(buffer), std::begin(buffer) + input.gcount());
+    }
 
     struct My_XpmImage: public XpmImage
     {

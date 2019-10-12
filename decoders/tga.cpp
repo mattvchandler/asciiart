@@ -71,20 +71,20 @@ unsigned char read_pixel(const unsigned char * byte, Tga_data::Color color, uint
     return 0;
 }
 
-Tga_data read_tga_header(Header_stream & in, unsigned char bg)
+Tga_data read_tga_header(std::istream & in, unsigned char bg)
 {
     Tga_data tga;
 
     uint8_t id_length;
-    in.readb(id_length);
+    readb(in, id_length);
 
     uint8_t color_map_type;
-    in.readb(color_map_type);
+    readb(in, color_map_type);
     if(color_map_type > 1)
         throw std::runtime_error {"Unsupported TGA color map type: " + std::to_string((int)color_map_type)};
 
     uint8_t image_type = 0;
-    in.readb(image_type);
+    readb(in, image_type);
     if(    image_type != 1 && image_type != 2  && image_type != 3
         && image_type != 9 && image_type != 10 && image_type != 11)
     {
@@ -96,20 +96,20 @@ Tga_data read_tga_header(Header_stream & in, unsigned char bg)
 
     uint16_t color_map_start_idx, color_map_num_entries;
     uint8_t color_map_bpp;
-    in.readb(color_map_start_idx);
-    in.readb(color_map_num_entries);
-    in.readb(color_map_bpp);
+    readb(in, color_map_start_idx);
+    readb(in, color_map_num_entries);
+    readb(in, color_map_bpp);
 
     if(color_map_bpp != 0 && color_map_bpp != 8 && color_map_bpp != 15 && color_map_bpp != 16 && color_map_bpp != 24 && color_map_bpp != 32)
         throw std::runtime_error{"Unsupported TGA palette color depth: " + std::to_string((int)color_map_bpp)};
 
     in.ignore(4); // skip origin
-    in.readb(tga.width);
-    in.readb(tga.height);
-    in.readb(tga.bpp);
+    readb(in, tga.width);
+    readb(in, tga.height);
+    readb(in, tga.bpp);
 
     uint8_t image_descriptor;
-    in.readb(image_descriptor);
+    readb(in, image_descriptor);
     tga.bottom_to_top = !((image_descriptor & 0x20) >> 5); // if 0, image is upside down
     auto interleaved = (image_descriptor & 0xC0) >> 6;
 
@@ -158,7 +158,7 @@ Tga_data read_tga_header(Header_stream & in, unsigned char bg)
     return tga;
 }
 
-void read_uncompressed(Header_stream & in, const Tga_data & tga, std::vector<std::vector<unsigned char>> & image_data, unsigned char bg)
+void read_uncompressed(std::istream & in, const Tga_data & tga, std::vector<std::vector<unsigned char>> & image_data, unsigned char bg)
 {
     std::vector<char> rowbuf(tga.width * tga.bpp / 8);
     for(std::size_t row = 0; row < tga.height; ++row)
@@ -172,7 +172,7 @@ void read_uncompressed(Header_stream & in, const Tga_data & tga, std::vector<std
     }
 }
 
-void read_compressed(Header_stream & in, const Tga_data & tga, std::vector<std::vector<unsigned char>> & image_data, unsigned char bg)
+void read_compressed(std::istream & in, const Tga_data & tga, std::vector<std::vector<unsigned char>> & image_data, unsigned char bg)
 {
     std::size_t row{0};
     auto store_val = [&row, col = std::size_t{0}, im_row = (tga.bottom_to_top ? tga.height - row - 1 : row), &tga, &image_data](unsigned char val) mutable
@@ -196,7 +196,7 @@ void read_compressed(Header_stream & in, const Tga_data & tga, std::vector<std::
     while(row < tga.height)
     {
         uint8_t b;
-        in.readb(b);
+        readb(in, b);
         auto len = (b & 0x7F) + 1;
 
         if(b & 0x80) // rle packet
@@ -219,25 +219,24 @@ void read_compressed(Header_stream & in, const Tga_data & tga, std::vector<std::
     }
 }
 
-Tga::Tga(const Header & header, std::istream & input, unsigned char bg)
+Tga::Tga(std::istream & input, unsigned char bg)
 {
-    Header_stream in {header, input};
-    in.exceptions(std::ios_base::badbit | std::ios_base::failbit);
+    input.exceptions(std::ios_base::badbit | std::ios_base::failbit);
     try
     {
-        auto tga = read_tga_header(in, bg);
+        auto tga = read_tga_header(input, bg);
 
         set_size(tga.width, tga.height);
 
         if(tga.rle_compressed)
-            read_compressed(in, tga, image_data_, bg);
+            read_compressed(input, tga, image_data_, bg);
         else
-            read_uncompressed(in, tga, image_data_, bg);
+            read_uncompressed(input, tga, image_data_, bg);
 
     }
     catch(std::ios_base::failure & e)
     {
-        if(in.bad())
+        if(input.bad())
             throw std::runtime_error{"Error reading TGA: could not read file"};
         else
             throw std::runtime_error{"Error reading TGA: unexpected end of file"};

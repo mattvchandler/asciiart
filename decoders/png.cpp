@@ -4,40 +4,23 @@
 
 #include <png.h>
 
-struct Png_reader
-{
-    Png_reader(const Image::Header & header, std::istream & input):
-        header_{header}, input_{input}
-    {}
-
-    const Image::Header & header_;
-    std::istream & input_;
-
-    std::size_t header_bytes_read_ {0};
-};
-
 void read_fn(png_structp png_ptr, png_bytep data, png_size_t length) noexcept
 {
-    auto png = static_cast<Png_reader *>(png_get_io_ptr(png_ptr));
-    if(!png)
+    auto in = static_cast<std::istream *>(png_get_io_ptr(png_ptr));
+    if(!in)
     {
-        std::cerr<<"FATAL ERROR: Could not get PNG struct pointer\n";
+        std::cerr<<"FATAL ERROR: Could not get input pointer\n";
         std::exit(EXIT_FAILURE);
     }
 
-    std::size_t png_ind = 0;
-    while(png->header_bytes_read_ < std::size(png->header_) && png_ind < length)
-        data[png_ind++] = png->header_[png->header_bytes_read_++];
-
-    png->input_.read(reinterpret_cast<char *>(data) + png_ind, length - png_ind);
-    if(png->input_.bad())
+    in->read(reinterpret_cast<char *>(data), length);
+    if(in->bad())
     {
         std::cerr<<"FATAL ERROR: Could not read PNG image\n";
         std::exit(EXIT_FAILURE);
     }
-
 }
-Png::Png(const Header & header, std::istream & input, unsigned char bg)
+Png::Png(std::istream & input, unsigned char bg)
 {
     auto png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
     if(!png_ptr)
@@ -57,8 +40,7 @@ Png::Png(const Header & header, std::istream & input, unsigned char bg)
     }
 
     // set custom read callback (to read from header / c++ istream)
-    Png_reader reader{header, input};
-    png_set_read_fn(png_ptr, &reader, read_fn);
+    png_set_read_fn(png_ptr, &input, read_fn);
 
     // don't care about non-image data
     png_set_keep_unknown_chunks(png_ptr, PNG_HANDLE_CHUNK_NEVER, nullptr, 0);

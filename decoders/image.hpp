@@ -40,42 +40,11 @@ protected:
     std::vector<std::vector<unsigned char>> image_data_;
 };
 
-class Header_stream: public std::istream
+template <typename T>
+void readb(std::istream & i, T & t)
 {
-public:
-    Header_stream(const Image::Header & header, std::istream & input);
-
-    template<typename T> void readb(T & t)
-    {
-        read(reinterpret_cast<char *>(&t), sizeof(T));
-    }
-    template<typename T> T readb()
-    {
-        T t;
-        readb(t);
-        return t;
-    }
-
-private:
-    class Header_buf: public std::streambuf
-    {
-    public:
-        Header_buf(const Image::Header & header, std::istream & input);
-
-    protected:
-        virtual int underflow() override;
-        virtual pos_type seekoff(off_type off, std::ios_base::seekdir dir, std::ios_base::openmode which) override;
-        virtual pos_type seekpos(pos_type pos, std::ios_base::openmode which) override;
-
-    private:
-        pos_type current_pos() const;
-        static const std::size_t buffer_size {2048};
-        std::array<char, buffer_size> buffer_;
-        std::istream & input_;
-        pos_type pos_{0};
-    };
-    Header_buf buf_;
-};
+    i.read(reinterpret_cast<char *>(&t), sizeof(T));
+}
 
 [[nodiscard]] std::unique_ptr<Image> get_image_data(const Args & args);
 

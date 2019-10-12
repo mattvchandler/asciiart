@@ -23,7 +23,7 @@ inline bool is_jpeg(const Image::Header & header)
 class Jpeg final: public Image
 {
 public:
-    Jpeg(const Header & header, std::istream & input);
+    Jpeg(std::istream & input);
 };
 #endif
 #endif // JPEG_HPP

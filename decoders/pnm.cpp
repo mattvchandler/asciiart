@@ -36,20 +36,19 @@ unsigned char read_val(std::istream & in)
     }
 }
 
-Pnm::Pnm(const Header & header, std::istream & input)
+Pnm::Pnm(std::istream & input)
 {
-    Header_stream header_stream{header, input};;
-    header_stream.exceptions(std::ios_base::badbit | std::ios_base::failbit);
+    input.exceptions(std::ios_base::badbit | std::ios_base::failbit);
 
     std::string type;
     try
     {
-        header_stream >> type;
+        input >> type;
 
         try
         {
-            auto width = std::stoull(read_skip_comments(header_stream));
-            auto height = std::stoull(read_skip_comments(header_stream));
+            auto width = std::stoull(read_skip_comments(input));
+            auto height = std::stoull(read_skip_comments(input));
             set_size(width, height);
         }
         catch(const std::invalid_argument & e)
@@ -71,28 +70,28 @@ Pnm::Pnm(const Header & header, std::istream & input)
         switch(type[1])
         {
         case '1':
-            read_P1(header_stream);
+            read_P1(input);
             break;
         case '2':
-            read_P2(header_stream);
+            read_P2(input);
             break;
         case '3':
-            read_P3(header_stream);
+            read_P3(input);
             break;
         case '4':
-            read_P4(header_stream);
+            read_P4(input);
             break;
         case '5':
-            read_P5(header_stream);
+            read_P5(input);
             break;
         case '6':
-            read_P6(header_stream);
+            read_P6(input);
             break;
         }
     }
     catch(std::ios_base::failure & e)
     {
-        if(header_stream.bad())
+        if(input.bad())
             throw std::runtime_error{"Error reading PNM: could not read file"};
         else
             throw std::runtime_error{"Error reading PNM: unexpected end of file"};

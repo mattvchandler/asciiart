@@ -17,7 +17,7 @@ inline bool is_webp(const Image::Header & header)
 class Webp final: public Image
 {
 public:
-    Webp(const Header & header, std::istream & input, unsigned char bg);
+    Webp(std::istream & input, unsigned char bg);
 };
 #endif
 #endif // WEBP_HPP

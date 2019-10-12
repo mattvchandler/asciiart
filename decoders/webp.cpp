@@ -2,10 +2,10 @@
 
 #include <webp/decode.h>
 
-Webp::Webp(const Header & header, std::istream & input, unsigned char bg)
+Webp::Webp(std::istream & input, unsigned char bg)
 {
     // read whole into memory
-    std::vector<unsigned char> data(std::begin(header), std::end(header));
+    std::vector<unsigned char> data;
     std::array<char, 4096> buffer;
     while(input)
     {

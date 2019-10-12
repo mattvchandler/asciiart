@@ -12,6 +12,6 @@ inline bool is_bmp(const Image::Header & header)
 class Bmp final: public Image
 {
 public:
-    Bmp(const Header & header, std::istream & input, unsigned char bg);
+    Bmp(std::istream & input, unsigned char bg);
 };
 #endif // BMP_HPP

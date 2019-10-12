@@ -23,7 +23,7 @@ inline bool is_pnm(const Image::Header & header)
 class Pnm final: public Image
 {
 public:
-    Pnm(const Header & header, std::istream & input);
+    Pnm(std::istream & input);
 
 private:
     void read_P1(std::istream & input);

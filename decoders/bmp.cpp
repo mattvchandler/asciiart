@@ -22,27 +22,27 @@ struct bmp_data
     std::vector<color> palette;
 };
 
-bmp_data read_bmp_header(Header_stream & in)
+bmp_data read_bmp_header(std::istream & in)
 {
     bmp_data bmp;
 
     in.ignore(10);
-    in.readb(bmp.pixel_offset);
+    readb(in, bmp.pixel_offset);
 
     uint32_t header_size {0};
-    in.readb(header_size);
+    readb(in, header_size);
 
     switch(header_size)
     {
         case 12: // BITMAPCOREHEADER
         {
             int16_t width, height;
-            in.readb(width);
+            readb(in, width);
             if(width < 0)
                 width = -width;
             bmp.width = width;
 
-            in.readb(height);
+            readb(in, height);
             if(height < 0)
             {
                 height = -height;
@@ -51,7 +51,7 @@ bmp_data read_bmp_header(Header_stream & in)
             bmp.height = height;
             in.ignore(2);
 
-            in.readb(bmp.bpp);
+            readb(in, bmp.bpp);
 
             break;
         }
@@ -61,12 +61,12 @@ bmp_data read_bmp_header(Header_stream & in)
         case 124: // BITMAPV5HEADER
         {
             int32_t width, height;
-            in.readb(width);
+            readb(in, width);
             if(width < 0)
                 width = -width;
             bmp.width = width;
 
-            in.readb(height);
+            readb(in, height);
             if(height < 0)
             {
                 height = -height;
@@ -75,18 +75,18 @@ bmp_data read_bmp_header(Header_stream & in)
             bmp.height = height;
 
             in.ignore(2);
-            in.readb(bmp.bpp);
-            in.readb(bmp.compression);
+            readb(in, bmp.bpp);
+            readb(in, bmp.compression);
             in.ignore(12);
-            in.readb(bmp.palette_size);
+            readb(in, bmp.palette_size);
             in.ignore(4);
 
             if(header_size > 40) // V3+
             {
-                in.readb(bmp.red_mask);
-                in.readb(bmp.green_mask);
-                in.readb(bmp.blue_mask);
-                in.readb(bmp.alpha_mask);
+                readb(in, bmp.red_mask);
+                readb(in, bmp.green_mask);
+                readb(in, bmp.blue_mask);
+                readb(in, bmp.alpha_mask);
             }
             break;
         }
@@ -100,9 +100,9 @@ bmp_data read_bmp_header(Header_stream & in)
 
     if(header_size == 40 && bmp.compression == bmp_data::Compression::BI_BITFIELDS)
     {
-        in.readb(bmp.red_mask);
-        in.readb(bmp.green_mask);
-        in.readb(bmp.blue_mask);
+        readb(in, bmp.red_mask);
+        readb(in, bmp.green_mask);
+        readb(in, bmp.blue_mask);
     }
 
     if(bmp.bpp != 1 && bmp.bpp != 4 && bmp.bpp != 8 && bmp.bpp != 16 && bmp.bpp != 24 && bmp.bpp != 32)
@@ -145,7 +145,7 @@ bmp_data read_bmp_header(Header_stream & in)
     return bmp;
 }
 
-void read_uncompressed(Header_stream & in, bmp_data & bmp, unsigned char bg, std::vector<std::vector<unsigned char>> & image_data)
+void read_uncompressed(std::istream & in, bmp_data & bmp, unsigned char bg, std::vector<std::vector<unsigned char>> & image_data)
 {
     std::vector<char> rowbuf((bmp.bpp * bmp.width + 31) / 32  * 4);
     for(std::size_t row = 0; row < bmp.height; ++row)
@@ -267,7 +267,7 @@ void read_uncompressed(Header_stream & in, bmp_data & bmp, unsigned char bg, std
     }
 }
 
-void read_rle(Header_stream & in, bmp_data & bmp, std::vector<std::vector<unsigned char>> & image_data)
+void read_rle(std::istream & in, bmp_data & bmp, std::vector<std::vector<unsigned char>> & image_data)
 {
     std::size_t row = 0, col = 0;
     auto im_row = bmp.bottom_to_top ? bmp.height - row - 1 : row;
@@ -358,23 +358,22 @@ void read_rle(Header_stream & in, bmp_data & bmp, std::vector<std::vector<unsign
     }
 }
 
-Bmp::Bmp(const Header & header, std::istream & input, unsigned char bg)
+Bmp::Bmp(std::istream & input, unsigned char bg)
 {
-    Header_stream in {header, input};
-    in.exceptions(std::ios_base::badbit | std::ios_base::failbit);
+    input.exceptions(std::ios_base::badbit | std::ios_base::failbit);
     try
     {
-        auto bmp = read_bmp_header(in);
+        auto bmp = read_bmp_header(input);
         set_size(bmp.width, bmp.height);
 
         if(bmp.compression == bmp_data::Compression::BI_RGB || bmp.compression == bmp_data::Compression::BI_BITFIELDS)
-            read_uncompressed(in, bmp, bg, image_data_);
+            read_uncompressed(input, bmp, bg, image_data_);
         else if(bmp.compression == bmp_data::Compression::BI_RLE8 || bmp.compression == bmp_data::Compression::BI_RLE4)
-            read_rle(in, bmp, image_data_);
+            read_rle(input, bmp, image_data_);
     }
     catch(std::ios_base::failure&)
     {
-        if(in.bad())
+        if(input.bad())
             throw std::runtime_error{"Error reading BMP: could not read file"};
         else
             throw std::runtime_error{"Error reading BMP: unexpected end of file"};

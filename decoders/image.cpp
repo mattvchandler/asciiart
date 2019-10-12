@@ -48,10 +48,6 @@ unsigned char ga_blend(unsigned char g, unsigned char a, unsigned char bg)
 
 bool Image::header_cmp(unsigned char a, char b){ return a == static_cast<unsigned char>(b); };
 
-Header_stream::Header_stream(const Image::Header & header, std::istream & input):
-    std::istream{&buf_}, buf_{header, input}
-{}
-
 void Image::set_size(std::size_t w, std::size_t h)
 {
     width_ = w; height_ = h;
@@ -61,106 +57,6 @@ void Image::set_size(std::size_t w, std::size_t h)
         row.resize(width_);
         std::fill(std::begin(row), std::end(row), 0);
     }
-}
-
-Header_stream::Header_buf::Header_buf(const Image::Header & header, std::istream & input): input_{input}
-{
-    static_assert(buffer_size >= std::size(Image::Header()));
-
-    std::copy(std::begin(header), std::end(header), std::begin(buffer_));
-    input_.read(std::data(buffer_) + std::size(header), std::size(buffer_) - std::size(header));
-
-    auto buffer_size = input_.gcount() + std::size(header);
-    pos_ = buffer_size;
-    setg(std::data(buffer_), std::data(buffer_), std::data(buffer_) + buffer_size);
-}
-
-int Header_stream::Header_buf::underflow()
-{
-    if(gptr() < egptr())
-        return traits_type::to_int_type(*gptr());
-
-    input_.read(std::data(buffer_), std::size(buffer_));
-    if(input_.bad())
-        return traits_type::eof();
-
-    auto buffer_size = input_.gcount();
-    pos_ += buffer_size;
-
-    if(buffer_size == 0)
-        return traits_type::eof();
-
-    setg(std::data(buffer_), std::data(buffer_), std::data(buffer_) + buffer_size);
-
-    return traits_type::to_int_type(*gptr());
-}
-
-Header_stream::pos_type Header_stream::Header_buf::seekoff(off_type off, std::ios_base::seekdir dir, std::ios_base::openmode which)
-{
-    if(which != std::ios_base::in)
-        return off_type{-1};
-
-    // shortcut for tellg
-    if(off == 0 && dir == std::ios_base::cur)
-        return current_pos();
-
-    switch(dir)
-    {
-        case std::ios_base::beg:
-            return seekpos(off, which);
-        case std::ios_base::end:
-            return off_type{-1}; // we can't tell where the stream ends
-            break;
-        case std::ios_base::cur:
-            return seekpos(current_pos() + off, which);
-            break;
-        default:
-            return off_type{-1};
-            break;
-    }
-
-    return off_type{-1};
-}
-
-Header_stream::pos_type Header_stream::Header_buf::seekpos(pos_type pos, std::ios_base::openmode which)
-{
-    if(which != std::ios_base::in)
-        return off_type{-1};
-
-    auto current = current_pos();
-
-    auto buff_start = pos_ - off_type{buffer_size};
-    auto buff_end = pos_;
-    auto offset = pos - current;
-
-    if(pos < buff_start)
-    {
-        // can't go back any further
-        return off_type{-1};
-    }
-    else if(pos >= buff_start && pos < buff_end)
-    {
-        // within current buffer
-        setg(eback(), gptr() + offset, egptr());
-    }
-    else if(pos >= buff_end)
-    {
-        // read until we're at pos
-        while(pos >= pos_)
-        {
-            setg(eback(), egptr(), egptr());
-            underflow();
-        }
-
-        setg(eback(), gptr() + (pos - current_pos()), egptr());
-    }
-
-    return current_pos();
-}
-
-Header_stream::pos_type Header_stream::Header_buf::current_pos() const
-{
-    return pos_ - off_type{egptr() - gptr()};
 }
 
 [[nodiscard]] std::unique_ptr<Image> get_image_data(const Args & args)
@@ -182,6 +78,8 @@ Header_stream::pos_type Header_stream::Header_buf::current_pos() const
     Image::Header header;
 
     input.read(std::data(header), std::size(header));
+    input.seekg(0); // rewind
+
     if(input.eof()) // technically, some image files could be smaller than 12 bytes, but they wouldn't be interesting images
         throw std::runtime_error{"Could not read file header: not enough bytes"};
     else if(!input)
@@ -193,7 +91,7 @@ Header_stream::pos_type Header_stream::Header_buf::current_pos() const
         if(is_png(header))
         {
             #ifdef HAS_PNG
-            return std::make_unique<Png>(header, input, args.bg);
+            return std::make_unique<Png>(input, args.bg);
             #else
             throw std::runtime_error{"Not compiled with PNG support"};
             #endif
@@ -201,7 +99,7 @@ Header_stream::pos_type Header_stream::Header_buf::current_pos() const
         else if(is_jpeg(header))
         {
             #ifdef HAS_JPEG
-            return std::make_unique<Jpeg>(header, input);
+            return std::make_unique<Jpeg>(input);
             #else
             throw std::runtime_error{"Not compiled with JPEG support"};
             #endif
@@ -209,7 +107,7 @@ Header_stream::pos_type Header_stream::Header_buf::current_pos() const
         else if(is_gif(header))
         {
             #ifdef HAS_GIF
-            return std::make_unique<Gif>(header, input, args.bg);
+            return std::make_unique<Gif>(input, args.bg);
             #else
             throw std::runtime_error{"Not compiled with GIF support"};
             #endif
@@ -217,7 +115,7 @@ Header_stream::pos_type Header_stream::Header_buf::current_pos() const
         else if(is_webp(header))
         {
             #ifdef HAS_WEBP
-            return std::make_unique<Webp>(header, input, args.bg);
+            return std::make_unique<Webp>(input, args.bg);
             #else
             throw std::runtime_error{"Not compiled with WEBP support"};
             #endif
@@ -225,27 +123,27 @@ Header_stream::pos_type Header_stream::Header_buf::current_pos() const
         else if(is_tiff(header))
         {
             #ifdef HAS_TIFF
-            return std::make_unique<Tiff>(header, input, args.bg);
+            return std::make_unique<Tiff>(input, args.bg);
             #else
             throw std::runtime_error{"Not compiled with TIFF support"};
             #endif
         }
         else if(is_bmp(header))
         {
-            return std::make_unique<Bmp>(header, input, args.bg);
+            return std::make_unique<Bmp>(input, args.bg);
         }
         else if(is_pnm(header))
         {
-            return std::make_unique<Pnm>(header, input);
+            return std::make_unique<Pnm>(input);
         }
         else if(extension == ".tga")
         {
-            return std::make_unique<Tga>(header, input, args.bg);
+            return std::make_unique<Tga>(input, args.bg);
         }
         else if(extension == ".xpm")
         {
             #ifdef HAS_XPM
-            return std::make_unique<Xpm>(header, input, args.bg);
+            return std::make_unique<Xpm>(input, args.bg);
             #else
             throw std::runtime_error{"Not compiled with XPM support"};
             #endif
@@ -256,11 +154,11 @@ Header_stream::pos_type Header_stream::Header_buf::current_pos() const
         }
         break;
     case Args::Force_file::tga:
-        return std::make_unique<Tga>(header, input, args.bg);
+        return std::make_unique<Tga>(input, args.bg);
         break;
     #ifdef HAS_XPM
     case Args::Force_file::xpm:
-        return std::make_unique<Xpm>(header, input, args.bg);
+        return std::make_unique<Xpm>(input, args.bg);
         break;
     #endif
     default:

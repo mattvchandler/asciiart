@@ -19,8 +19,7 @@ struct my_jpeg_error: public jpeg_error_mgr
 class my_jpeg_source: public jpeg_source_mgr
 {
 public:
-    my_jpeg_source(const Image::Header & header, std::istream & input):
-        header_{header},
+    my_jpeg_source(std::istream & input):
         input_{input}
     {
         init_source = [](j_decompress_ptr){};
@@ -37,14 +36,10 @@ private:
     {
         auto &src = *static_cast<my_jpeg_source*>(cinfo->src);
 
-        std::size_t jpeg_ind = 0;
-        while(src.header_bytes_read_ < std::size(src.header_) && jpeg_ind < std::size(src.buffer_))
-            src.buffer_[jpeg_ind++] = src.header_[src.header_bytes_read_++];
-
-        src.input_.read(reinterpret_cast<char *>(std::data(src.buffer_)) + jpeg_ind, std::size(src.buffer_) - jpeg_ind);
+        src.input_.read(reinterpret_cast<char *>(std::data(src.buffer_)), std::size(src.buffer_));
 
         src.next_input_byte = std::data(src.buffer_);
-        src.bytes_in_buffer = src.input_.gcount() + jpeg_ind;
+        src.bytes_in_buffer = src.input_.gcount();
 
         if(src.input_.bad() || src.bytes_in_buffer == 0)
         {
@@ -74,15 +69,12 @@ private:
         }
     }
 
-    const Image::Header & header_;
     std::istream & input_;
     std::array<JOCTET, 4096> buffer_;
     JOCTET * buffer_p_ { std::data(buffer_) };
-
-    std::size_t header_bytes_read_ {0};
 };
 
-Jpeg::Jpeg(const Header & header, std::istream & input)
+Jpeg::Jpeg(std::istream & input)
 {
     jpeg_decompress_struct cinfo;
     my_jpeg_error jerr;
@@ -90,7 +82,7 @@ Jpeg::Jpeg(const Header & header, std::istream & input)
     cinfo.err = jpeg_std_error(&jerr);
     jerr.error_exit = my_jpeg_error::exit;
 
-    my_jpeg_source source(header, input);
+    my_jpeg_source source(input);
 
     jpeg_create_decompress(&cinfo);
 
