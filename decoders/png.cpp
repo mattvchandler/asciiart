@@ -54,10 +54,10 @@ Png::Png(std::istream & input, unsigned char bg)
     auto color_type = png_get_color_type(png_ptr, info_ptr);
 
     // set transformations to convert to 8-bit grayscale w/ alpha
-    if(color_type == PNG_COLOR_TYPE_RGB || color_type == PNG_COLOR_TYPE_RGBA)
+    if(color_type == PNG_COLOR_TYPE_RGB || color_type == PNG_COLOR_TYPE_RGBA || color_type == PNG_COLOR_TYPE_PALETTE)
         png_set_rgb_to_gray_fixed(png_ptr, 1, -1, -1);
 
-    if(color_type == PNG_COLOR_TYPE_RGB || color_type == PNG_COLOR_TYPE_GRAY_ALPHA)
+    if(color_type == PNG_COLOR_TYPE_RGB || color_type == PNG_COLOR_TYPE_GRAY || color_type == PNG_COLOR_TYPE_PALETTE)
         png_set_add_alpha(png_ptr, 0xFF, PNG_FILLER_AFTER);
 
     if(bit_depth == 16)
