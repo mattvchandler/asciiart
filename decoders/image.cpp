@@ -84,7 +84,9 @@ void Image::set_size(std::size_t w, std::size_t h)
     else if(!input)
         throw std::runtime_error{"Could not read input file: " + std::string{std::strerror(errno)}};
 
-    input.seekg(0); // rewind
+    // rewind (seekg(0) not always supported for pipes)
+    for(auto i = std::rbegin(header); i != std::rend(header); ++i)
+        input.putback(*i);
     if(input.bad())
         throw std::runtime_error{"Unable to rewind stream"};
 
