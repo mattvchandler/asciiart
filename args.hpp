@@ -18,6 +18,9 @@ struct Args
     {
         detect,                  // detect filetype by header
         tga,
+    #ifdef HAS_SVG
+        svg,
+    #endif
     #ifdef HAS_XPM
         xpm,
     #endif

@@ -12,8 +12,9 @@
 #include "jpeg.hpp"
 #include "png.hpp"
 #include "pnm.hpp"
-#include "tiff.hpp"
+#include "svg.hpp"
 #include "tga.hpp"
+#include "tiff.hpp"
 #include "webp.hpp"
 #include "xpm.hpp"
 
@@ -93,12 +94,16 @@ void Image::set_size(std::size_t w, std::size_t h)
     switch(args.force_file)
     {
     case Args::Force_file::detect:
-        if(is_png(header))
+        if(is_bmp(header))
         {
-            #ifdef HAS_PNG
-            return std::make_unique<Png>(input, args.bg);
+            return std::make_unique<Bmp>(input, args.bg);
+        }
+        else if(is_gif(header))
+        {
+            #ifdef HAS_GIF
+            return std::make_unique<Gif>(input, args.bg);
             #else
-            throw std::runtime_error{"Not compiled with PNG support"};
+            throw std::runtime_error{"Not compiled with GIF support"};
             #endif
         }
         else if(is_jpeg(header))
@@ -109,12 +114,24 @@ void Image::set_size(std::size_t w, std::size_t h)
             throw std::runtime_error{"Not compiled with JPEG support"};
             #endif
         }
-        else if(is_gif(header))
+        else if(is_png(header))
         {
-            #ifdef HAS_GIF
-            return std::make_unique<Gif>(input, args.bg);
+            #ifdef HAS_PNG
+            return std::make_unique<Png>(input, args.bg);
             #else
-            throw std::runtime_error{"Not compiled with GIF support"};
+            throw std::runtime_error{"Not compiled with PNG support"};
+            #endif
+        }
+        else if(is_pnm(header))
+        {
+            return std::make_unique<Pnm>(input);
+        }
+        else if(is_tiff(header))
+        {
+            #ifdef HAS_TIFF
+            return std::make_unique<Tiff>(input, args.bg);
+            #else
+            throw std::runtime_error{"Not compiled with TIFF support"};
             #endif
         }
         else if(is_webp(header))
@@ -125,21 +142,13 @@ void Image::set_size(std::size_t w, std::size_t h)
             throw std::runtime_error{"Not compiled with WEBP support"};
             #endif
         }
-        else if(is_tiff(header))
+        else if(extension == ".svg" || extension == ".svgz")
         {
-            #ifdef HAS_TIFF
-            return std::make_unique<Tiff>(input, args.bg);
+            #ifdef HAS_SVG
+            return std::make_unique<Svg>(input, args.input_filename, args.bg);
             #else
-            throw std::runtime_error{"Not compiled with TIFF support"};
+            throw std::runtime_error{"Not compiled with SVG support"};
             #endif
-        }
-        else if(is_bmp(header))
-        {
-            return std::make_unique<Bmp>(input, args.bg);
-        }
-        else if(is_pnm(header))
-        {
-            return std::make_unique<Pnm>(input);
         }
         else if(extension == ".tga")
         {
@@ -158,6 +167,11 @@ void Image::set_size(std::size_t w, std::size_t h)
             throw std::runtime_error{"Unknown input file format"};
         }
         break;
+    #ifdef HAS_SVG
+    case Args::Force_file::svg:
+        return std::make_unique<Svg>(input, args.input_filename, args.bg);
+        break;
+    #endif
     case Args::Force_file::tga:
         return std::make_unique<Tga>(input, args.bg);
         break;

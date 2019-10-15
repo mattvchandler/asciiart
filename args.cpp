@@ -119,6 +119,9 @@ private:
         const std::string filetype_group ="Input file detection overide";
         options.add_options(filetype_group)("tga",      "Interpret input as a TGA file");
 
+    #ifdef HAS_SVG
+        options.add_options(filetype_group)("svg", "Interpret input as an SVG file");
+    #endif
     #ifdef HAS_XPM
         options.add_options(filetype_group)("xpm", "Interpret input as an XPM file");
     #endif
@@ -154,6 +157,9 @@ private:
         auto filetype {Args::Force_file::detect};
 
         if(args.count("tga")
+    #ifdef HAS_SVG
+                + args.count("svg")
+    #endif
     #ifdef HAS_XPM
                 + args.count("xpm")
     #endif
@@ -166,6 +172,10 @@ private:
 
         if(args.count("tga"))
             filetype = Args::Force_file::tga;
+    #ifdef HAS_SVG
+        else if(args.count("svg"))
+            filetype = Args::Force_file::svg;
+    #endif
     #ifdef HAS_XPM
         else if(args.count("xpm"))
             filetype = Args::Force_file::xpm;
