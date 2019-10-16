@@ -22,7 +22,7 @@ struct bmp_data
     std::vector<color> palette;
 };
 
-bmp_data read_bmp_header(std::istream & in)
+bmp_data read_bmp_header(std::istream & in, std::size_t & file_pos)
 {
     bmp_data bmp;
 
@@ -31,6 +31,8 @@ bmp_data read_bmp_header(std::istream & in)
 
     uint32_t header_size {0};
     readb(in, header_size);
+
+    file_pos += 18;
 
     switch(header_size)
     {
@@ -52,6 +54,8 @@ bmp_data read_bmp_header(std::istream & in)
             in.ignore(2);
 
             readb(in, bmp.bpp);
+
+            file_pos += 8;
 
             break;
         }
@@ -81,12 +85,16 @@ bmp_data read_bmp_header(std::istream & in)
             readb(in, bmp.palette_size);
             in.ignore(4);
 
+            file_pos += 36;
+
             if(header_size > 40) // V3+
             {
                 readb(in, bmp.red_mask);
                 readb(in, bmp.green_mask);
                 readb(in, bmp.blue_mask);
                 readb(in, bmp.alpha_mask);
+
+                file_pos += 16;
             }
             break;
         }
@@ -95,14 +103,16 @@ bmp_data read_bmp_header(std::istream & in)
     }
 
     // skip to end of header
-    auto file_pos = in.tellg();
     in.ignore(14 + header_size - file_pos); // file header is 14 bytes
+    file_pos = 14 + header_size;
 
     if(header_size == 40 && bmp.compression == bmp_data::Compression::BI_BITFIELDS)
     {
         readb(in, bmp.red_mask);
         readb(in, bmp.green_mask);
         readb(in, bmp.blue_mask);
+
+        file_pos += 12;
     }
 
     if(bmp.bpp != 1 && bmp.bpp != 4 && bmp.bpp != 8 && bmp.bpp != 16 && bmp.bpp != 24 && bmp.bpp != 32)
@@ -132,22 +142,23 @@ bmp_data read_bmp_header(std::istream & in)
     {
         bmp.palette.resize(bmp.palette_size == 0 ? 1<<bmp.bpp : bmp.palette_size);
         in.read(reinterpret_cast<char*>(std::data(bmp.palette)), std::size(bmp.palette) * sizeof(bmp_data::color));
+
+        file_pos += std::size(bmp.palette) * sizeof(bmp_data::color);
     }
 
     // skip to pixel data
-    file_pos = in.tellg();
-
     if(file_pos > bmp.pixel_offset)
         throw std::runtime_error {"Invalid BMP pixel offset value"};
 
     in.ignore(bmp.pixel_offset - file_pos);
+    file_pos = bmp.pixel_offset;
 
     return bmp;
 }
 
 void read_uncompressed(std::istream & in, bmp_data & bmp, unsigned char bg, std::vector<std::vector<unsigned char>> & image_data)
 {
-    std::vector<char> rowbuf((bmp.bpp * bmp.width + 31) / 32  * 4);
+    std::vector<char> rowbuf((bmp.bpp * bmp.width + 31) / 32  * 4); // ceiling division
     for(std::size_t row = 0; row < bmp.height; ++row)
     {
         auto im_row = bmp.bottom_to_top ? bmp.height - row - 1 : row;
@@ -267,7 +278,7 @@ void read_uncompressed(std::istream & in, bmp_data & bmp, unsigned char bg, std:
     }
 }
 
-void read_rle(std::istream & in, bmp_data & bmp, std::vector<std::vector<unsigned char>> & image_data)
+void read_rle(std::istream & in, bmp_data & bmp, std::vector<std::vector<unsigned char>> & image_data, std::size_t & file_pos)
 {
     std::size_t row = 0, col = 0;
     auto im_row = bmp.bottom_to_top ? bmp.height - row - 1 : row;
@@ -281,10 +292,12 @@ void read_rle(std::istream & in, bmp_data & bmp, std::vector<std::vector<unsigne
     while(true)
     {
         unsigned char count = in.get();
+        ++file_pos;
 
         if(count == 0)
         {
             unsigned char escape = in.get();
+            ++file_pos;
 
             if(escape == 0) // end of line
             {
@@ -300,6 +313,8 @@ void read_rle(std::istream & in, bmp_data & bmp, std::vector<std::vector<unsigne
             {
                 unsigned char horiz = in.get();
                 unsigned char vert = in.get();
+                file_pos += 2;
+
                 col += horiz;
                 row += vert;
                 im_row = bmp.bottom_to_top ? bmp.height - row - 1 : row;
@@ -315,6 +330,7 @@ void read_rle(std::istream & in, bmp_data & bmp, std::vector<std::vector<unsigne
                         if(i % 2 == 0)
                         {
                             idx = in.get();
+                            ++file_pos;
                             color = bmp.palette[idx >> 4];
                         }
                         else
@@ -331,18 +347,23 @@ void read_rle(std::istream & in, bmp_data & bmp, std::vector<std::vector<unsigne
                     for(auto i = 0; i < escape; ++i)
                     {
                         auto color = bmp.palette[in.get()];
+                        ++file_pos;
                         check_bounds();
                         image_data[im_row][col++] = rgb_to_gray(color.r, color.g, color.b);
                     }
                 }
                 // align to word boundary
-                if(in.tellg() % 2 != 0)
+                if(file_pos % 2 != 0)
+                {
                     in.ignore(1);
+                    ++file_pos;
+                }
             }
         }
         else
         {
             unsigned char idx = in.get();
+            ++file_pos;
             if(bmp.bpp == 4)
             {
                 for(auto i = 0; i < count; ++i)
@@ -370,13 +391,14 @@ Bmp::Bmp(std::istream & input, unsigned char bg)
     input.exceptions(std::ios_base::badbit | std::ios_base::failbit);
     try
     {
-        auto bmp = read_bmp_header(input);
+        std::size_t file_pos {0}; // need to keep track of where we are in the file because in.tellg() fails on at least some pipe inputs
+        auto bmp = read_bmp_header(input, file_pos);
         set_size(bmp.width, bmp.height);
 
         if(bmp.compression == bmp_data::Compression::BI_RGB || bmp.compression == bmp_data::Compression::BI_BITFIELDS)
             read_uncompressed(input, bmp, bg, image_data_);
         else if(bmp.compression == bmp_data::Compression::BI_RLE8 || bmp.compression == bmp_data::Compression::BI_RLE4)
-            read_rle(input, bmp, image_data_);
+            read_rle(input, bmp, image_data_, file_pos);
     }
     catch(std::ios_base::failure&)
     {
