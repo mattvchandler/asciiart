@@ -10,7 +10,7 @@
 #include "../args.hpp"
 
 unsigned char rgb_to_gray(unsigned char r, unsigned char g, unsigned char b);
-float rgb_to_gray(float r, float g, float b);
+float rgb_to_gray_float(float r, float g, float b);
 unsigned char rgba_to_gray(unsigned char r, unsigned char g, unsigned char b, unsigned char a, unsigned char bg);
 unsigned char ga_blend(unsigned char g, unsigned char a, unsigned char bg);
 

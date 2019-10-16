@@ -155,7 +155,7 @@ void Pnm::read_P3(std::istream & input)
             if(r > max_val || g > max_val || b > max_val)
                 throw std::runtime_error{"Error reading PPM: pixel value out of range"};
 
-            image_data_[row][col] = rgb_to_gray(r / max_val, g / max_val, b / max_val) * 255.0f;
+            image_data_[row][col] = rgb_to_gray_float(r / max_val, g / max_val, b / max_val) * 255.0f;
         }
     }
 }
@@ -213,7 +213,7 @@ void Pnm::read_P6(std::istream & input)
             auto r = static_cast<unsigned char>(rowbuf[3 * col]);
             auto g = static_cast<unsigned char>(rowbuf[3 * col + 1]);
             auto b = static_cast<unsigned char>(rowbuf[3 * col + 2]);
-            image_data_[row][col] = rgb_to_gray(r / max_val, g / max_val, b / max_val) * 255.0f;
+            image_data_[row][col] = rgb_to_gray_float(r / max_val, g / max_val, b / max_val) * 255.0f;
         }
     }
 }

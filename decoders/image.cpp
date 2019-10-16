@@ -20,9 +20,9 @@
 
 unsigned char rgb_to_gray(unsigned char r, unsigned char g, unsigned char b)
 {
-    return rgb_to_gray(r / 255.0f, g / 255.0f, b / 255.0f);
+    return rgb_to_gray_float(r / 255.0f, g / 255.0f, b / 255.0f) * 255.0f;
 }
-float rgb_to_gray(float r, float g, float b)
+float rgb_to_gray_float(float r, float g, float b)
 {
     // formulas from https://www.w3.org/TR/WCAG20/
     std::array<float, 3> luminance_color = { r, g, b };
@@ -30,13 +30,11 @@ float rgb_to_gray(float r, float g, float b)
     for(auto && c: luminance_color)
         c = (c <= 0.03928f) ? c / 12.92f : std::pow((c + 0.055f) / 1.055f, 2.4f);
 
-    auto luminance = 0.2126f * luminance_color[0] + 0.7152f * luminance_color[1] + 0.0722f * luminance_color[2];
-
-    return static_cast<unsigned char>(luminance * 255.0f);
+    return 0.2126f * luminance_color[0] + 0.7152f * luminance_color[1] + 0.0722f * luminance_color[2];
 }
 unsigned char rgba_to_gray(unsigned char r, unsigned char g, unsigned char b, unsigned char a, unsigned char bg)
 {
-    auto val = rgb_to_gray(r / 255.0f, g / 255.0f, b / 255.0f);
+    auto val = rgb_to_gray_float(r / 255.0f, g / 255.0f, b / 255.0f);
     auto alpha = a / 255.0f;
     return static_cast<unsigned char>((val * alpha + (bg / 255.0f) * (1.0f - alpha)) * 255.0f);
 }
