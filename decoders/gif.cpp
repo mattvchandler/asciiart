@@ -23,7 +23,7 @@ int read_fn(GifFileType* gif_file, GifByteType * data, int length) noexcept
     return in->gcount();
 }
 
-Gif::Gif(std::istream & input, unsigned char bg)
+Gif::Gif(std::istream & input)
 {
     int error_code = GIF_OK;
     GifFileType * gif = DGifOpen(&input, read_fn, &error_code);
@@ -47,16 +47,6 @@ Gif::Gif(std::istream & input, unsigned char bg)
         }
     }
 
-    std::vector<unsigned char> gray_pal(pal->ColorCount);
-    for(std::size_t i = 0; i < std::size(gray_pal); ++i)
-    {
-        gray_pal[i] = rgb_to_gray(
-            pal->Colors[i].Red,
-            pal->Colors[i].Green,
-            pal->Colors[i].Blue
-            );
-    }
-
     int transparency_ind = -1;
     GraphicsControlBlock gcb;
     if(DGifSavedExtensionToGCB(gif, 0, &gcb) == GIF_OK)
@@ -71,7 +61,7 @@ Gif::Gif(std::istream & input, unsigned char bg)
         throw std::runtime_error{"GIF has wrong size or offset"};
     }
 
-    auto & im = gif->SavedImages[0].RasterBits;
+    const auto & im = gif->SavedImages[0].RasterBits;
 
     for(std::size_t row = 0; row < height_; ++row)
     {
@@ -79,12 +69,15 @@ Gif::Gif(std::istream & input, unsigned char bg)
         {
             auto index = im[row * width_ + col];
 
-            auto val = gray_pal[index];
-
             if(index == transparency_ind)
-                val = bg;
-
-            image_data_[row][col] = val;
+            {
+                image_data_[row][col] = Color{};
+            }
+            else
+            {
+                auto & pal_color = pal->Colors[index];
+                image_data_[row][col] = Color{pal_color.Red, pal_color.Green, pal_color.Blue};
+            }
         }
     }
 

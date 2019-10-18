@@ -7,7 +7,7 @@
 
 struct Tiff_reader
 {
-    Tiff_reader(std::istream & input)
+    explicit Tiff_reader(std::istream & input)
     {
         std::array<char, 4096> buffer;
         while(input)
@@ -57,7 +57,7 @@ toff_t tiff_size(thandle_t hnd)
 }
 
 
-Tiff::Tiff(std::istream & input, unsigned char bg)
+Tiff::Tiff(std::istream & input)
 {
     // libtiff does kind of a stupid thing and will seek backwards, which Header_stream doesn't support (because we can read from a pipe)
     // read the whole, huge file into memory instead
@@ -88,12 +88,10 @@ Tiff::Tiff(std::istream & input, unsigned char bg)
         for(std::size_t col = 0; col < width_; ++col)
         {
             auto pix = raster[row * width_ + col];
-            unsigned char r = TIFFGetR(pix);
-            unsigned char g = TIFFGetG(pix);
-            unsigned char b = TIFFGetB(pix);
-            unsigned char a = TIFFGetA(pix);
-
-            image_data_[row][col] = rgba_to_gray(r, g, b, a, bg);
+            image_data_[row][col].r = TIFFGetR(pix);
+            image_data_[row][col].g = TIFFGetG(pix);
+            image_data_[row][col].b = TIFFGetB(pix);
+            image_data_[row][col].a = TIFFGetA(pix);
         }
     }
 

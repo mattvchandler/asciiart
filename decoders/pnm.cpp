@@ -17,10 +17,9 @@ std::string read_skip_comments(std::istream & in)
 
 unsigned char read_val(std::istream & in)
 {
-    int val = 0;
     try
     {
-        val = std::stoi(read_skip_comments(in));
+        int val = std::stoi(read_skip_comments(in));
         if(val > 255 || val < 0)
             throw std::out_of_range{""};
 
@@ -110,10 +109,10 @@ void Pnm::read_P1(std::istream & input)
             switch(v)
             {
             case '0':
-                image_data_[row][col] = 0;
+                image_data_[row][col] = Color{};
                 break;
             case '1':
-                image_data_[row][col] = 255;
+                image_data_[row][col] = Color{0xFF};
                 break;
             default:
                 throw std::runtime_error{"Error reading PBM: unknown character: " + std::string{(char)v}};
@@ -135,7 +134,7 @@ void Pnm::read_P2(std::istream & input)
             if(v > max_val)
                 throw std::runtime_error{"Error reading PGM: pixel value out of range"};
 
-            image_data_[row][col] = v / max_val * 255.0f;
+            image_data_[row][col] = Color{static_cast<unsigned char>(v / max_val * 255.0f)};
         }
     }
 }
@@ -155,7 +154,7 @@ void Pnm::read_P3(std::istream & input)
             if(r > max_val || g > max_val || b > max_val)
                 throw std::runtime_error{"Error reading PPM: pixel value out of range"};
 
-            image_data_[row][col] = rgb_to_gray_float(r / max_val, g / max_val, b / max_val) * 255.0f;
+            image_data_[row][col] = Color{static_cast<unsigned char>(r / max_val * 255.0f), static_cast<unsigned char>(g / max_val * 255.0f), static_cast<unsigned char>(b / max_val * 255.0f)};
         }
     }
 }
@@ -174,9 +173,9 @@ void Pnm::read_P4(std::istream & input)
                 bits = input.get();
 
             if(bits[7 - bits_read])
-                image_data_[row][col] = 255;
+                image_data_[row][col] = Color{0xFF};
             else
-                image_data_[row][col] = 0;
+                image_data_[row][col] = Color{};
 
             if(++bits_read >= 8)
                 bits_read = 0;
@@ -193,9 +192,9 @@ void Pnm::read_P5(std::istream & input)
 
     for(std::size_t row = 0; row < height_; ++row)
     {
-        std::vector<char> rowbuf(width_);
-        input.read(std::data(rowbuf), std::size(rowbuf));
-        std::transform(std::begin(rowbuf), std::end(rowbuf), std::begin(image_data_[row]), [max_val](char a) { return static_cast<unsigned char>(a) / max_val * 255.0f; });
+        std::vector<unsigned char> rowbuf(width_);
+        input.read(reinterpret_cast<char *>(std::data(rowbuf)), std::size(rowbuf));
+        std::transform(std::begin(rowbuf), std::end(rowbuf), std::begin(image_data_[row]), [max_val](char a) { return Color{static_cast<unsigned char>(a / max_val * 255.0f)}; });
     }
 }
 
@@ -206,14 +205,13 @@ void Pnm::read_P6(std::istream & input)
     input.ignore(1);
     for(std::size_t row = 0; row < height_; ++row)
     {
-        std::vector<char> rowbuf(width_ * 3);
-        input.read(std::data(rowbuf), std::size(rowbuf));
+        std::vector<unsigned char> rowbuf(width_ * 3);
+        input.read(reinterpret_cast<char *>(std::data(rowbuf)), std::size(rowbuf));
         for(std::size_t col = 0; col < width_; ++col)
         {
-            auto r = static_cast<unsigned char>(rowbuf[3 * col]);
-            auto g = static_cast<unsigned char>(rowbuf[3 * col + 1]);
-            auto b = static_cast<unsigned char>(rowbuf[3 * col + 2]);
-            image_data_[row][col] = rgb_to_gray_float(r / max_val, g / max_val, b / max_val) * 255.0f;
+            image_data_[row][col].r = static_cast<unsigned char>(rowbuf[3 * col]     / max_val * 255.0f);
+            image_data_[row][col].g = static_cast<unsigned char>(rowbuf[3 * col + 1] / max_val * 255.0f);
+            image_data_[row][col].b = static_cast<unsigned char>(rowbuf[3 * col + 2] / max_val * 255.0f);
         }
     }
 }

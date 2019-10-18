@@ -7,7 +7,7 @@
 class Xpm final: public Image
 {
 public:
-    Xpm(std::istream & input, unsigned char bg);
+    explicit Xpm(std::istream & input);
 };
 #endif
 #endif // XPM_HPP

@@ -16,7 +16,7 @@ inline bool is_tiff(const Image::Header & header)
 class Tiff final: public Image
 {
 public:
-    Tiff(std::istream & input, unsigned char bg);
+    explicit Tiff(std::istream & input);
 };
 #endif
 #endif // TIFF_HPP

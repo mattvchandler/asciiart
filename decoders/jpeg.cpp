@@ -24,7 +24,7 @@ struct my_jpeg_error: public jpeg_error_mgr
 class my_jpeg_source: public jpeg_source_mgr
 {
 public:
-    my_jpeg_source(std::istream & input):
+    explicit my_jpeg_source(std::istream & input):
         input_{input}
     {
         init_source = [](j_decompress_ptr){};
@@ -80,7 +80,7 @@ private:
 };
 
 enum class Orientation:short { r_0=1, r_180=3, r_270=6, r_90=8 };
-Orientation get_orientation([[maybe_unused]] jpeg_decompress_struct & cinfo)
+Orientation get_orientation([[maybe_unused]] const jpeg_decompress_struct & cinfo)
 {
     Orientation orientation {Orientation::r_0};
 #ifdef EXIF_FOUND
@@ -139,7 +139,7 @@ Jpeg::Jpeg(std::istream & input)
 #endif
 
     jpeg_read_header(&cinfo, true);
-    cinfo.out_color_space = JCS_GRAYSCALE;
+    cinfo.out_color_space = JCS_RGB;
 
     // get orientation from EXIF, if it exists
     auto orientation {get_orientation(cinfo)};
@@ -147,7 +147,7 @@ Jpeg::Jpeg(std::istream & input)
     jpeg_start_decompress(&cinfo);
 
     // prepare a buffer for transposed data if rotated 90 or 270 degrees
-    std::vector<std::vector<unsigned char>> transpose_buf;
+    decltype(image_data_) transpose_buf;
     auto * output_buf = &image_data_;
     if(orientation == Orientation::r_90 || orientation == Orientation::r_270)
     {
@@ -164,13 +164,16 @@ Jpeg::Jpeg(std::istream & input)
         set_size(cinfo.output_width, cinfo.output_height);
     }
 
-    if(cinfo.output_components != 1)
-        throw std::runtime_error{"JPEG not converted to grayscale"};
+    if(cinfo.output_components != 3)
+        throw std::runtime_error{"JPEG not converted to RGB"};
 
     while(cinfo.output_scanline < cinfo.output_height)
     {
-        auto buffer = std::data((*output_buf)[cinfo.output_scanline]);
-        jpeg_read_scanlines(&cinfo, &buffer, 1);
+        std::vector<unsigned char> buffer(cinfo.output_width * 3);
+        auto ptr = std::data(buffer);
+        jpeg_read_scanlines(&cinfo, &ptr, 1);
+        for(std::size_t i = 0; i < cinfo.output_width; ++i)
+            (*output_buf)[cinfo.output_scanline - 1][i] = Color{buffer[i * 3], buffer[i * 3 + 1], buffer[i * 3 + 2]};
     }
 
     // rotate as needed

@@ -13,7 +13,7 @@ inline bool is_png(const Image::Header & header)
 class Png final: public Image
 {
 public:
-    Png(std::istream & input, unsigned char bg);
+    explicit Png(std::istream & input);
 };
 #endif
 #endif // PNG_HPP

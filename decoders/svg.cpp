@@ -18,19 +18,7 @@ struct RAII_stack
     {
         objs.emplace_back(reinterpret_cast<void*>(d), reinterpret_cast<void (*)(void*)>(free_fun));
     }
-    void free(void * d)
-    {
-        for(auto i = std::begin(objs); i != std::end(objs); ++i)
-        {
-            auto [data, free_fun] = *i;
-            if(data == d)
-            {
-                free_fun(data);
-                objs.erase(i);
-                break;
-            }
-        }
-    }
+
     std::vector<std::pair<void *, void (*)(void*)>> objs;
 };
 
@@ -68,7 +56,7 @@ RsvgHandle * get_svg_handle(std::istream & input, const std::string & filename)
     return svg_handle;
 }
 
-Svg::Svg(std::istream & input, const std::string & filename, unsigned char bg)
+Svg::Svg(std::istream & input, const std::string & filename)
 {
     RAII_stack rs;
 
@@ -103,12 +91,11 @@ Svg::Svg(std::istream & input, const std::string & filename, unsigned char bg)
         for(std::size_t col = 0; col < width_; ++col)
         {
             std::size_t pix_i = cairo_image_surface_get_stride(bmp) * row + 4 * col;
-            auto r = cairo_image_surface_get_data(bmp)[pix_i];
-            auto g = cairo_image_surface_get_data(bmp)[pix_i + 1];
-            auto b = cairo_image_surface_get_data(bmp)[pix_i + 2];
-            auto a = cairo_image_surface_get_data(bmp)[pix_i + 3];
 
-            image_data_[row][col] = rgba_to_gray(r, g, b, a, bg);
+            image_data_[row][col].r = cairo_image_surface_get_data(bmp)[pix_i];
+            image_data_[row][col].g = cairo_image_surface_get_data(bmp)[pix_i + 1];
+            image_data_[row][col].b = cairo_image_surface_get_data(bmp)[pix_i + 2];
+            image_data_[row][col].a = cairo_image_surface_get_data(bmp)[pix_i + 3];
         }
     }
 }

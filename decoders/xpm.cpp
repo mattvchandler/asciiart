@@ -5,7 +5,6 @@
 
 #include  <X11/xpm.h>
 
-struct Color { unsigned char r, g, b, a=0xFF;};
 const std::map<std::string, Color> color_names
 {
     {"none",                 {  0,   0,   0, 0}},
@@ -669,7 +668,7 @@ const std::map<std::string, Color> color_names
     {"lightgreen",           {144, 238, 144}},
 };
 
-Xpm::Xpm(std::istream & input, unsigned char bg)
+Xpm::Xpm(std::istream & input)
 {
     // read whole into memory
     std::vector<char> data;
@@ -691,24 +690,24 @@ Xpm::Xpm(std::istream & input, unsigned char bg)
     if(XpmCreateXpmImageFromBuffer(std::data(data), &img, nullptr) != XpmSuccess)
         throw std::runtime_error {"Error: Invalid XPM file"};
 
-    std::vector<unsigned char> colors;
+    std::vector<Color> colors;
     for(std::size_t i = 0; i < img.ncolors; ++i)
     {
         auto & c = img.colorTable[i];
 
         // choose most appropriate color
         std::string color;
-        if(c.g_color) // grayscale
+        if(c.c_color)
+        {
+            color = c.c_color;
+        }
+        else if(c.g_color) // grayscale
         {
             color = c.g_color;
         }
         else if(c.g4_color) // 4-lvl grayscale
         {
             color = c.g4_color;
-        }
-        else if(c.c_color)
-        {
-            color = c.c_color;
         }
         else if(c.m_color)
         {
@@ -717,11 +716,11 @@ Xpm::Xpm(std::istream & input, unsigned char bg)
         else
             throw std::runtime_error {"XPM color not defined"};
 
-        unsigned char r{0}, g{0}, b{0}, a{0xFF};
         if(color[0] == '#')
         {
             try
             {
+                unsigned char r{0}, g{0}, b{0}, a{0xFF};
                 if(std::size(color) == 4)
                     color = {'#', color[1], color[1], color[2], color[2], color[3], color[3]};
                 else if(std::size(color) == 5)
@@ -736,6 +735,8 @@ Xpm::Xpm(std::istream & input, unsigned char bg)
 
                 if(std::size(color) == 9)
                     a = static_cast<unsigned char>((color_val >> 24) & 0xFF);
+
+                colors.emplace_back(r, g, b, a);
             }
             catch(std::logic_error &)
             {
@@ -746,17 +747,14 @@ Xpm::Xpm(std::istream & input, unsigned char bg)
         {
             try
             {
-                for(auto &i: color) i = std::tolower(i);
-                auto c = color_names.at(color);
-                r = c.r; g = c.g; b = c.b; a = c.a;
+                for(auto &&j: color) j = std::tolower(j);
+                colors.push_back(color_names.at(color));
             }
             catch(std::out_of_range &)
             {
                 throw std::runtime_error{"Unknown XPM color name: " + color};
             }
         }
-
-        colors.push_back(rgba_to_gray(r, g, b, a, bg));
     }
 
     set_size(img.width, img.height);

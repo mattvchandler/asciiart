@@ -26,20 +26,20 @@
     struct Pattern
     {
         FcPattern * pat{nullptr};
-        Pattern(FcPattern * pat): pat{pat} {}
+        explicit Pattern(FcPattern * pat): pat{pat} {}
         ~Pattern() { if(pat) FcPatternDestroy(pat); }
         operator FcPattern*() { return pat; }
         operator const FcPattern*() const { return pat; }
     };
 
-    Pattern font_pat = FcNameParse(reinterpret_cast<const FcChar8*>(font_name.c_str()));
+    Pattern font_pat {FcNameParse(reinterpret_cast<const FcChar8*>(font_name.c_str()))};
     FcConfigSubstitute(fc, font_pat, FcMatchPattern);
     FcDefaultSubstitute(font_pat);
 
     struct FontSet
     {
         FcFontSet * set{nullptr};
-        FontSet(FcFontSet * set): set{set} {}
+        explicit FontSet(FcFontSet * set): set{set} {}
         ~FontSet() { if(set) FcFontSetDestroy(set); }
         operator const FcFontSet*() const { return set; }
         operator FcFontSet*() { return set; }
@@ -50,7 +50,7 @@
     };
 
     FcResult result;
-    FontSet fonts = FcFontSort(fc, font_pat, false, NULL, &result);
+    FontSet fonts {FcFontSort(fc, font_pat, false, NULL, &result)};
     if(result != FcResultMatch)
         throw std::runtime_error{"Error finding font matching: " + font_name};
 

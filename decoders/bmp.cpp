@@ -18,8 +18,7 @@ struct bmp_data
     uint32_t blue_mask {0};
     uint32_t alpha_mask {0};
 
-    struct color {uint8_t b, g, r, a;};
-    std::vector<color> palette;
+    std::vector<Color> palette;
 };
 
 bmp_data read_bmp_header(std::istream & in, std::size_t & file_pos)
@@ -118,7 +117,7 @@ bmp_data read_bmp_header(std::istream & in, std::size_t & file_pos)
     if(bmp.bpp != 1 && bmp.bpp != 4 && bmp.bpp != 8 && bmp.bpp != 16 && bmp.bpp != 24 && bmp.bpp != 32)
         throw std::runtime_error {"Unsupported bit depth: " + std::to_string(bmp.bpp)};
 
-    if(bmp.palette_size > (1u << bmp.bpp))
+    if(bmp.palette_size > (uint64_t{1} << bmp.bpp))
         throw std::runtime_error {"Invalid palette size: " + std::to_string(bmp.palette_size)};
 
     if(bmp.compression != bmp_data::Compression::BI_RGB &&
@@ -140,10 +139,17 @@ bmp_data read_bmp_header(std::istream & in, std::size_t & file_pos)
 
     if(bmp.bpp < 16)
     {
-        bmp.palette.resize(bmp.palette_size == 0 ? 1<<bmp.bpp : bmp.palette_size);
-        in.read(reinterpret_cast<char*>(std::data(bmp.palette)), std::size(bmp.palette) * sizeof(bmp_data::color));
+        bmp.palette.resize(bmp.palette_size == 0 ? uint64_t{1}<<bmp.bpp : bmp.palette_size);
+        in.read(reinterpret_cast<char*>(std::data(bmp.palette)), std::size(bmp.palette) * sizeof(Color));
 
-        file_pos += std::size(bmp.palette) * sizeof(bmp_data::color);
+        // convert BGR to RGB
+        for(auto && i: bmp.palette)
+        {
+            std::swap(i.r, i.b);
+            i.a = 0xFF;
+        }
+
+        file_pos += std::size(bmp.palette) * sizeof(Color);
     }
 
     // skip to pixel data
@@ -156,54 +162,50 @@ bmp_data read_bmp_header(std::istream & in, std::size_t & file_pos)
     return bmp;
 }
 
-void read_uncompressed(std::istream & in, bmp_data & bmp, unsigned char bg, std::vector<std::vector<unsigned char>> & image_data)
+void read_uncompressed(std::istream & in, bmp_data & bmp, std::vector<std::vector<Color>> & image_data)
 {
-    std::vector<char> rowbuf((bmp.bpp * bmp.width + 31) / 32  * 4); // ceiling division
+    std::vector<unsigned char> rowbuf((bmp.bpp * bmp.width + 31) / 32  * 4); // ceiling division
     for(std::size_t row = 0; row < bmp.height; ++row)
     {
         auto im_row = bmp.bottom_to_top ? bmp.height - row - 1 : row;
-        in.read(std::data(rowbuf), std::size(rowbuf));
+        in.read(reinterpret_cast<char *>(std::data(rowbuf)), std::size(rowbuf));
 
         for(std::size_t col = 0; col < bmp.width; ++col)
         {
             if(bmp.bpp == 1 && col % 8 == 0)
             {
-                std::bitset<8> bits = static_cast<unsigned char>(rowbuf[col / 8]);
+                std::bitset<8> bits = rowbuf[col / 8];
                 for(std::size_t i = 0; i < 8 && col + i < bmp.width; ++i)
                 {
-                    auto color = bmp.palette[bits[7 - i]];
-                    image_data[im_row][col + i] = rgb_to_gray(color.r, color.g, color.b);
+                    image_data[im_row][col + i] = bmp.palette[bits[7 - i]];
                 }
             }
             else if(bmp.bpp == 4 && col % 2 == 0)
             {
-                auto packed = static_cast<unsigned char>(rowbuf[col / 2]);
+                auto packed = rowbuf[col / 2];
 
-                auto color = bmp.palette[packed >> 4];
-                image_data[im_row][col] = rgb_to_gray(color.r, color.g, color.b);
+                image_data[im_row][col] = bmp.palette[packed >> 4];
 
-                color = bmp.palette[packed & 0xF];
-                image_data[im_row][col+ 1] = rgb_to_gray(color.r, color.g, color.b);
+                image_data[im_row][col+ 1] = bmp.palette[packed & 0xF];
             }
             else if(bmp.bpp == 8)
             {
-                auto idx = static_cast<unsigned char>(rowbuf[col]);
-                auto color = bmp.palette[idx];
-                image_data[im_row][col] = rgb_to_gray(color.r, color.g, color.b);
+                auto idx = rowbuf[col];
+                image_data[im_row][col] = bmp.palette[idx];
             }
             else if(bmp.bpp == 16)
             {
-                auto lo = static_cast<unsigned char>(rowbuf[2 * col]);
-                auto hi = static_cast<unsigned char>(rowbuf[2 * col + 1]);
-                unsigned char r{0}, g{0}, b{0}, a{0xFF};
+                auto lo = rowbuf[2 * col];
+                auto hi = rowbuf[2 * col + 1];
+                Color color;
 
                 if(bmp.compression == bmp_data::Compression::BI_RGB)
                 {
                     //5.5.5.0.1 format
                     // bbbbbggg ggrrrrrx
-                    b = hi & 0xF8;
-                    g = ((hi & 0x07) << 5) | ((lo & 0xC0) >> 3);
-                    r = (lo & 0x3E) << 2;
+                    color.b = hi & 0xF8;
+                    color.g = ((hi & 0x07) << 5) | ((lo & 0xC0) >> 3);
+                    color.r = (lo & 0x3E) << 2;
                 }
                 else // BI_BITFIELDS
                 {
@@ -219,35 +221,36 @@ void read_uncompressed(std::istream & in, bmp_data & bmp, unsigned char bg, std:
 
                     uint16_t packed = (static_cast<uint16_t>(hi) << 8) | static_cast<uint16_t>(lo);
 
-                    r = static_cast<unsigned char>((packed & bmp.red_mask)   >> rshift);
-                    g = static_cast<unsigned char>((packed & bmp.green_mask) >> gshift);
-                    b = static_cast<unsigned char>((packed & bmp.blue_mask)  >> bshift);
-                    a = static_cast<unsigned char>((packed & bmp.alpha_mask) >> ashift);
+                    color.r = (packed & bmp.red_mask)   >> rshift;
+                    color.g = (packed & bmp.green_mask) >> gshift;
+                    color.b = (packed & bmp.blue_mask)  >> bshift;
+                    color.a = (packed & bmp.alpha_mask) >> ashift;
 
                     if(bmp.alpha_mask == 0)
-                        a = 0xFF;
+                        color.a = 0xFF;
                 }
 
-                image_data[im_row][col] = rgba_to_gray(r, g, b, a, bg);
+                image_data[im_row][col] = color;
             }
             else if(bmp.bpp == 24)
             {
-                auto b = static_cast<unsigned char>(rowbuf[3 * col]);
-                auto g = static_cast<unsigned char>(rowbuf[3 * col + 1]);
-                auto r = static_cast<unsigned char>(rowbuf[3 * col + 2]);
-                image_data[im_row][col] = rgb_to_gray(r, g, b);
+                image_data[im_row][col] = Color{
+                    rowbuf[3 * col + 2],
+                    rowbuf[3 * col + 1],
+                    rowbuf[3 * col],
+                    0xFF};
             }
             else if(bmp.bpp == 32)
             {
-                auto b1 = static_cast<unsigned char>(rowbuf[4 * col]);
-                auto b2 = static_cast<unsigned char>(rowbuf[4 * col + 1]);
-                auto b3 = static_cast<unsigned char>(rowbuf[4 * col + 2]);
-                auto b4 = static_cast<unsigned char>(rowbuf[4 * col + 3]);
-                unsigned char r{0}, g{0}, b{0}, a{0xFF};
+                auto b1 = rowbuf[4 * col];
+                auto b2 = rowbuf[4 * col + 1];
+                auto b3 = rowbuf[4 * col + 2];
+                auto b4 = rowbuf[4 * col + 3];
+                Color color;
 
                 if(bmp.compression == bmp_data::Compression::BI_RGB)
                 {
-                    b = b1; g = b2; r = b3; a = b4;
+                    color.b = b1; color.g = b2; color.r = b3; color.a = b4;
                 }
                 else // BI_BITFIELDS
                 {
@@ -263,22 +266,22 @@ void read_uncompressed(std::istream & in, bmp_data & bmp, unsigned char bg, std:
 
                     uint32_t packed = (static_cast<uint32_t>(b4) << 24) | (static_cast<uint32_t>(b3) << 16) | (static_cast<uint32_t>(b2) << 8) | static_cast<uint32_t>(b1);
 
-                    r = static_cast<unsigned char>((packed & bmp.red_mask)   >> rshift);
-                    g = static_cast<unsigned char>((packed & bmp.green_mask) >> gshift);
-                    b = static_cast<unsigned char>((packed & bmp.blue_mask)  >> bshift);
-                    a = static_cast<unsigned char>((packed & bmp.alpha_mask) >> ashift);
+                    color.r = (packed & bmp.red_mask)   >> rshift;
+                    color.g = (packed & bmp.green_mask) >> gshift;
+                    color.b = (packed & bmp.blue_mask)  >> bshift;
+                    color.a = (packed & bmp.alpha_mask) >> ashift;
 
                     if(bmp.alpha_mask == 0)
-                        a = 0xFF;
+                        color.a = 0xFF;
                 }
 
-                image_data[im_row][col] = rgba_to_gray(r, g, b, a, bg);
+                image_data[im_row][col] = color;
             }
         }
     }
 }
 
-void read_rle(std::istream & in, bmp_data & bmp, std::vector<std::vector<unsigned char>> & image_data, std::size_t & file_pos)
+void read_rle(std::istream & in, bmp_data & bmp, std::vector<std::vector<Color>> & image_data, std::size_t & file_pos)
 {
     std::size_t row = 0, col = 0;
     auto im_row = bmp.bottom_to_top ? bmp.height - row - 1 : row;
@@ -324,7 +327,7 @@ void read_rle(std::istream & in, bmp_data & bmp, std::vector<std::vector<unsigne
                 if(bmp.bpp == 4)
                 {
                     unsigned char idx {0};
-                    bmp_data::color color;
+                    Color color;
                     for(auto i = 0; i < escape; ++i)
                     {
                         if(i % 2 == 0)
@@ -339,7 +342,7 @@ void read_rle(std::istream & in, bmp_data & bmp, std::vector<std::vector<unsigne
                         }
 
                         check_bounds();
-                        image_data[im_row][col++] = rgb_to_gray(color.r, color.g, color.b);
+                        image_data[im_row][col++] = color;
                     }
                 }
                 else if(bmp.bpp == 8)
@@ -349,7 +352,7 @@ void read_rle(std::istream & in, bmp_data & bmp, std::vector<std::vector<unsigne
                         auto color = bmp.palette[in.get()];
                         ++file_pos;
                         check_bounds();
-                        image_data[im_row][col++] = rgb_to_gray(color.r, color.g, color.b);
+                        image_data[im_row][col++] = color;
                     }
                 }
                 // align to word boundary
@@ -370,7 +373,7 @@ void read_rle(std::istream & in, bmp_data & bmp, std::vector<std::vector<unsigne
                 {
                     auto color = bmp.palette[(i % 2 == 0) ? (idx >> 4) : (idx & 0x4)];
                     check_bounds();
-                    image_data[im_row][col++] = rgb_to_gray(color.r, color.g, color.b);
+                    image_data[im_row][col++] = color;
                 }
             }
             else if(bmp.bpp == 8)
@@ -379,14 +382,14 @@ void read_rle(std::istream & in, bmp_data & bmp, std::vector<std::vector<unsigne
                 {
                     auto color = bmp.palette[idx];
                     check_bounds();
-                    image_data[im_row][col++] = rgb_to_gray(color.r, color.g, color.b);
+                    image_data[im_row][col++] = color;
                 }
             }
         }
     }
 }
 
-Bmp::Bmp(std::istream & input, unsigned char bg)
+Bmp::Bmp(std::istream & input)
 {
     input.exceptions(std::ios_base::badbit | std::ios_base::failbit);
     try
@@ -396,7 +399,7 @@ Bmp::Bmp(std::istream & input, unsigned char bg)
         set_size(bmp.width, bmp.height);
 
         if(bmp.compression == bmp_data::Compression::BI_RGB || bmp.compression == bmp_data::Compression::BI_BITFIELDS)
-            read_uncompressed(input, bmp, bg, image_data_);
+            read_uncompressed(input, bmp, image_data_);
         else if(bmp.compression == bmp_data::Compression::BI_RLE8 || bmp.compression == bmp_data::Compression::BI_RLE4)
             read_rle(input, bmp, image_data_, file_pos);
     }

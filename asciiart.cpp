@@ -23,7 +23,7 @@ void write_ascii(const Image & img,
     const auto px_col = static_cast<float>(img.get_width()) / args.cols;
     const auto px_row = args.rows > 0 ? static_cast<float>(img.get_height()) / args.rows : px_col * 2.0f;
 
-    for(float row = 0.0f; row < img.get_height(); row += px_row)
+    for(float row = 0.0f; row < img.get_height(); row += px_row) // TODO: fix using floats
     {
         for(float col = 0.0f; col < img.get_width(); col += px_col)
         {
@@ -33,11 +33,17 @@ void write_ascii(const Image & img,
             {
                 for(float x = col; x < col + px_col && x < img.get_width(); ++x)
                 {
-                    pix_sum += args.invert ? 255 - img.get_pix(y, x) : img.get_pix(y, x);
+                    // TODO: temporary code while transitioning to color support
+                    auto pix = img[y][x];
+                    auto gray = rgba_to_gray(pix.r, pix.g, pix.b, pix.a, args.bg);
+                    pix_sum += args.invert ? 255 - gray : gray;
                     ++cell_sum;
                 }
             }
-            out<<char_vals[pix_sum / cell_sum];
+            if(cell_sum > 0)
+                out<<char_vals[pix_sum / cell_sum];
+            else
+                throw std::runtime_error{"Error scaling image"};
         }
         out<<'\n';
     }

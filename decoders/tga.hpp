@@ -6,6 +6,6 @@
 class Tga final: public Image
 {
 public:
-    Tga(std::istream & input, unsigned char bg);
+    explicit Tga(std::istream & input);
 };
 #endif // TGA_HPP

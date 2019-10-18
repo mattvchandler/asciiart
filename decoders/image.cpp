@@ -52,10 +52,7 @@ void Image::set_size(std::size_t w, std::size_t h)
     width_ = w; height_ = h;
     image_data_.resize(height_);
     for(auto && row: image_data_)
-    {
         row.resize(width_);
-        std::fill(std::begin(row), std::end(row), 0);
-    }
 }
 
 [[nodiscard]] std::unique_ptr<Image> get_image_data(const Args & args)
@@ -94,12 +91,12 @@ void Image::set_size(std::size_t w, std::size_t h)
     case Args::Force_file::detect:
         if(is_bmp(header))
         {
-            return std::make_unique<Bmp>(input, args.bg);
+            return std::make_unique<Bmp>(input);
         }
         else if(is_gif(header))
         {
             #ifdef GIF_FOUND
-            return std::make_unique<Gif>(input, args.bg);
+            return std::make_unique<Gif>(input);
             #else
             throw std::runtime_error{"Not compiled with GIF support"};
             #endif
@@ -115,7 +112,7 @@ void Image::set_size(std::size_t w, std::size_t h)
         else if(is_png(header))
         {
             #ifdef PNG_FOUND
-            return std::make_unique<Png>(input, args.bg);
+            return std::make_unique<Png>(input);
             #else
             throw std::runtime_error{"Not compiled with PNG support"};
             #endif
@@ -127,7 +124,7 @@ void Image::set_size(std::size_t w, std::size_t h)
         else if(is_tiff(header))
         {
             #ifdef TIFF_FOUND
-            return std::make_unique<Tiff>(input, args.bg);
+            return std::make_unique<Tiff>(input);
             #else
             throw std::runtime_error{"Not compiled with TIFF support"};
             #endif
@@ -135,7 +132,7 @@ void Image::set_size(std::size_t w, std::size_t h)
         else if(is_webp(header))
         {
             #ifdef WEBP_FOUND
-            return std::make_unique<Webp>(input, args.bg);
+            return std::make_unique<Webp>(input);
             #else
             throw std::runtime_error{"Not compiled with WEBP support"};
             #endif
@@ -143,19 +140,19 @@ void Image::set_size(std::size_t w, std::size_t h)
         else if(extension == ".svg" || extension == ".svgz")
         {
             #ifdef SVG_FOUND
-            return std::make_unique<Svg>(input, args.input_filename, args.bg);
+            return std::make_unique<Svg>(input, args.input_filename);
             #else
             throw std::runtime_error{"Not compiled with SVG support"};
             #endif
         }
         else if(extension == ".tga")
         {
-            return std::make_unique<Tga>(input, args.bg);
+            return std::make_unique<Tga>(input);
         }
         else if(extension == ".xpm")
         {
             #ifdef XPM_FOUND
-            return std::make_unique<Xpm>(input, args.bg);
+            return std::make_unique<Xpm>(input);
             #else
             throw std::runtime_error{"Not compiled with XPM support"};
             #endif
@@ -167,15 +164,15 @@ void Image::set_size(std::size_t w, std::size_t h)
         break;
     #ifdef SVG_FOUND
     case Args::Force_file::svg:
-        return std::make_unique<Svg>(input, args.input_filename, args.bg);
+        return std::make_unique<Svg>(input, args.input_filename);
         break;
     #endif
     case Args::Force_file::tga:
-        return std::make_unique<Tga>(input, args.bg);
+        return std::make_unique<Tga>(input);
         break;
     #ifdef XPM_FOUND
     case Args::Force_file::xpm:
-        return std::make_unique<Xpm>(input, args.bg);
+        return std::make_unique<Xpm>(input);
         break;
     #endif
     default:

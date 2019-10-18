@@ -2,7 +2,7 @@
 
 #include <webp/decode.h>
 
-Webp::Webp(std::istream & input, unsigned char bg)
+Webp::Webp(std::istream & input)
 {
     // read whole into memory
     std::vector<unsigned char> data;
@@ -28,12 +28,10 @@ Webp::Webp(std::istream & input, unsigned char bg)
     {
         for(std::size_t col = 0; col < width_; ++col)
         {
-            auto r = pix_data[4 * (row * width_ + col)];
-            auto g = pix_data[4 * (row * width_ + col) + 1];
-            auto b = pix_data[4 * (row * width_ + col) + 2];
-            auto a = pix_data[4 * (row * width_ + col) + 3];
-
-            image_data_[row][col] = rgba_to_gray(r, g, b, a, bg);
+            image_data_[row][col].r = pix_data[4 * (row * width_ + col)];
+            image_data_[row][col].g = pix_data[4 * (row * width_ + col) + 1];
+            image_data_[row][col].b = pix_data[4 * (row * width_ + col) + 2];
+            image_data_[row][col].a = pix_data[4 * (row * width_ + col) + 3];
         }
     }
 

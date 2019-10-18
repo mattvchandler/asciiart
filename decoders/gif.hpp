@@ -16,7 +16,7 @@ inline bool is_gif(const Image::Header & header)
 class Gif final: public Image
 {
 public:
-    Gif(std::istream & input, unsigned char bg);
+    explicit Gif(std::istream & input);
 };
 #endif
 #endif // GIF_HPP

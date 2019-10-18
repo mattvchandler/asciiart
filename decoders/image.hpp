@@ -17,14 +17,22 @@ unsigned char ga_blend(unsigned char g, unsigned char a, unsigned char bg);
 // set to the size of the longest magic number
 constexpr std::size_t max_header_len = 12; // 12 bytes needed to identify JPEGs
 
+struct Color
+{
+    unsigned char r{0}, g{0}, b{0}, a{0xFF};
+    Color(unsigned char r, unsigned char g, unsigned char b, unsigned char a = 0xFF): r{r}, g{g}, b{b}, a{a} {}
+    explicit Color(unsigned char y): r{y}, g{y}, b{y} {}
+    Color(){}
+};
+
 class Image
 {
 public:
     virtual ~Image() = default;
 
-    unsigned char get_pix(std::size_t row, std::size_t col) const
+    const std::vector<Color> & operator[](std::size_t i) const
     {
-        return image_data_[row][col];
+        return image_data_[i];
     }
     std::size_t get_width() const { return width_; }
     std::size_t get_height() const { return height_; }
@@ -37,7 +45,7 @@ protected:
 
     std::size_t width_{0};
     std::size_t height_{0};
-    std::vector<std::vector<unsigned char>> image_data_;
+    std::vector<std::vector<Color>> image_data_;
 };
 
 template <typename T>
