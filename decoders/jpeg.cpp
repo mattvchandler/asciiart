@@ -7,7 +7,7 @@
 
 #include <jpeglib.h>
 
-#ifdef HAS_EXIF
+#ifdef EXIF_FOUND
 #include <libexif/exif-data.h>
 #endif
 
@@ -83,7 +83,7 @@ enum class Orientation:short { r_0=1, r_180=3, r_270=6, r_90=8 };
 Orientation get_orientation([[maybe_unused]] jpeg_decompress_struct & cinfo)
 {
     Orientation orientation {Orientation::r_0};
-#ifdef HAS_EXIF
+#ifdef EXIF_FOUND
     auto marker = cinfo.marker_list;
     while(marker)
     {
@@ -134,7 +134,7 @@ Jpeg::Jpeg(std::istream & input)
     cinfo.src = &source;
 
     // request APP1 for EXIF for rotation
-#ifdef HAS_EXIF
+#ifdef EXIF_FOUND
     jpeg_save_markers(&cinfo, JPEG_APP0 + 1, 0xFFFF);
 #endif
 

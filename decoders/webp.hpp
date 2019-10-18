@@ -13,7 +13,7 @@ inline bool is_webp(const Image::Header & header)
            std::equal(std::begin(webp_header2), std::end(webp_header2), std::begin(header) + 8, Image::header_cmp);
 }
 
-#ifdef HAS_WEBP
+#ifdef WEBP_FOUND
 class Webp final: public Image
 {
 public:

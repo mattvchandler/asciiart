@@ -1,0 +1,10 @@
+#cmakedefine EXIF_FOUND
+#cmakedefine GIF_FOUND
+#cmakedefine JPEG_FOUND
+#cmakedefine PNG_FOUND
+#cmakedefine SVG_FOUND
+#cmakedefine TIFF_FOUND
+#cmakedefine WEBP_FOUND
+#cmakedefine XPM_FOUND
+
+#cmakedefine HAS_UNISTD

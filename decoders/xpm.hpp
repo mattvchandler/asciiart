@@ -3,7 +3,7 @@
 
 #include "image.hpp"
 
-#ifdef HAS_XPM
+#ifdef XPM_FOUND
 class Xpm final: public Image
 {
 public:

@@ -9,7 +9,7 @@ inline bool is_png(const Image::Header & header)
     return std::equal(std::begin(png_header), std::end(png_header), std::begin(header), Image::header_cmp);
 }
 
-#ifdef HAS_PNG
+#ifdef PNG_FOUND
 class Png final: public Image
 {
 public:

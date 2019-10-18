@@ -116,13 +116,13 @@ private:
             ("i,invert", "Invert colors")
             ("o,output", "Output text file path. Output to stdout if '-'",                                cxxopts::value<std::string>()->default_value("-"),          "OUTPUT_FILE");
 
-        const std::string filetype_group ="Input file detection overide";
-        options.add_options(filetype_group)("tga",      "Interpret input as a TGA file");
+        const std::string filetype_group = "Input file detection overide";
+        options.add_options(filetype_group)("tga", "Interpret input as a TGA file");
 
-    #ifdef HAS_SVG
+    #ifdef SVG_FOUND
         options.add_options(filetype_group)("svg", "Interpret input as an SVG file");
     #endif
-    #ifdef HAS_XPM
+    #ifdef XPM_FOUND
         options.add_options(filetype_group)("xpm", "Interpret input as an XPM file");
     #endif
 
@@ -157,10 +157,10 @@ private:
         auto filetype {Args::Force_file::detect};
 
         if(args.count("tga")
-    #ifdef HAS_SVG
+    #ifdef SVG_FOUND
                 + args.count("svg")
     #endif
-    #ifdef HAS_XPM
+    #ifdef XPM_FOUND
                 + args.count("xpm")
     #endif
                 > 1)
@@ -169,14 +169,13 @@ private:
             return {};
         }
 
-
         if(args.count("tga"))
             filetype = Args::Force_file::tga;
-    #ifdef HAS_SVG
+    #ifdef SVG_FOUND
         else if(args.count("svg"))
             filetype = Args::Force_file::svg;
     #endif
-    #ifdef HAS_XPM
+    #ifdef XPM_FOUND
         else if(args.count("xpm"))
             filetype = Args::Force_file::xpm;
     #endif

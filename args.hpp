@@ -4,6 +4,8 @@
 #include <optional>
 #include <string>
 
+#include "config.h"
+
 struct Args
 {
     std::string input_filename;  // - for stdin
@@ -18,10 +20,10 @@ struct Args
     {
         detect,                  // detect filetype by header
         tga,
-    #ifdef HAS_SVG
+    #ifdef SVG_FOUND
         svg,
     #endif
-    #ifdef HAS_XPM
+    #ifdef XPM_FOUND
         xpm,
     #endif
     } force_file { Force_file::detect };

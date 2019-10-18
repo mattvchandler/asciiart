@@ -3,7 +3,7 @@
 
 #include "image.hpp"
 
-#ifdef HAS_SVG
+#ifdef SVG_FOUND
 class Svg final: public Image
 {
 public:

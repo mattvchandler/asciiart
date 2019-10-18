@@ -12,7 +12,7 @@ inline bool is_tiff(const Image::Header & header)
            std::equal(std::begin(tiff_header2), std::end(tiff_header2), std::begin(header), Image::header_cmp);
 }
 
-#ifdef HAS_TIFF
+#ifdef TIFF_FOUND
 class Tiff final: public Image
 {
 public:

@@ -19,7 +19,7 @@ inline bool is_jpeg(const Image::Header & header)
            && std::equal(std::begin(jpeg_header4_2), std::end(jpeg_header4_2), std::begin(header) + std::size(jpeg_header4_1) + 2, Image::header_cmp));
 }
 
-#ifdef HAS_JPEG
+#ifdef JPEG_FOUND
 class Jpeg final: public Image
 {
 public:

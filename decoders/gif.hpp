@@ -12,7 +12,7 @@ inline bool is_gif(const Image::Header & header)
         || std::equal(std::begin(gif_header2), std::end(gif_header2), std::begin(header), Image::header_cmp);
 }
 
-#ifdef HAS_GIF
+#ifdef GIF_FOUND
 class Gif final: public Image
 {
 public:
