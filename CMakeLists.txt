@@ -24,6 +24,9 @@ pkg_check_modules(SVG librsvg-2.0)
 pkg_check_modules(WEBP libwebp)
 pkg_check_modules(XPM xpm)
 
+include(CheckIncludeFiles)
+check_include_files(unistd.h HAS_UNISTD)
+
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
 add_executable(asciiart

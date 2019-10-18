@@ -5,6 +5,10 @@
 
 #include <cxxopts.hpp>
 
+#ifdef HAS_UNISTD
+#include <unistd.h>
+#endif
+
 class Optional_pos: public cxxopts::Options
 {
 public:
@@ -116,6 +120,13 @@ private:
             ("i,invert", "Invert colors")
             ("o,output", "Output text file path. Output to stdout if '-'",                                cxxopts::value<std::string>()->default_value("-"),          "OUTPUT_FILE");
 
+        const std::string color_group = "Color";
+        options.add_options(color_group)
+            ("ansi4",   "use 4-bit ANSI colors")
+            ("ansi8",   "use 8-bit ANSI colors")
+            ("ansi24",  "use 24-bit ANSI colors. Default when output is stdout to terminal")
+            ("nocolor", "disable colors. Default when output is not stdout to terminal");
+
         const std::string filetype_group = "Input file detection overide";
         options.add_options(filetype_group)("tga", "Interpret input as a TGA file");
 
@@ -154,6 +165,38 @@ private:
             return {};
         }
 
+        if(args.count("ansi4") + args.count("ansi8") + args.count("ansi24") + args.count("nocolor") > 1)
+        {
+            std::cerr<<options.help("Only one color option flag may be specified")<<'\n';
+            return {};
+        }
+
+        auto color {Args::Color::NONE};
+        if(args.count("ansi4"))
+        {
+            color = Args::Color::ANSI4;
+        }
+        else if(args.count("ansi8"))
+        {
+            color = Args::Color::ANSI8;
+        }
+        else if(args.count("ansi24"))
+        {
+            color = Args::Color::ANSI24;
+        }
+        else if(args.count("nocolor"))
+        {
+            color = Args::Color::NONE;
+        }
+        else if(args["output"].as<std::string>() == "-")
+        {
+        #ifdef HAS_UNISTD
+            color = isatty(fileno(stdout)) ? Args::Color::ANSI24 : Args::Color::NONE;
+        #else
+            color = Args::Color::NONE;
+        #endif
+        }
+
         auto filetype {Args::Force_file::detect};
 
         if(args.count("tga")
@@ -189,6 +232,7 @@ private:
             args["cols"].as<int>(),
             static_cast<unsigned char>(args["bg"].as<int>()),
             static_cast<bool>(args.count("invert")),
+            color,
             filetype,
         };
     }

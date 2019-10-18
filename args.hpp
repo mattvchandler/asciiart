@@ -16,6 +16,7 @@ struct Args
     int cols;                    // output cols
     unsigned char bg;            // BG color value
     bool invert;                 // invert colors
+    enum class Color {NONE, ANSI4, ANSI8, ANSI24} color;
     enum class Force_file
     {
         detect,                  // detect filetype by header
