@@ -268,7 +268,10 @@ void write_ascii(const Image & img, const Char_vals & char_vals, const Args & ar
             };
 
             color.alpha_blend(bg);
-            auto disp_char = char_vals[static_cast<unsigned char>(color.to_gray() * 255.0f)];
+            auto disp_char {
+                args.force_ascii ?
+                    std::string{char_vals[static_cast<unsigned char>(color.to_gray() * 255.0f)]} :
+                    std::string{u8"█"}};
 
             switch(args.color)
             {
@@ -276,13 +279,13 @@ void write_ascii(const Image & img, const Char_vals & char_vals, const Args & ar
                 out<<disp_char;
                 break;
             case Args::Color::ANSI4:
-                out<<set_color_4(color)<<u8"█"; // TODO: make optional
+                out<<set_color_4(color)<<disp_char;
                 break;
             case Args::Color::ANSI8:
-                out<<set_color_8(color)<<u8"█"; // TODO: make optional
+                out<<set_color_8(color)<<disp_char;
                 break;
             case Args::Color::ANSI24:
-                out<<set_color(color)<<u8"█"; // TODO: make optional
+                out<<set_color(color)<<disp_char;
                 break;
             }
         }
