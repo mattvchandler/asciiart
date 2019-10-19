@@ -153,41 +153,66 @@ int find_closest_table_color(const Color & color)
     return dist;
 }
 
-class set_color
+class color_mod
+{
+public:
+    virtual ~color_mod() = default;
+    virtual std::ostream & operator()(std::ostream & os) const = 0;
+};
+
+class set_color: public color_mod
 {
 public:
     explicit set_color(Color c) :r_{c.r}, g_{c.g}, b_{c.b} {}
 
-    std::ostream & operator()(std::ostream &os) const
+    std::ostream & operator()(std::ostream &os) const override
     {
         return os<<"\x1B[38;2;"<<r_<<';'<<g_<<';'<<b_<<'m';
     };
 private:
     int r_{0}, g_{0}, b_{0};
 };
-std::ostream & operator<<(std::ostream &os, const set_color sc)
-{
-    return sc(os);
-}
 
-class set_color_8
+class set_bg_color: public color_mod
 {
 public:
-    explicit set_color_8(Color c): code_{find_closest_table_color<Args::Color::ANSI8>(c)}
-    {}
+    explicit set_bg_color(Color c) :r_{c.r}, g_{c.g}, b_{c.b} {}
 
-    std::ostream & operator()(std::ostream &os) const
+    std::ostream & operator()(std::ostream &os) const override
+    {
+        return os<<"\x1B[48;2;"<<r_<<';'<<g_<<';'<<b_<<'m';
+    };
+private:
+    int r_{0}, g_{0}, b_{0};
+};
+
+class set_color_8: public color_mod
+{
+public:
+    explicit set_color_8(Color c): code_{find_closest_table_color<Args::Color::ANSI8>(c)} {}
+
+    std::ostream & operator()(std::ostream &os) const override
     {
         return os<<"\x1B[38;5;"<<code_<<'m';
     };
 private:
     int code_{0};
 };
-std::ostream & operator<<(std::ostream &os, const set_color_8 sc)
+
+class set_bg_color_8: public color_mod
 {
-    return sc(os);
-}
-class set_color_4
+public:
+    explicit set_bg_color_8(Color c): code_{find_closest_table_color<Args::Color::ANSI8>(c)} {}
+
+    std::ostream & operator()(std::ostream &os) const override
+    {
+        return os<<"\x1B[48;5;"<<code_<<'m';
+    };
+private:
+    int code_{0};
+};
+
+class set_color_4: public color_mod
 {
 public:
     explicit set_color_4(Color c)
@@ -195,18 +220,43 @@ public:
         auto index = find_closest_table_color<Args::Color::ANSI4>(c);
         if(index < 8)
             code_ = index + 30;
+        else if(index < 16)
+            code_ = index + 90 - 8;
         else
-            code_ = index + 90;
+            throw std::runtime_error{"ASNI4 index out of range"};
     }
 
-    std::ostream & operator()(std::ostream &os) const
+    std::ostream & operator()(std::ostream &os) const override
     {
         return os<<"\x1B["<<code_<<'m';
     };
 private:
     int code_{0};
 };
-std::ostream & operator<<(std::ostream &os, const set_color_4 sc)
+
+class set_bg_color_4: public color_mod
+{
+public:
+    explicit set_bg_color_4(Color c)
+    {
+        auto index = find_closest_table_color<Args::Color::ANSI4>(c);
+        if(index < 8)
+            code_ = index + 40;
+        else if(index < 16)
+            code_ = index + 100 - 8;
+        else
+            throw std::runtime_error{"ASNI4 index out of range"};
+    }
+
+    std::ostream & operator()(std::ostream &os) const override
+    {
+        return os<<"\x1B["<<code_<<'m';
+    };
+private:
+    int code_{0};
+};
+
+std::ostream & operator<<(std::ostream &os, const color_mod & sc)
 {
     return sc(os);
 }
@@ -270,10 +320,7 @@ void write_ascii(const Image & img, const Char_vals & char_vals, const Args & ar
             };
 
             color.alpha_blend(bg);
-            auto disp_char {
-                args.force_ascii ?
-                    std::string{char_vals[static_cast<unsigned char>(color.to_gray() * 255.0f)]} :
-                    std::string{u8"█"}};
+            auto disp_char =char_vals[static_cast<unsigned char>(color.to_gray() * 255.0f)];
 
             switch(args.color)
             {
@@ -281,18 +328,27 @@ void write_ascii(const Image & img, const Char_vals & char_vals, const Args & ar
                 out<<disp_char;
                 break;
             case Args::Color::ANSI4:
-                out<<set_color_4(color)<<disp_char;
+                if(args.force_ascii)
+                    out<<set_color_4(color)<<disp_char;
+                else
+                    out<<set_bg_color_4(color)<<' ';
                 break;
             case Args::Color::ANSI8:
-                out<<set_color_8(color)<<disp_char;
+                if(args.force_ascii)
+                    out<<set_color_8(color)<<disp_char;
+                else
+                    out<<set_bg_color_8(color)<<' ';
                 break;
             case Args::Color::ANSI24:
-                out<<set_color(color)<<disp_char;
+                if(args.force_ascii)
+                    out<<set_color(color)<<disp_char;
+                else
+                    out<<set_bg_color(color)<<' ';
                 break;
             }
         }
+        if(args.color != Args::Color::NONE)
+            out<<clear_color;
         out<<'\n';
     }
-    if(args.color != Args::Color::NONE)
-        out<<clear_color;
 }
