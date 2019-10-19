@@ -126,7 +126,7 @@ private:
             ("ansi8",   "use 8-bit ANSI colors")
             ("ansi24",  "use 24-bit ANSI colors. Default when output is stdout to terminal")
             ("nocolor", "disable colors. Default when output is not stdout to terminal")
-            ("ascii",   "use ascii chars instead of unicode block chars. Enabled when --nocolor set");
+            ("ascii",   "use ascii chars instead of colored backgrounds. Enabled when --nocolor set");
 
         const std::string filetype_group = "Input file detection overide";
         options.add_options(filetype_group)("tga", "Interpret input as a TGA file");
