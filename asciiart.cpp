@@ -329,7 +329,9 @@ void write_ascii(const Image & img, const Char_vals & char_vals, const Args & ar
             if(args.invert)
                 color.invert();
 
-            auto disp_char =char_vals[static_cast<unsigned char>(color.to_gray() * 255.0f)];
+            char disp_char = ' ';
+            if(args.force_ascii || args.color == Args::Color::NONE)
+                disp_char =char_vals[static_cast<unsigned char>(color.to_gray() * 255.0f)];
 
             switch(args.color)
             {
