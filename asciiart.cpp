@@ -65,6 +65,12 @@ struct FColor
 
         return 0.2126f * luminance_color[0] + 0.7152f * luminance_color[1] + 0.0722f * luminance_color[2];
     }
+    void invert()
+    {
+        r = 1.0f - r;
+        g = 1.0f - g;
+        b = 1.0f - b;
+    }
 };
 
 constexpr auto build_color_table()
@@ -320,6 +326,9 @@ void write_ascii(const Image & img, const Char_vals & char_vals, const Args & ar
             };
 
             color.alpha_blend(bg);
+            if(args.invert)
+                color.invert();
+
             auto disp_char =char_vals[static_cast<unsigned char>(color.to_gray() * 255.0f)];
 
             switch(args.color)
