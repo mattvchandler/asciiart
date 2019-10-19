@@ -19,7 +19,7 @@ struct FColor
     {}
     constexpr explicit FColor(const Color & c):
         r{c.r / 255.0f},
-        g{c.b / 255.0f},
+        g{c.g / 255.0f},
         b{c.b / 255.0f},
         a{c.a / 255.0f}
     {}
@@ -133,9 +133,10 @@ float color_dist(const FColor & a, const FColor & b)
 }
 
 template<Args::Color color_type>
-int find_closest_table_color(Color & color)
+int find_closest_table_color(const Color & color)
 {
     static_assert(color_type == Args::Color::ANSI4 || color_type == Args::Color::ANSI8, "Only ANSI4 and ANSI8 colors supported");
+
     static std::map<Color, std::size_t> lru_cache;
 
     if(auto lru = lru_cache.find(color); lru != std::end(lru_cache))
@@ -151,6 +152,7 @@ int find_closest_table_color(Color & color)
     lru_cache.emplace(color, dist);
     return dist;
 }
+
 class set_color
 {
 public:
