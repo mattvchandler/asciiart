@@ -9,20 +9,29 @@
 
 #include "../args.hpp"
 
-unsigned char rgb_to_gray(unsigned char r, unsigned char g, unsigned char b);
-float rgb_to_gray_float(float r, float g, float b);
-unsigned char rgba_to_gray(unsigned char r, unsigned char g, unsigned char b, unsigned char a, unsigned char bg);
-unsigned char ga_blend(unsigned char g, unsigned char a, unsigned char bg);
-
 // set to the size of the longest magic number
 constexpr std::size_t max_header_len = 12; // 12 bytes needed to identify JPEGs
 
 struct Color
 {
     unsigned char r{0}, g{0}, b{0}, a{0xFF};
-    Color(unsigned char r, unsigned char g, unsigned char b, unsigned char a = 0xFF): r{r}, g{g}, b{b}, a{a} {}
-    explicit Color(unsigned char y): r{y}, g{y}, b{y} {}
-    Color(){}
+    constexpr Color(){}
+    constexpr Color(unsigned char r, unsigned char g, unsigned char b, unsigned char a = 0xFF): r{r}, g{g}, b{b}, a{a} {}
+    constexpr explicit Color(unsigned char y): r{y}, g{y}, b{y} {}
+
+    constexpr bool operator<(const Color & other) const
+    {
+        if(r < other.r)
+            return true;
+        else if(g < other.g)
+            return true;
+        else if(b < other.b)
+            return true;
+        else if(a < other.a)
+            return true;
+        else
+            return false;
+    }
 };
 
 class Image

@@ -33,6 +33,7 @@ add_executable(asciiart
     args.cpp
     asciiart.cpp
     font.cpp
+    main.cpp
     decoders/image.cpp
     decoders/bmp.cpp
     decoders/pnm.cpp
