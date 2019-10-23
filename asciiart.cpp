@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include <map>
+#include <sstream>
 
 #include <cmath>
 #include <cstring>
@@ -17,7 +18,7 @@ struct FColor
         b{b},
         a{a}
     {}
-    constexpr explicit FColor(const Color & c):
+    constexpr FColor(const Color & c):
         r{c.r / 255.0f},
         g{c.g / 255.0f},
         b{c.b / 255.0f},
@@ -152,120 +153,77 @@ int find_closest_table_color(const Color & color)
     if constexpr(color_type == Args::Color::ANSI4)
         end = std::begin(color_table) + 16;
 
-    auto min = std::min_element(std::begin(color_table), end, [color = FColor{color}](const Color & a, const Color & b) { return color_dist(FColor{a}, color) < color_dist(FColor{b}, color); });
+    auto min = std::min_element(std::begin(color_table), end, [color = FColor{color}](const Color & a, const Color & b) { return color_dist(a, color) < color_dist(b, color); });
     auto dist = std::distance(std::begin(color_table), min);
 
     lru_cache.emplace(color, dist);
     return dist;
 }
 
-class color_mod
+enum class Color_mode {FG, BG};
+class set_color
 {
 public:
-    virtual ~color_mod() = default;
-    virtual std::ostream & operator()(std::ostream & os) const = 0;
-};
-
-class set_color: public color_mod
-{
-public:
-    explicit set_color(Color c) :r_{c.r}, g_{c.g}, b_{c.b} {}
-
-    std::ostream & operator()(std::ostream &os) const override
+    explicit set_color(const Color & color, Args::Color color_type, Color_mode color_mode)
     {
-        return os<<"\x1B[38;2;"<<r_<<';'<<g_<<';'<<b_<<'m';
-    };
-private:
-    int r_{0}, g_{0}, b_{0};
-};
+        if(color_type != Args::Color::ANSI4 && color_type != Args::Color::ANSI8 && color_type != Args::Color::ANSI24)
+            throw std::runtime_error{"Unsupported set_color mode"};
 
-class set_bg_color: public color_mod
-{
-public:
-    explicit set_bg_color(Color c) :r_{c.r}, g_{c.g}, b_{c.b} {}
+        std::ostringstream os;
+        os<<"\x1B[";
 
-    std::ostream & operator()(std::ostream &os) const override
-    {
-        return os<<"\x1B[48;2;"<<r_<<';'<<g_<<';'<<b_<<'m';
-    };
-private:
-    int r_{0}, g_{0}, b_{0};
-};
+        if (color_type == Args::Color::ANSI24)
+        {
+            if (color_mode == Color_mode::FG)
+                os << "38";
+            else
+                os << "48";
 
-class set_color_8: public color_mod
-{
-public:
-    explicit set_color_8(Color c): code_{find_closest_table_color<Args::Color::ANSI8>(c)} {}
-
-    std::ostream & operator()(std::ostream &os) const override
-    {
-        return os<<"\x1B[38;5;"<<code_<<'m';
-    };
-private:
-    int code_{0};
-};
-
-class set_bg_color_8: public color_mod
-{
-public:
-    explicit set_bg_color_8(Color c): code_{find_closest_table_color<Args::Color::ANSI8>(c)} {}
-
-    std::ostream & operator()(std::ostream &os) const override
-    {
-        return os<<"\x1B[48;5;"<<code_<<'m';
-    };
-private:
-    int code_{0};
-};
-
-class set_color_4: public color_mod
-{
-public:
-    explicit set_color_4(Color c)
-    {
-        auto index = find_closest_table_color<Args::Color::ANSI4>(c);
-        if(index < 8)
-            code_ = index + 30;
-        else if(index < 16)
-            code_ = index + 90 - 8;
+            os << ";2;" << static_cast<int>(color.r) << ';' << static_cast<int>(color.g) << ';' << static_cast<int>(color.b);
+        }
         else
-            throw std::runtime_error{"ASNI4 index out of range"};
+        {
+            if(color_type == Args::Color::ANSI8)
+            {
+                auto index = find_closest_table_color<Args::Color::ANSI8>(color);
+
+                if(color_mode == Color_mode::FG)
+                    os << "38";
+                else
+                    os << "48";
+
+                os << ";5;" << index;
+            }
+            else // ANSI4
+            {
+                auto index = find_closest_table_color<Args::Color::ANSI4>(color);
+
+                int offset = 40;
+
+                if(color_mode == Color_mode::FG)
+                    offset = 30;
+
+                if(index < 8)
+                    os <<  index + offset;
+                else if(index < 16)
+                    os << index + offset + 60 - 8;
+                else
+                    throw std::runtime_error{"ASNI4 index out of range"};
+            }
+        }
+
+        os << 'm';
+        command_ = os.str();
     }
 
-    std::ostream & operator()(std::ostream &os) const override
+    friend std::ostream & operator<<(std::ostream &os, const set_color & sc)
     {
-        return os<<"\x1B["<<code_<<'m';
-    };
-private:
-    int code_{0};
-};
-
-class set_bg_color_4: public color_mod
-{
-public:
-    explicit set_bg_color_4(Color c)
-    {
-        auto index = find_closest_table_color<Args::Color::ANSI4>(c);
-        if(index < 8)
-            code_ = index + 40;
-        else if(index < 16)
-            code_ = index + 100 - 8;
-        else
-            throw std::runtime_error{"ASNI4 index out of range"};
+        return os << sc.command_;
     }
 
-    std::ostream & operator()(std::ostream &os) const override
-    {
-        return os<<"\x1B["<<code_<<'m';
-    };
 private:
-    int code_{0};
+    std::string command_;
 };
-
-std::ostream & operator<<(std::ostream &os, const color_mod & sc)
-{
-    return sc(os);
-}
 
 std::ostream & clear_color(std::ostream & os)
 {
@@ -333,29 +291,16 @@ void write_ascii(const Image & img, const Char_vals & char_vals, const Args & ar
             if(args.force_ascii || args.color == Args::Color::NONE)
                 disp_char =char_vals[static_cast<unsigned char>(color.to_gray() * 255.0f)];
 
-            switch(args.color)
+            if(args.color == Args::Color::NONE)
             {
-            case Args::Color::NONE:
                 out<<disp_char;
-                break;
-            case Args::Color::ANSI4:
+            }
+            else
+            {
                 if(args.force_ascii)
-                    out<<set_color_4(color)<<disp_char;
+                    out<<set_color(color, args.color, Color_mode::FG)<<disp_char;
                 else
-                    out<<set_bg_color_4(color)<<' ';
-                break;
-            case Args::Color::ANSI8:
-                if(args.force_ascii)
-                    out<<set_color_8(color)<<disp_char;
-                else
-                    out<<set_bg_color_8(color)<<' ';
-                break;
-            case Args::Color::ANSI24:
-                if(args.force_ascii)
-                    out<<set_color(color)<<disp_char;
-                else
-                    out<<set_bg_color(color)<<' ';
-                break;
+                    out<<set_color(color, args.color, Color_mode::BG)<<' ';
             }
         }
         if(args.color != Args::Color::NONE)
