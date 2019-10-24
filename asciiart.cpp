@@ -235,10 +235,10 @@ void write_ascii(const Image & img, const Char_vals & char_vals, const Args & ar
     std::ofstream output_file;
     if(args.output_filename != "-")
         output_file.open(args.output_filename);
-    std::ostream & out = (args.output_filename == "-") ? std::cout : output_file;
+    std::ostream & out = args.output_filename == "-" ? std::cout : output_file;
 
     if(!out)
-        throw std::runtime_error{"Could not open output file: " + std::string{std::strerror(errno)}};
+        throw std::runtime_error{"Could not open output file " + (args.output_filename == "-" ? "" : ("(" + args.output_filename + ") ")) + ": " + std::string{std::strerror(errno)}};
 
     const auto px_col = static_cast<float>(img.get_width()) / args.cols;
     const auto px_row = args.rows > 0 ? static_cast<float>(img.get_height()) / args.rows : px_col * 2.0f;

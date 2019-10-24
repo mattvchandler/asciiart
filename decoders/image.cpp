@@ -39,19 +39,19 @@ void Image::set_size(std::size_t w, std::size_t h)
         if(pos != std::string::npos)
             extension = args.input_filename.substr(pos);
     }
-    std::istream & input = (args.input_filename == "-") ? std::cin : input_file;
+    std::istream & input = args.input_filename == "-" ? std::cin : input_file;
 
     if(!input)
-        throw std::runtime_error{"Could not open input file: " + std::string{std::strerror(errno)}};
+        throw std::runtime_error{"Could not open input file " + (args.input_filename == "-" ? "" : ("(" + args.input_filename + ") ")) + ": " + std::string{std::strerror(errno)}};
 
     Image::Header header;
 
     input.read(std::data(header), std::size(header));
 
     if(input.eof()) // technically, some image files could be smaller than 12 bytes, but they wouldn't be interesting images
-        throw std::runtime_error{"Could not read file header: not enough bytes"};
+        throw std::runtime_error{"Could not read file header " + (args.input_filename == "-" ? "" : ("(" + args.input_filename + ") ")) + ": not enough bytes"};
     else if(!input)
-        throw std::runtime_error{"Could not read input file: " + std::string{std::strerror(errno)}};
+        throw std::runtime_error{"Could not read input file " + (args.input_filename == "-" ? "" : ("(" + args.input_filename + ") ")) + ": " + std::string{std::strerror(errno)}};
 
     // rewind (seekg(0) not always supported for pipes)
     for(auto i = std::rbegin(header); i != std::rend(header); ++i)
