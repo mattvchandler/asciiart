@@ -1,10 +1,19 @@
-#cmakedefine EXIF_FOUND
-#cmakedefine GIF_FOUND
-#cmakedefine JPEG_FOUND
-#cmakedefine PNG_FOUND
-#cmakedefine SVG_FOUND
-#cmakedefine TIFF_FOUND
-#cmakedefine WEBP_FOUND
-#cmakedefine XPM_FOUND
+#cmakedefine EXIF_FOUND   1
+#cmakedefine GIF_FOUND    1
+#cmakedefine JPEG_FOUND   1
+#cmakedefine PNG_FOUND    1
+#cmakedefine SVG_FOUND    1
+#cmakedefine TIFF_FOUND   1
+#cmakedefine WEBP_FOUND   1
+#cmakedefine XPM_FOUND    1
 
-#cmakedefine HAS_UNISTD
+#cmakedefine HAS_UNISTD   1
+#cmakedefine HAS_ENDIAN   1
+#cmakedefine HAS_BYTESWAP 1
+#cmakedefine HAS_LE32TOH  1
+#cmakedefine HAS_LE16TOH  1
+#cmakedefine HAS_BE32TOH  1
+#cmakedefine HAS_BE16TOH  1
+#cmakedefine HAS_BSWAP16  1
+#cmakedefine HAS_BSWAP32  1
+#cmakedefine BIG_ENDIAN   1

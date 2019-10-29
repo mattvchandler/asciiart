@@ -26,6 +26,19 @@ pkg_check_modules(XPM xpm)
 
 include(CheckIncludeFiles)
 check_include_files(unistd.h HAS_UNISTD)
+check_include_files(endian.h HAS_ENDIAN)
+check_include_files(byteswap.h HAS_BYTESWAP)
+
+include(CheckSymbolExists)
+check_symbol_exists(le32toh "endian.h" HAS_LE32TOH)
+check_symbol_exists(le16toh "endian.h" HAS_LE16TOH)
+check_symbol_exists(be32toh "endian.h" HAS_BE32TOH)
+check_symbol_exists(be16toh "endian.h" HAS_BE16TOH)
+check_symbol_exists(bswap_16 "byteswap.h" HAS_BSWAP16)
+check_symbol_exists(bswap_32 "byteswap.h" HAS_BSWAP32)
+
+include(TestBigEndian)
+test_big_endian(BIG_ENDIAN)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 

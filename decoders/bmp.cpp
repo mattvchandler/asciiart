@@ -79,7 +79,11 @@ bmp_data read_bmp_header(std::istream & in, std::size_t & file_pos)
 
             in.ignore(2);
             readb(in, bmp.bpp);
-            readb(in, bmp.compression);
+
+            std::underlying_type_t<bmp_data::Compression> compression;
+            readb(in, compression);
+            bmp.compression = static_cast<bmp_data::Compression>(compression);
+
             in.ignore(12);
             readb(in, bmp.palette_size);
             in.ignore(4);
