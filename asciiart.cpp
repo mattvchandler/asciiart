@@ -1,9 +1,11 @@
 #include "asciiart.hpp"
 
-#include <iostream>
+#include <algorithm>
 #include <fstream>
+#include <iostream>
 #include <map>
 #include <sstream>
+#include <stdexcept>
 
 #include <cmath>
 #include <cstring>

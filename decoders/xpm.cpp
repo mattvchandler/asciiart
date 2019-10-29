@@ -1,6 +1,7 @@
 #include "xpm.hpp"
 
 #include <map>
+#include <stdexcept>
 #include <string>
 
 #include  <X11/xpm.h>

@@ -1,6 +1,7 @@
 #include "gif.hpp"
 
 #include <iostream>
+#include <stdexcept>
 
 #include <gif_lib.h>
 

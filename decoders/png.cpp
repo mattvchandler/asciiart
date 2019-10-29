@@ -1,6 +1,7 @@
 #include "png.hpp"
 
 #include <iostream>
+#include <stdexcept>
 
 #include <png.h>
 

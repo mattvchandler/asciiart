@@ -128,7 +128,7 @@ private:
             ("nocolor", "disable colors. Default when output is not stdout to terminal")
             ("ascii",   "use ascii chars instead of colored backgrounds. Enabled when --nocolor set");
 
-        const std::string filetype_group = "Input file detection overide";
+        const std::string filetype_group = "Input file detection override";
         options.add_options(filetype_group)("tga", "Interpret input as a TGA file");
 
     #ifdef SVG_FOUND

@@ -1,22 +1,23 @@
 #include "bmp.hpp"
 
 #include <bitset>
+#include <stdexcept>
 
 #include <cstdint>
 
 struct bmp_data
 {
-    uint32_t pixel_offset {0};
+    std::uint32_t pixel_offset {0};
     std::size_t width{0};
     std::size_t height{0};
     bool bottom_to_top {true};
-    uint16_t bpp {0};
-    enum class Compression: uint32_t {BI_RGB=0, BI_RLE8=1, BI_RLE4=2, BI_BITFIELDS=3} compression{Compression::BI_RGB};
-    uint32_t palette_size {0};
-    uint32_t red_mask {0};
-    uint32_t green_mask {0};
-    uint32_t blue_mask {0};
-    uint32_t alpha_mask {0};
+    std::uint16_t bpp {0};
+    enum class Compression: std::uint32_t {BI_RGB=0, BI_RLE8=1, BI_RLE4=2, BI_BITFIELDS=3} compression{Compression::BI_RGB};
+    std::uint32_t palette_size {0};
+    std::uint32_t red_mask {0};
+    std::uint32_t green_mask {0};
+    std::uint32_t blue_mask {0};
+    std::uint32_t alpha_mask {0};
 
     std::vector<Color> palette;
 };
@@ -28,7 +29,7 @@ bmp_data read_bmp_header(std::istream & in, std::size_t & file_pos)
     in.ignore(10);
     readb(in, bmp.pixel_offset);
 
-    uint32_t header_size {0};
+    std::uint32_t header_size {0};
     readb(in, header_size);
 
     file_pos += 18;
@@ -37,7 +38,7 @@ bmp_data read_bmp_header(std::istream & in, std::size_t & file_pos)
     {
         case 12: // BITMAPCOREHEADER
         {
-            int16_t width, height;
+            std::int16_t width, height;
             readb(in, width);
             if(width < 0)
                 width = -width;
@@ -63,7 +64,7 @@ bmp_data read_bmp_header(std::istream & in, std::size_t & file_pos)
         case 108: // BITMAPV4HEADER
         case 124: // BITMAPV5HEADER
         {
-            int32_t width, height;
+            std::int32_t width, height;
             readb(in, width);
             if(width < 0)
                 width = -width;
@@ -121,7 +122,7 @@ bmp_data read_bmp_header(std::istream & in, std::size_t & file_pos)
     if(bmp.bpp != 1 && bmp.bpp != 4 && bmp.bpp != 8 && bmp.bpp != 16 && bmp.bpp != 24 && bmp.bpp != 32)
         throw std::runtime_error {"Unsupported bit depth: " + std::to_string(bmp.bpp)};
 
-    if(bmp.palette_size > (uint64_t{1} << bmp.bpp))
+    if(bmp.palette_size > (std::uint64_t{1} << bmp.bpp))
         throw std::runtime_error {"Invalid palette size: " + std::to_string(bmp.palette_size)};
 
     if(bmp.compression != bmp_data::Compression::BI_RGB &&
@@ -143,7 +144,7 @@ bmp_data read_bmp_header(std::istream & in, std::size_t & file_pos)
 
     if(bmp.bpp < 16)
     {
-        bmp.palette.resize(bmp.palette_size == 0 ? uint64_t{1}<<bmp.bpp : bmp.palette_size);
+        bmp.palette.resize(bmp.palette_size == 0 ? std::uint64_t{1}<<bmp.bpp : bmp.palette_size);
         in.read(reinterpret_cast<char*>(std::data(bmp.palette)), std::size(bmp.palette) * sizeof(Color));
 
         // convert BGR to RGB
@@ -213,17 +214,17 @@ void read_uncompressed(std::istream & in, bmp_data & bmp, std::vector<std::vecto
                 }
                 else // BI_BITFIELDS
                 {
-                    uint16_t rshift = 0, rmask = bmp.red_mask;
-                    uint16_t gshift = 0, gmask = bmp.green_mask;
-                    uint16_t bshift = 0, bmask = bmp.blue_mask;
-                    uint16_t ashift = 0, amask = bmp.alpha_mask;
+                    std::uint16_t rshift = 0, rmask = bmp.red_mask;
+                    std::uint16_t gshift = 0, gmask = bmp.green_mask;
+                    std::uint16_t bshift = 0, bmask = bmp.blue_mask;
+                    std::uint16_t ashift = 0, amask = bmp.alpha_mask;
 
                     for(; rmask != 0 && (rmask & 0x1) == 0; ++rshift) { rmask >>= 1; }
                     for(; gmask != 0 && (gmask & 0x1) == 0; ++gshift) { gmask >>= 1; }
                     for(; bmask != 0 && (bmask & 0x1) == 0; ++bshift) { bmask >>= 1; }
                     for(; amask != 0 && (amask & 0x1) == 0; ++ashift) { amask >>= 1; }
 
-                    uint16_t packed = (static_cast<uint16_t>(hi) << 8) | static_cast<uint16_t>(lo);
+                    std::uint16_t packed = (static_cast<std::uint16_t>(hi) << 8) | static_cast<std::uint16_t>(lo);
 
                     color.r = (packed & bmp.red_mask)   >> rshift;
                     color.g = (packed & bmp.green_mask) >> gshift;
@@ -258,17 +259,17 @@ void read_uncompressed(std::istream & in, bmp_data & bmp, std::vector<std::vecto
                 }
                 else // BI_BITFIELDS
                 {
-                    uint32_t rshift = 0, rmask = bmp.red_mask;
-                    uint32_t gshift = 0, gmask = bmp.green_mask;
-                    uint32_t bshift = 0, bmask = bmp.blue_mask;
-                    uint32_t ashift = 0, amask = bmp.alpha_mask;
+                    std::uint32_t rshift = 0, rmask = bmp.red_mask;
+                    std::uint32_t gshift = 0, gmask = bmp.green_mask;
+                    std::uint32_t bshift = 0, bmask = bmp.blue_mask;
+                    std::uint32_t ashift = 0, amask = bmp.alpha_mask;
 
                     for(; rmask != 0 && (rmask & 0x1) == 0; ++rshift) { rmask >>= 1; }
                     for(; gmask != 0 && (gmask & 0x1) == 0; ++gshift) { gmask >>= 1; }
                     for(; bmask != 0 && (bmask & 0x1) == 0; ++bshift) { bmask >>= 1; }
                     for(; amask != 0 && (amask & 0x1) == 0; ++ashift) { amask >>= 1; }
 
-                    uint32_t packed = (static_cast<uint32_t>(b4) << 24) | (static_cast<uint32_t>(b3) << 16) | (static_cast<uint32_t>(b2) << 8) | static_cast<uint32_t>(b1);
+                    std::uint32_t packed = (static_cast<std::uint32_t>(b4) << 24) | (static_cast<std::uint32_t>(b3) << 16) | (static_cast<std::uint32_t>(b2) << 8) | static_cast<std::uint32_t>(b1);
 
                     color.r = (packed & bmp.red_mask)   >> rshift;
                     color.g = (packed & bmp.green_mask) >> gshift;

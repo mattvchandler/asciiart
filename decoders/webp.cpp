@@ -1,5 +1,7 @@
 #include "webp.hpp"
 
+#include <stdexcept>
+
 #include <webp/decode.h>
 
 Webp::Webp(std::istream & input)

@@ -1,20 +1,20 @@
 #include "tga.hpp"
 
-#include <cstdint>
+#include <stdexcept>
 
 struct Tga_data
 {
     bool rle_compressed {false};
-    enum class Color_type: uint8_t { indexed=1, color=2, grayscale=3 } color;
-    uint16_t width {0};
-    uint16_t height {0};
-    uint8_t bpp {0};
+    enum class Color_type: std::uint8_t { indexed=1, color=2, grayscale=3 } color;
+    std::uint16_t width {0};
+    std::uint16_t height {0};
+    std::uint8_t bpp {0};
     bool bottom_to_top { true};
 
     std::vector<Color> palette;
 };
 
-Color read_pixel(const unsigned char * byte, Tga_data::Color_type color, uint8_t bpp, const std::vector<Color> & palette)
+Color read_pixel(const unsigned char * byte, Tga_data::Color_type color, std::uint8_t bpp, const std::vector<Color> & palette)
 {
     if(color == Tga_data::Color_type::color)
     {
@@ -58,7 +58,7 @@ Color read_pixel(const unsigned char * byte, Tga_data::Color_type color, uint8_t
         case 15:
         case 16:
         {
-            uint16_t idx = static_cast<uint16_t>(byte[1]) << 8 | static_cast<uint16_t>(byte[0]);
+            std::uint16_t idx = static_cast<std::uint16_t>(byte[1]) << 8 | static_cast<std::uint16_t>(byte[0]);
             return palette[idx];
         }
         }
@@ -75,15 +75,15 @@ Tga_data read_tga_header(std::istream & in)
 {
     Tga_data tga;
 
-    uint8_t id_length;
+    std::uint8_t id_length;
     readb(in, id_length);
 
-    uint8_t color_map_type;
+    std::uint8_t color_map_type;
     readb(in, color_map_type);
     if(color_map_type > 1)
         throw std::runtime_error {"Unsupported TGA color map type: " + std::to_string((int)color_map_type)};
 
-    uint8_t image_type = 0;
+    std::uint8_t image_type = 0;
     readb(in, image_type);
     if(    image_type != 1 && image_type != 2  && image_type != 3
         && image_type != 9 && image_type != 10 && image_type != 11)
@@ -94,8 +94,8 @@ Tga_data read_tga_header(std::istream & in)
     tga.rle_compressed = image_type & 0x8;
     tga.color = static_cast<Tga_data::Color_type>(image_type & 0x3);
 
-    uint16_t color_map_start_idx, color_map_num_entries;
-    uint8_t color_map_bpp;
+    std::uint16_t color_map_start_idx, color_map_num_entries;
+    std::uint8_t color_map_bpp;
     readb(in, color_map_start_idx);
     readb(in, color_map_num_entries);
     readb(in, color_map_bpp);
@@ -108,7 +108,7 @@ Tga_data read_tga_header(std::istream & in)
     readb(in, tga.height);
     readb(in, tga.bpp);
 
-    uint8_t image_descriptor;
+    std::uint8_t image_descriptor;
     readb(in, image_descriptor);
     tga.bottom_to_top = !((image_descriptor & 0x20) >> 5); // if 0, image is upside down
     auto interleaved = (image_descriptor & 0xC0) >> 6;
@@ -135,7 +135,7 @@ Tga_data read_tga_header(std::istream & in)
     {
         if(tga.color == Tga_data::Color_type::indexed)
         {
-            const uint8_t num_bytes = (color_map_bpp + 7) / 8; // ceiling division
+            const std::uint8_t num_bytes = (color_map_bpp + 7) / 8; // ceiling division
             std::vector<char> bytes(num_bytes);
 
             tga.palette.resize(color_map_num_entries);
@@ -190,12 +190,12 @@ void read_compressed(std::istream & in, const Tga_data & tga, std::vector<std::v
         }
     };
 
-    const uint8_t num_bytes = (tga.bpp + 7) / 8; // ceiling division
+    const std::uint8_t num_bytes = (tga.bpp + 7) / 8; // ceiling division
     std::vector<char> bytes(num_bytes);
 
     while(row < tga.height)
     {
-        uint8_t b;
+        std::uint8_t b;
         readb(in, b);
         auto len = (b & 0x7F) + 1;
 
@@ -204,12 +204,12 @@ void read_compressed(std::istream & in, const Tga_data & tga, std::vector<std::v
             in.read(std::data(bytes), num_bytes);
             auto val = read_pixel(reinterpret_cast<unsigned char *>(std::data(bytes)), tga.color, tga.bpp, tga.palette);
 
-            for(uint8_t i = 0; i < len; ++i)
+            for(std::uint8_t i = 0; i < len; ++i)
                 store_val(val);
         }
         else // raw packet
         {
-            for(uint8_t i = 0; i < len; ++i)
+            for(std::uint8_t i = 0; i < len; ++i)
             {
                 in.read(std::data(bytes), num_bytes);
                 auto val = read_pixel(reinterpret_cast<unsigned char *>(std::data(bytes)), tga.color, tga.bpp, tga.palette);

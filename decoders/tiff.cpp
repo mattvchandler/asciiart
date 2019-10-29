@@ -1,5 +1,6 @@
 #include "tiff.hpp"
 
+#include <stdexcept>
 #include <cstring>
 
 #include <tiff.h>

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <bitset>
+#include <stdexcept>
 
 std::string read_skip_comments(std::istream & in)
 {
@@ -194,7 +195,7 @@ void Pnm::read_P5(std::istream & input)
     {
         std::vector<unsigned char> rowbuf(width_);
         input.read(reinterpret_cast<char *>(std::data(rowbuf)), std::size(rowbuf));
-        std::transform(std::begin(rowbuf), std::end(rowbuf), std::begin(image_data_[row]), [max_val](char a) { return Color{static_cast<unsigned char>(a / max_val * 255.0f)}; });
+        std::transform(std::begin(rowbuf), std::end(rowbuf), std::begin(image_data_[row]), [max_val](unsigned char a) { return Color{static_cast<unsigned char>(a / max_val * 255.0f)}; });
     }
 }
 

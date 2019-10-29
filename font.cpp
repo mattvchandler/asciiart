@@ -1,5 +1,7 @@
 #include "font.hpp"
 
+#include <stdexcept>
+
 [[nodiscard]] std::string get_font_path(const std::string & font_name)
 {
     struct Fontconfig

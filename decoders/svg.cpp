@@ -1,5 +1,7 @@
 #include "svg.hpp"
 
+#include <stdexcept>
+
 #include <librsvg/rsvg.h>
 #include <gio/gio.h>
 

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <stdexcept>
 
 #include <csetjmp>
 
@@ -76,7 +77,6 @@ private:
 
     std::istream & input_;
     std::array<JOCTET, 4096> buffer_;
-    JOCTET * buffer_p_ { std::data(buffer_) };
 };
 
 enum class Orientation:short { r_0=1, r_180=3, r_270=6, r_90=8 };
