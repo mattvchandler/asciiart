@@ -16,6 +16,7 @@
 
 #include "bmp.hpp"
 #include "gif.hpp"
+#include "ico.hpp"
 #include "jpeg.hpp"
 #include "png.hpp"
 #include "pnm.hpp"
@@ -195,6 +196,10 @@ void readb(std::istream & i, std::int8_t & t)
             #else
             throw std::runtime_error{"Not compiled with GIF support"};
             #endif
+        }
+        else if(is_ico(header))
+        {
+            return std::make_unique<Ico>(input);
         }
         else if(is_jpeg(header))
         {

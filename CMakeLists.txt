@@ -49,6 +49,8 @@ add_executable(asciiart
     main.cpp
     decoders/image.cpp
     decoders/bmp.cpp
+    decoders/bmp_common.cpp
+    decoders/ico.cpp
     decoders/pnm.cpp
     decoders/tga.cpp
     )

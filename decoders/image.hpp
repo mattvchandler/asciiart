@@ -41,6 +41,13 @@ class Image
 public:
     virtual ~Image() = default;
 
+    void swap(Image & other)
+    {
+        std::swap(width_, other.width_);
+        std::swap(height_, other.height_);
+        std::swap(image_data_, other.image_data_);
+    }
+
     const std::vector<Color> & operator[](std::size_t i) const
     {
         return image_data_[i];
