@@ -21,6 +21,7 @@
 #include "jpeg.hpp"
 #include "png.hpp"
 #include "pnm.hpp"
+#include "sif.hpp"
 #include "svg.hpp"
 #include "tga.hpp"
 #include "tiff.hpp"
@@ -333,6 +334,9 @@ void readb(std::istream & i, std::int8_t & t)
         return std::make_unique<Xpm>(input);
         break;
     #endif
+    case Args::Force_file::aoc_2019_sif:
+        return std::make_unique<Sif>(input);
+        break;
     default:
         throw std::runtime_error{"Unhandled file format switch"};
     }

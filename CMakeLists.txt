@@ -53,6 +53,7 @@ add_executable(asciiart
     decoders/bmp_common.cpp
     decoders/ico.cpp
     decoders/pnm.cpp
+    decoders/sif.cpp
     decoders/tga.cpp
     )
 

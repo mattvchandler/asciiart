@@ -11,6 +11,7 @@ Supports a variety of image formats:
 * JPEG (requires libjpeg)
 * PNG (requires libpng)
 * PPM / PGM / PBM
+* [SIF](https://adventofcode.com/2019/day/8)
 * SVG (requires librsvg)
 * TGA
 * TIFF (requires libtiff)

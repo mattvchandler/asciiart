@@ -138,6 +138,8 @@ private:
         options.add_options(filetype_group)("xpm", "Interpret input as an XPM file");
     #endif
 
+        options.add_options(filetype_group)("sif", "Interpret input as a Space Image Format file (from Advent of Code 2019)");
+
         options.add_positionals()
             ("input", "Input image path. Read from stdin if -", cxxopts::value<std::string>()->default_value("-"));
 
@@ -207,6 +209,7 @@ private:
     #ifdef XPM_FOUND
                 + args.count("xpm")
     #endif
+                + args.count("sif")
                 > 1)
         {
             std::cerr<<options.help("Only one file format flag may be specified")<<'\n';
@@ -223,6 +226,8 @@ private:
         else if(args.count("xpm"))
             filetype = Args::Force_file::xpm;
     #endif
+        else if(args.count("sif"))
+            filetype = Args::Force_file::aoc_2019_sif;
 
         return Args{
             args["input"].as<std::string>(),

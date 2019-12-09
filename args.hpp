@@ -28,6 +28,7 @@ struct Args
     #ifdef XPM_FOUND
         xpm,
     #endif
+        aoc_2019_sif,
     } force_file { Force_file::detect };
 };
 
