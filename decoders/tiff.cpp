@@ -8,18 +8,9 @@
 
 struct Tiff_reader
 {
-    explicit Tiff_reader(std::istream & input)
-    {
-        std::array<char, 4096> buffer;
-        while(input)
-        {
-            input.read(std::data(buffer), std::size(buffer));
-            if(input.bad())
-                throw std::runtime_error {"Error reading TIFF file"};
-
-            data.insert(std::end(data), std::begin(buffer), std::begin(buffer) + input.gcount());
-        }
-    }
+    explicit Tiff_reader(std::istream & input):
+        data { Image::read_input_to_memory(input) }
+    {}
 
     std::vector<unsigned char> data;
     std::size_t pos {0};
@@ -56,7 +47,6 @@ toff_t tiff_size(thandle_t hnd)
     auto in = reinterpret_cast<Tiff_reader*>(hnd);
     return std::size(in->data);
 }
-
 
 Tiff::Tiff(std::istream & input)
 {

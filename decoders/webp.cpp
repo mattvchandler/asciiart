@@ -6,17 +6,7 @@
 
 Webp::Webp(std::istream & input)
 {
-    // read whole into memory
-    std::vector<unsigned char> data;
-    std::array<char, 4096> buffer;
-    while(input)
-    {
-        input.read(std::data(buffer), std::size(buffer));
-        if(input.bad())
-            throw std::runtime_error {"Error reading WEBP file"};
-
-        data.insert(std::end(data), std::begin(buffer), std::begin(buffer) + input.gcount());
-    }
+    auto data = Image::read_input_to_memory(input);
 
     int width, height;
     if(!WebPGetInfo(reinterpret_cast<uint8_t *>(std::data(data)), std::size(data), &width, &height))

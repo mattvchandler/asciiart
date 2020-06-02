@@ -28,6 +28,22 @@
 
 bool Image::header_cmp(unsigned char a, char b){ return a == static_cast<unsigned char>(b); };
 
+std::vector<unsigned char> Image::read_input_to_memory(std::istream & input)
+{
+    // read whole stream into memory
+    std::vector<unsigned char> data;
+    std::array<char, 4096> buffer;
+    while(input)
+    {
+        input.read(std::data(buffer), std::size(buffer));
+        if(input.bad())
+            throw std::runtime_error {"Error reading input file"};
+
+        data.insert(std::end(data), std::begin(buffer), std::begin(buffer) + input.gcount());
+    }
+    return data;
+}
+
 void Image::set_size(std::size_t w, std::size_t h)
 {
     width_ = w; height_ = h;

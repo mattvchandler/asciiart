@@ -58,6 +58,7 @@ public:
 
     using Header = std::array<char, max_header_len>;
     static bool header_cmp(unsigned char a, char b);
+    static std::vector<unsigned char> read_input_to_memory(std::istream & input);
 
 protected:
     void set_size(std::size_t w, std::size_t h);

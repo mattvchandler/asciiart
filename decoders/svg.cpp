@@ -26,17 +26,7 @@ struct RAII_stack
 
 RsvgHandle * get_svg_handle(std::istream & input, const std::string & filename)
 {
-    // read whole into memory
-    std::vector<unsigned char> data;
-    std::array<char, 4096> buffer;
-    while(input)
-    {
-        input.read(std::data(buffer), std::size(buffer));
-        if(input.bad())
-            throw std::runtime_error {"Error reading WEBP file"};
-
-        data.insert(std::end(data), std::begin(buffer), std::begin(buffer) + input.gcount());
-    }
+    auto data = Image::read_input_to_memory(input);
 
     GFile * base = g_file_new_for_path((filename == "-") ? "." : filename.c_str());
     GInputStream * is = g_memory_input_stream_new_from_data(std::data(data), std::size(data), nullptr);
