@@ -68,6 +68,7 @@ target_link_libraries(asciiart
     )
 
 if(EXIF_FOUND)
+    target_sources(asciiart PRIVATE decoders/exif.cpp)
     target_include_directories(asciiart PRIVATE ${EXIF_INCLUDE_DIRS})
     target_link_libraries(asciiart ${EXIF_LIBRARIES})
 endif()

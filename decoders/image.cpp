@@ -36,6 +36,39 @@ void Image::set_size(std::size_t w, std::size_t h)
         row.resize(width_);
 }
 
+void Image::transpose_image(exif::Orientation orientation)
+{
+    if(orientation == exif::Orientation::r_90 || orientation == exif::Orientation::r_270)
+    {
+        // prepare a buffer for transposed data if rotated 90 or 270 degrees
+        decltype(image_data_) transpose_buf;
+
+        transpose_buf.resize(width_);
+        for(auto & row: transpose_buf)
+            row.resize(height_);
+
+        for(std::size_t row = 0; row < width_; ++row)
+        {
+            for(std::size_t col = 0; col < height_; ++col)
+            {
+                if(orientation == exif::Orientation::r_90)
+                    transpose_buf[row][col] = image_data_[col][width_ - row - 1];
+                else // r_270
+                    transpose_buf[row][col] = image_data_[height_ - col - 1][row];
+            }
+        }
+
+        std::swap(width_, height_);
+        std::swap(image_data_, transpose_buf);
+    }
+    else if(orientation == exif::Orientation::r_180)
+    {
+        std::reverse(std::begin(image_data_), std::end(image_data_));
+        for(auto && row: image_data_)
+            std::reverse(std::begin(row), std::end(row));
+    }
+}
+
 #ifdef BIG_ENDIAN
 readb_endian host_endian = readb_endian::BE;
 #else

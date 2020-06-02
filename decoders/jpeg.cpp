@@ -9,7 +9,7 @@
 #include <jpeglib.h>
 
 #ifdef EXIF_FOUND
-#include <libexif/exif-data.h>
+#include "exif.hpp"
 #endif
 
 struct my_jpeg_error: public jpeg_error_mgr
@@ -79,38 +79,23 @@ private:
     std::array<JOCTET, 4096> buffer_;
 };
 
-enum class Orientation:short { r_0=1, r_180=3, r_270=6, r_90=8 };
-Orientation get_orientation([[maybe_unused]] const jpeg_decompress_struct & cinfo)
+exif::Orientation get_orientation([[maybe_unused]] const jpeg_decompress_struct & cinfo)
 {
-    Orientation orientation {Orientation::r_0};
 #ifdef EXIF_FOUND
     auto marker = cinfo.marker_list;
     while(marker)
     {
         if(marker->marker == JPEG_APP0 + 1)
         {
-            auto data = exif_data_new_from_data(marker->data, marker->data_length);
-            if(data)
-            {
-                auto orientation_entry = exif_data_get_entry(data, EXIF_TAG_ORIENTATION);
-                if(orientation_entry && orientation_entry->format == EXIF_FORMAT_SHORT)
-                {
-                    orientation = static_cast<Orientation>(exif_get_short(orientation_entry->data, exif_data_get_byte_order(data)));
-                    if(orientation != Orientation::r_0 && orientation != Orientation::r_180 && orientation != Orientation::r_270 && orientation != Orientation::r_90)
-                    {
-                        std::vector<char> desc(256);
-                        exif_entry_get_value(orientation_entry, std::data(desc), std::size(desc));
-                        throw std::runtime_error{"Unsupported JPEG rotation: " + std::string{std::data(desc)} + " (" + std::to_string(static_cast<std::underlying_type_t<Orientation>>(orientation)) + ")"};
-                    }
-                }
-                exif_data_unref(data);
-            }
+            auto exif_orientation = exif::get_orientation(marker->data, marker->data_length);
+            if(exif_orientation)
+                return *exif_orientation;
         }
         marker = marker->next;
     }
 #endif
 
-    return orientation;
+    return exif::Orientation::r_0;
 };
 
 Jpeg::Jpeg(std::istream & input)
@@ -146,23 +131,7 @@ Jpeg::Jpeg(std::istream & input)
 
     jpeg_start_decompress(&cinfo);
 
-    // prepare a buffer for transposed data if rotated 90 or 270 degrees
-    decltype(image_data_) transpose_buf;
-    auto * output_buf = &image_data_;
-    if(orientation == Orientation::r_90 || orientation == Orientation::r_270)
-    {
-        set_size(cinfo.output_height, cinfo.output_width);
-
-        transpose_buf.resize(cinfo.output_height);
-        for(auto & row: transpose_buf)
-            row.resize(cinfo.output_width);
-
-        output_buf = &transpose_buf;
-    }
-    else
-    {
-        set_size(cinfo.output_width, cinfo.output_height);
-    }
+    set_size(cinfo.output_width, cinfo.output_height);
 
     if(cinfo.output_components != 3)
         throw std::runtime_error{"JPEG not converted to RGB"};
@@ -173,38 +142,11 @@ Jpeg::Jpeg(std::istream & input)
         auto ptr = std::data(buffer);
         jpeg_read_scanlines(&cinfo, &ptr, 1);
         for(std::size_t i = 0; i < cinfo.output_width; ++i)
-            (*output_buf)[cinfo.output_scanline - 1][i] = Color{buffer[i * 3], buffer[i * 3 + 1], buffer[i * 3 + 2]};
+            image_data_[cinfo.output_scanline - 1][i] = Color{buffer[i * 3], buffer[i * 3 + 1], buffer[i * 3 + 2]};
     }
 
     // rotate as needed
-    switch(orientation)
-    {
-    case Orientation::r_0:
-        break;
-    case Orientation::r_180: // reverse rows and columns in-place
-        std::reverse(std::begin(image_data_), std::end(image_data_));
-        for(auto && row: image_data_)
-            std::reverse(std::begin(row), std::end(row));
-        break;
-    case Orientation::r_270:
-        for(std::size_t row = 0; row < height_; ++row)
-        {
-            for(std::size_t col = 0; col < width_; ++col)
-            {
-                image_data_[row][col] = transpose_buf[width_ - col - 1][row];
-            }
-        }
-        break;
-    case Orientation::r_90:
-        for(std::size_t row = 0; row < height_; ++row)
-        {
-            for(std::size_t col = 0; col < width_; ++col)
-            {
-                image_data_[row][col] = transpose_buf[col][height_ - row - 1];
-            }
-        }
-        break;
-    }
+    transpose_image(orientation);
 
     jpeg_finish_decompress(&cinfo);
     jpeg_destroy_decompress(&cinfo);

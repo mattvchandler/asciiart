@@ -10,6 +10,7 @@
 #include <cstdint>
 
 #include "../args.hpp"
+#include "exif.hpp"
 
 // set to the size of the longest magic number
 constexpr std::size_t max_header_len = 12; // 12 bytes needed to identify JPEGs
@@ -60,6 +61,7 @@ public:
 
 protected:
     void set_size(std::size_t w, std::size_t h);
+    void transpose_image(exif::Orientation orientation);
 
     std::size_t width_{0};
     std::size_t height_{0};
