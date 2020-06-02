@@ -16,6 +16,7 @@
 
 #include "bmp.hpp"
 #include "gif.hpp"
+#include "heif.hpp"
 #include "ico.hpp"
 #include "jpeg.hpp"
 #include "png.hpp"
@@ -244,6 +245,14 @@ void readb(std::istream & i, std::int8_t & t)
             return std::make_unique<Gif>(input);
             #else
             throw std::runtime_error{"Not compiled with GIF support"};
+            #endif
+        }
+        else if(is_heif(header))
+        {
+            #ifdef HEIF_FOUND
+            return std::make_unique<Heif>(input);
+            #else
+            throw std::runtime_error{"Not compiled with HEIF support"};
             #endif
         }
         else if(is_ico(header))
