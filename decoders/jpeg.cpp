@@ -86,11 +86,8 @@ exif::Orientation get_orientation([[maybe_unused]] const jpeg_decompress_struct 
     while(marker)
     {
         if(marker->marker == JPEG_APP0 + 1)
-        {
-            auto exif_orientation = exif::get_orientation(marker->data, marker->data_length);
-            if(exif_orientation)
-                return *exif_orientation;
-        }
+            return exif::get_orientation(marker->data, marker->data_length);
+
         marker = marker->next;
     }
 #endif
