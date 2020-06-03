@@ -5,6 +5,7 @@ Display an image in the terminal using ANSI colors, or ASCII art.
 Supports a variety of image formats:
 
 * BMP
+* FLIF (requires libflif)
 * GIF (requires giflib)
 * HEIF / HEIC (requires libheif)
 * ICO / CUR

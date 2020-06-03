@@ -15,6 +15,7 @@
 #endif
 
 #include "bmp.hpp"
+#include "flif.hpp"
 #include "gif.hpp"
 #include "heif.hpp"
 #include "ico.hpp"
@@ -239,6 +240,14 @@ void readb(std::istream & i, std::int8_t & t)
         if(is_bmp(header))
         {
             return std::make_unique<Bmp>(input);
+        }
+        else if(is_flif(header))
+        {
+            #ifdef FLIF_FOUND
+            return std::make_unique<Flif>(input);
+            #else
+            throw std::runtime_error{"Not compiled with FLIF support"};
+            #endif
         }
         else if(is_gif(header))
         {
