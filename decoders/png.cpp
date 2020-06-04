@@ -5,6 +5,10 @@
 
 #include <png.h>
 
+#ifdef EXIF_FOUND
+#include "exif.hpp"
+#endif
+
 void read_fn(png_structp png_ptr, png_bytep data, png_size_t length) noexcept
 {
     auto in = static_cast<std::istream *>(png_get_io_ptr(png_ptr));
@@ -33,10 +37,16 @@ Png::Png(std::istream & input)
         png_destroy_read_struct(&png_ptr, nullptr, nullptr);
         throw std::runtime_error{"Error initializing libpng info"};
     }
+    auto end_info_ptr = png_create_info_struct(png_ptr);
+    if(!end_info_ptr)
+    {
+        png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
+        throw std::runtime_error{"Error initializing libpng info"};
+    }
 
     if(setjmp(png_jmpbuf(png_ptr)))
     {
-        png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
+        png_destroy_read_struct(&png_ptr, &info_ptr, &end_info_ptr);
         throw std::runtime_error{"Error reading with libpng"};
     }
 
@@ -85,5 +95,28 @@ Png::Png(std::istream & input)
         }
     }
 
-    png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
+    #ifdef EXIF_FOUND
+    auto orientation { exif::Orientation::r_0};
+
+    png_bytep exif = nullptr;
+    png_uint_32 exif_length = 0;
+
+    png_read_end(png_ptr, end_info_ptr);
+    if(png_get_eXIf_1(png_ptr, info_ptr, &exif_length, &exif) != 0 || png_get_eXIf_1(png_ptr, end_info_ptr, &exif_length, &exif) != 0)
+    {
+        if (exif_length > 1)
+        {
+            std::vector<unsigned char> exif_buf(exif_length + 6);
+            for(auto i = 0; i < 6; ++i)
+                exif_buf[i] = "Exif\0\0"[i];
+            std::copy(exif, exif + exif_length, std::begin(exif_buf) + 6);
+
+            orientation = exif::get_orientation(std::data(exif_buf), std::size(exif_buf));
+        }
+    }
+
+    transpose_image(orientation);
+    #endif
+
+    png_destroy_read_struct(&png_ptr, &info_ptr, &end_info_ptr);
 }
