@@ -15,6 +15,7 @@
 #endif
 
 #include "bmp.hpp"
+#include "bpg.hpp"
 #include "flif.hpp"
 #include "gif.hpp"
 #include "heif.hpp"
@@ -240,6 +241,14 @@ void readb(std::istream & i, std::int8_t & t)
         if(is_bmp(header))
         {
             return std::make_unique<Bmp>(input);
+        }
+        else if(is_bpg(header))
+        {
+            #ifdef BPG_FOUND
+            return std::make_unique<Bpg>(input);
+            #else
+            throw std::runtime_error{"Not compiled with BPG support"};
+            #endif
         }
         else if(is_flif(header))
         {

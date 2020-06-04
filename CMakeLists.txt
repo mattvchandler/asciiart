@@ -30,6 +30,7 @@ check_include_files(unistd.h HAS_UNISTD)
 check_include_files(endian.h HAS_ENDIAN)
 check_include_files(byteswap.h HAS_BYTESWAP)
 
+check_include_files(libbpg.h BPG_FOUND)
 check_include_files(flif_dec.h FLIF_FOUND)
 
 include(CheckSymbolExists)
@@ -71,6 +72,10 @@ target_link_libraries(asciiart
     ${FONTCONFIG_LIBRARIES}
     )
 
+if(BPG_FOUND)
+    target_sources(asciiart PRIVATE decoders/bpg.cpp)
+    target_link_libraries(asciiart bpg)
+endif()
 if(EXIF_FOUND)
     target_sources(asciiart PRIVATE decoders/exif.cpp)
     target_include_directories(asciiart PRIVATE ${EXIF_INCLUDE_DIRS})
