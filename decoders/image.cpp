@@ -215,6 +215,8 @@ void readb(std::istream & i, std::int8_t & t)
         auto pos = args.input_filename.find_last_of('.');
         if(pos != std::string::npos)
             extension = args.input_filename.substr(pos);
+        for(auto && i: extension)
+            i = std::tolower(i);
     }
     std::istream & input = args.input_filename == "-" ? std::cin : input_file;
 
