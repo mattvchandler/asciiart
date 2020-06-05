@@ -1,7 +1,7 @@
 #include "jp2.hpp"
 
 #include <array>
-#include<iostream>
+#include <iostream>
 
 #include <cstring>
 
@@ -10,6 +10,8 @@
 #ifdef EXIF_FOUND
 #include <libexif/exif-data.h>
 #endif
+
+#include "jp2_color.hpp"
 
 struct Reader
 {
@@ -107,7 +109,51 @@ Jp2::Jp2(std::istream & input, Type type)
     }
     opj_stream_destroy(stream);
 
-    if(image->color_space != OPJ_CLRSPC_SRGB && image->color_space != OPJ_CLRSPC_GRAY) // TODO, we should probably try to support some of these others. gimp and ffmpeg have good examples, as well as in the openjpeg dump util
+    if(image->color_space == OPJ_CLRSPC_UNSPECIFIED || image->color_space == OPJ_CLRSPC_UNKNOWN)
+    {
+        if(image->numcomps == 1 || image->numcomps == 2)
+            image->color_space = OPJ_CLRSPC_GRAY;
+        else if(image->numcomps == 5)
+            image->color_space = OPJ_CLRSPC_CMYK;
+        else
+        {
+            opj_image_destroy(image);
+            opj_destroy_codec(decoder);
+            throw std::runtime_error{"Unknown JP2 color space"};
+        }
+    }
+
+    switch(image->color_space)
+    {
+        case OPJ_CLRSPC_SYCC:
+            if(!color_sycc_to_rgb(image))
+            {
+                opj_image_destroy(image);
+                opj_destroy_codec(decoder);
+                throw std::runtime_error{"Could not convert JP2 color space from YCbCr to RGB"};
+            }
+            break;
+        case OPJ_CLRSPC_CMYK:
+            if(!color_cmyk_to_rgb(image))
+            {
+                opj_image_destroy(image);
+                opj_destroy_codec(decoder);
+                throw std::runtime_error{"Could not convert JP2 color space from YCbCr to RGB"};
+            }
+            break;
+        case OPJ_CLRSPC_EYCC:
+            if(!color_esycc_to_rgb(image))
+            {
+                opj_image_destroy(image);
+                opj_destroy_codec(decoder);
+                throw std::runtime_error{"Could not convert JP2 color space from YCbCr to RGB"};
+            }
+            break;
+        default:
+            break;
+    }
+
+    if(image->color_space != OPJ_CLRSPC_SRGB && image->color_space != OPJ_CLRSPC_GRAY)
     {
         opj_image_destroy(image);
         opj_destroy_codec(decoder);
