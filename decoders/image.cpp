@@ -282,7 +282,15 @@ void readb(std::istream & i, std::int8_t & t)
         else if(is_jp2(header))
         {
             #ifdef JP2_FOUND
-            return std::make_unique<Jp2>(input);
+            return std::make_unique<Jp2>(input, Jp2::Type::JP2);
+            #else
+            throw std::runtime_error{"Not compiled with JPEG 2000 support"};
+            #endif
+        }
+        else if(is_jpx(header))
+        {
+            #ifdef JP2_FOUND
+            return std::make_unique<Jp2>(input, Jp2::Type::JPX);
             #else
             throw std::runtime_error{"Not compiled with JPEG 2000 support"};
             #endif
@@ -341,6 +349,14 @@ void readb(std::istream & i, std::int8_t & t)
             return std::make_unique<Xpm>(input);
             #else
             throw std::runtime_error{"Not compiled with XPM support"};
+            #endif
+        }
+        else if(extension == ".jpt")
+        {
+            #ifdef JP2_FOUND
+            return std::make_unique<Jp2>(input, Jp2::Type::JPT);
+            #else
+            throw std::runtime_error{"Not compiled with JPEG 2000 support"};
             #endif
         }
         else

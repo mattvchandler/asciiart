@@ -46,11 +46,25 @@ void warn_cb(const char * msg, void*)
     std::cerr<<"[WARNING]: "<<msg<<'\n';
 }
 
-Jp2::Jp2(std::istream & input)
+Jp2::Jp2(std::istream & input, Type type)
 {
     Reader reader {0, Image::read_input_to_memory(input)};
 
-    auto decoder = opj_create_decompress(OPJ_CODEC_JP2);
+    auto codec_type {OPJ_CODEC_JP2};
+    switch(type)
+    {
+        case Type::JP2:
+            codec_type = OPJ_CODEC_JP2;
+            break;
+        case Type::JPX:
+            codec_type = OPJ_CODEC_JPX;
+            break;
+        case Type::JPT:
+            codec_type = OPJ_CODEC_JPT;
+            break;
+    }
+
+    auto decoder = opj_create_decompress(codec_type);
     if(!decoder)
         throw std::runtime_error{"Could not create JP2 decoder"};
 
@@ -168,8 +182,9 @@ Jp2::Jp2(std::istream & input)
     opj_destroy_codec(decoder);
 
     #ifdef EXIF_FOUND
+    // this is a hack, and might not work on every image
     auto orientation { exif::Orientation::r_0};
-    const std::array<unsigned char, 9> exif_start_str = {'E', 'x', 'i', 'f', '-', '>', 'J', 'P', '2'};
+    const std::array<unsigned char, 20> exif_start_str = {'u', 'u', 'i', 'd', 'J', 'p', 'g', 'T', 'i', 'f', 'f', 'E', 'x', 'i', 'f', '-', '>', 'J', 'P', '2'};
     const std::array<unsigned char, 6> exif_replacement_str = {'E', 'x', 'i', 'f', '\0', '\0'};
 
     if(auto offset = std::search(std::begin(reader.data), std::end(reader.data), std::begin(exif_start_str), std::end(exif_start_str));

@@ -11,6 +11,7 @@ Supports a variety of image formats:
 * HEIF / HEIC (requires libheif)
 * ICO / CUR
 * JPEG (requires libjpeg)
+* JPEG 2000 (requires OpenJPEG)
 * PNG (requires libpng)
 * PPM / PGM / PBM
 * [SIF](https://adventofcode.com/2019/day/8)
