@@ -27,6 +27,7 @@ namespace exif
                     throw std::runtime_error{"Unsupported EXIF rotation: " + std::string{std::data(desc)} + " (" + std::to_string(static_cast<std::underlying_type_t<Orientation>>(orientation)) + ")"};
                 }
             }
+            exif_data_unref(exif_data);
         }
         return orientation;
     }

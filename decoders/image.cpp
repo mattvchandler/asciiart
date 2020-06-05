@@ -20,6 +20,7 @@
 #include "gif.hpp"
 #include "heif.hpp"
 #include "ico.hpp"
+#include "jp2.hpp"
 #include "jpeg.hpp"
 #include "png.hpp"
 #include "pnm.hpp"
@@ -277,6 +278,14 @@ void readb(std::istream & i, std::int8_t & t)
         else if(is_ico(header))
         {
             return std::make_unique<Ico>(input);
+        }
+        else if(is_jp2(header))
+        {
+            #ifdef JP2_FOUND
+            return std::make_unique<Jp2>(input);
+            #else
+            throw std::runtime_error{"Not compiled with JPEG 2000 support"};
+            #endif
         }
         else if(is_jpeg(header))
         {

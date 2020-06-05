@@ -3,6 +3,7 @@
 #cmakedefine FLIF_FOUND   1
 #cmakedefine GIF_FOUND    1
 #cmakedefine HEIF_FOUND   1
+#cmakedefine JP2_FOUND    1
 #cmakedefine JPEG_FOUND   1
 #cmakedefine PNG_FOUND    1
 #cmakedefine SVG_FOUND    1
