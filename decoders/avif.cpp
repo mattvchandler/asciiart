@@ -31,7 +31,6 @@ Avif::Avif(std::istream & input)
 
         auto orientation { exif::Orientation::r_0};
         #ifdef EXIF_FOUND
-        // TODO: this is totally unteseted. I have been unable to find or create any AVIF files with EXIF data
         if(decoder->image->exif.size > 0)
             orientation = exif::get_orientation(decoder->image->exif.data, decoder->image->exif.size);
         #endif // EXIF_FOUND

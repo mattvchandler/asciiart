@@ -80,7 +80,7 @@ target_link_libraries(asciiart
 
 if(AVIF_FOUND)
     target_sources(asciiart PRIVATE decoders/avif.cpp)
-    target_link_libraries(asciiart libavif)
+    target_link_libraries(asciiart avif)
 endif()
 if(BPG_FOUND)
     target_sources(asciiart PRIVATE decoders/bpg.cpp)

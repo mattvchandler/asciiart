@@ -1,7 +1,7 @@
 #ifndef AVIF_HPP
 #define AVIF_HPP
 
-// Note: libheif is supposed to support reading AVIF files. I have not yet found
+// TODO: libheif is supposed to support reading AVIF files. I have not yet found
 // any AVIF files that it does work with, though. If libheif support improves in
 // the future, we can retire this module and use the heif module instead
 #include "image.hpp"
