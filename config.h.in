@@ -1,3 +1,4 @@
+#cmakedefine AVIF_FOUND   1
 #cmakedefine BPG_FOUND    1
 #cmakedefine EXIF_FOUND   1
 #cmakedefine FLIF_FOUND   1

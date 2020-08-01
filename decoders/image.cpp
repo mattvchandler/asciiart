@@ -14,6 +14,7 @@
 #include <byteswap.h>
 #endif
 
+#include "avif.hpp"
 #include "bmp.hpp"
 #include "bpg.hpp"
 #include "flif.hpp"
@@ -241,7 +242,15 @@ void readb(std::istream & i, std::int8_t & t)
     switch(args.force_file)
     {
     case Args::Force_file::detect:
-        if(is_bmp(header))
+        if(is_avif(header))
+        {
+            #ifdef AVIF_FOUND
+            return std::make_unique<Avif>(input);
+            #else
+            throw std::runtime_error{"Not compiled with AVIF support"};
+            #endif
+        }
+        else if(is_bmp(header))
         {
             return std::make_unique<Bmp>(input);
         }

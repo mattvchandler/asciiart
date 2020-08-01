@@ -8,7 +8,7 @@
 inline bool is_heif(const Image::Header & header)
 {
     const std::array<unsigned char, 4> ftyp_header = {'f', 't', 'y', 'p'};
-    const std::array<std::array<unsigned char, 4>, 12> brand = {{
+    const std::array<std::array<unsigned char, 4>, 8> brand = {{
         {'h', 'e', 'i', 'c'},
         {'h', 'e', 'i', 'x'},
         {'h', 'e', 'v', 'c'},
@@ -17,10 +17,6 @@ inline bool is_heif(const Image::Header & header)
         {'h', 'e', 'i', 's'},
         {'h', 'e', 'v', 'm'},
         {'h', 'e', 'v', 's'},
-        {'m', 'i', 'f', '1'},
-        {'m', 's', 'f', '1'},
-        {'a', 'v', 'i', 'f'},
-        {'a', 'v', 'i', 's'},
     }};
 
     if(!std::equal(std::begin(ftyp_header), std::end(ftyp_header), std::begin(header) + 4, Image::header_cmp))
