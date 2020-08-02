@@ -101,17 +101,17 @@ void Image::convert(const Args & args) const
     auto & ext = args.convert_filename->second;
 
     if(ext == ".bmp")
-        ;// Bmp::write(out, *this, args.bg);
+        ;// Bmp::write(out, *this, args.invert);
     #ifdef JPEG_FOUND
     else if(ext == ".jpeg" || ext == ".jpg")
-        ;// Jpeg::write(out, *this, args.bg);
+        ;// Jpeg::write(out, *this, args.bg, args.invert);
     #endif
     #ifdef PNG_FOUND
     else if(ext == ".png")
-        ;// Png::write(out, *this, args.bg);
+        ;// Png::write(out, *this, args.invert);
     #endif
     else if(ext == ".ppm")
-        Pnm::write(out, *this, args.bg);
+        Pnm::write(out, *this, args.bg, args.invert);
     else
         throw std::runtime_error {"Unsupported conversion type: " + ext};
 }
