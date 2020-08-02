@@ -3,7 +3,7 @@
 
 #include "args.hpp"
 #include "font.hpp"
-#include "decoders/image.hpp"
+#include "codecs/image.hpp"
 
 void write_ascii(const Image & img, const Char_vals & char_vals, const Args & args);
 #endif // ASCIIART_HPP

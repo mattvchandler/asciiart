@@ -57,13 +57,13 @@ add_executable(asciiart
     asciiart.cpp
     font.cpp
     main.cpp
-    decoders/image.cpp
-    decoders/bmp.cpp
-    decoders/bmp_common.cpp
-    decoders/ico.cpp
-    decoders/pnm.cpp
-    decoders/sif.cpp
-    decoders/tga.cpp
+    codecs/image.cpp
+    codecs/bmp.cpp
+    codecs/bmp_common.cpp
+    codecs/ico.cpp
+    codecs/pnm.cpp
+    codecs/sif.cpp
+    codecs/tga.cpp
     )
 
 target_include_directories(asciiart PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
@@ -79,64 +79,64 @@ target_link_libraries(asciiart
     )
 
 if(AVIF_FOUND)
-    target_sources(asciiart PRIVATE decoders/avif.cpp)
+    target_sources(asciiart PRIVATE codecs/avif.cpp)
     target_link_libraries(asciiart avif)
 endif()
 if(BPG_FOUND)
-    target_sources(asciiart PRIVATE decoders/bpg.cpp)
+    target_sources(asciiart PRIVATE codecs/bpg.cpp)
     target_link_libraries(asciiart bpg)
 endif()
 if(EXIF_FOUND)
-    target_sources(asciiart PRIVATE decoders/exif.cpp)
+    target_sources(asciiart PRIVATE codecs/exif.cpp)
     target_include_directories(asciiart PRIVATE ${EXIF_INCLUDE_DIRS})
     target_link_libraries(asciiart ${EXIF_LIBRARIES})
 endif()
 if(FLIF_FOUND)
-    target_sources(asciiart PRIVATE decoders/flif.cpp)
+    target_sources(asciiart PRIVATE codecs/flif.cpp)
     target_link_libraries(asciiart flif_dec)
 endif()
 if(GIF_FOUND)
-    target_sources(asciiart PRIVATE decoders/gif.cpp)
+    target_sources(asciiart PRIVATE codecs/gif.cpp)
     target_include_directories(asciiart PRIVATE ${GIF_INCLUDE_DIRS})
     target_link_libraries(asciiart ${GIF_LIBRARIES})
 endif()
 if(HEIF_FOUND)
-    target_sources(asciiart PRIVATE decoders/heif.cpp)
+    target_sources(asciiart PRIVATE codecs/heif.cpp)
     target_include_directories(asciiart PRIVATE ${HEIF_INCLUDE_DIRS})
     target_link_libraries(asciiart ${HEIF_LIBRARIES})
 endif()
 if(JP2_FOUND)
-    target_sources(asciiart PRIVATE decoders/jp2.cpp decoders/jp2_color.cpp)
+    target_sources(asciiart PRIVATE codecs/jp2.cpp codecs/jp2_color.cpp)
     target_include_directories(asciiart PRIVATE ${JP2_INCLUDE_DIRS})
     target_link_libraries(asciiart ${JP2_LIBRARIES})
 endif()
 if(JPEG_FOUND)
-    target_sources(asciiart PRIVATE decoders/jpeg.cpp)
+    target_sources(asciiart PRIVATE codecs/jpeg.cpp)
     target_include_directories(asciiart PRIVATE ${JPEG_INCLUDE_DIRS})
     target_link_libraries(asciiart ${JPEG_LIBRARIES})
 endif()
 if(PNG_FOUND)
-    target_sources(asciiart PRIVATE decoders/png.cpp)
+    target_sources(asciiart PRIVATE codecs/png.cpp)
     target_include_directories(asciiart PRIVATE ${PNG_INCLUDE_DIRS})
     target_link_libraries(asciiart ${PNG_LIBRARIES})
 endif()
 if(SVG_FOUND)
-    target_sources(asciiart PRIVATE decoders/svg.cpp)
+    target_sources(asciiart PRIVATE codecs/svg.cpp)
     target_include_directories(asciiart PRIVATE ${SVG_INCLUDE_DIRS})
     target_link_libraries(asciiart ${SVG_LIBRARIES})
 endif()
 if(TIFF_FOUND)
-    target_sources(asciiart PRIVATE decoders/tiff.cpp)
+    target_sources(asciiart PRIVATE codecs/tiff.cpp)
     target_include_directories(asciiart PRIVATE ${TIFF_INCLUDE_DIRS})
     target_link_libraries(asciiart ${TIFF_LIBRARIES})
 endif()
 if(WEBP_FOUND)
-    target_sources(asciiart PRIVATE decoders/webp.cpp)
+    target_sources(asciiart PRIVATE codecs/webp.cpp)
     target_include_directories(asciiart PRIVATE ${WEBP_INCLUDE_DIRS})
     target_link_libraries(asciiart ${WEBP_LIBRARIES})
 endif()
 if(XPM_FOUND)
-    target_sources(asciiart PRIVATE decoders/xpm.cpp)
+    target_sources(asciiart PRIVATE codecs/xpm.cpp)
     target_include_directories(asciiart PRIVATE ${XPM_INCLUDE_DIRS})
     target_link_libraries(asciiart ${XPM_LIBRARIES})
 endif()

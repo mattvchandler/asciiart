@@ -3,7 +3,7 @@
 
 #include "asciiart.hpp"
 #include "font.hpp"
-#include "decoders/image.hpp"
+#include "codecs/image.hpp"
 
 int main(int argc, char * argv[])
 {
