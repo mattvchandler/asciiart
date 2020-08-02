@@ -18,6 +18,7 @@ int main(int argc, char * argv[])
 
         auto img = get_image_data(*args);
         write_ascii(*img, values, *args);
+        img->convert(*args);
     }
     catch(const std::runtime_error & e)
     {

@@ -25,6 +25,8 @@ class Pnm final: public Image
 public:
     explicit Pnm(std::istream & input);
 
+    static void write(std::ostream & path, const Image & image, unsigned char bg);
+
 private:
     void read_P1(std::istream & input);
     void read_P2(std::istream & input);

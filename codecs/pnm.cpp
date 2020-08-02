@@ -216,3 +216,23 @@ void Pnm::read_P6(std::istream & input)
         }
     }
 }
+
+void Pnm::write(std::ostream & out, const Image & img, unsigned char bg)
+{
+    out<<"P6\n"<<img.get_width()<<" "<<img.get_height()<<"\n255\n";
+
+    for(std::size_t row = 0; row < img.get_height(); ++row)
+    {
+        for(std::size_t col = 0; col < img.get_width(); ++col)
+        {
+            // TODO: alpha blending - move asciiart's color and image.hpp color classes into their own header(s)
+            FColor fcolor {img[row][col]};
+            fcolor.alpha_blend(bg / 255.0f);
+            Color color = fcolor;
+
+            out.put(color.r);
+            out.put(color.g);
+            out.put(color.b);
+        }
+    }
+}

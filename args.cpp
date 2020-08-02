@@ -1,5 +1,6 @@
 #include "args.hpp"
 
+#include <filesystem>
 #include <iostream>
 #include <vector>
 
@@ -116,7 +117,7 @@ private:
 #define JPEG_CONVERT_FORMAT
 #endif
 
-#define CONVERT_FORMATS "bmp" JPEG_CONVERT_FORMAT ",pbm" PNG_CONVERT_FORMAT
+#define CONVERT_FORMATS "bmp" JPEG_CONVERT_FORMAT PNG_CONVERT_FORMAT ",ppm"
 
 [[nodiscard]] std::optional<Args> parse_args(int argc, char * argv[])
 {
@@ -244,13 +245,16 @@ private:
         else if(args.count("sif"))
             filetype = Args::Force_file::aoc_2019_sif;
 
-        std::optional<std::filesystem::path> convert_path {args.count("convert") ?
-                                                           std::optional{args["convert"].as<std::string>()} :
-                                                           std::nullopt};
-
-        if(convert_path)
+        std::optional<std::pair<std::string, std::string>> convert_path {};
+        if(args.count("convert"))
         {
-            auto ext = convert_path->extension().string();
+            convert_path.emplace();
+            convert_path->first = args["convert"].as<std::string>();
+
+            std::filesystem::path p = convert_path->first;
+            convert_path->second = p.extension().string();
+
+            auto & ext = convert_path->second;
 
             if(std::size(ext) == 0)
             {
@@ -262,12 +266,12 @@ private:
                 i = std::tolower(i);
             if(ext != ".bmp"
             #ifdef JPEG_FOUND
-               && ext != ".jpeg"
+               && ext != ".jpeg" && ext != ".jpg"
             #endif
-               && ext != ".bpm"
             #ifdef PNG_FOUND
                && ext != ".png"
             #endif
+               && ext != ".ppm"
               )
             {
                 std::cerr<<options.help("Unsupported conversion type: " + ext);

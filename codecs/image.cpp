@@ -91,6 +91,31 @@ void Image::transpose_image(exif::Orientation orientation)
     }
 }
 
+void Image::convert(const Args & args) const
+{
+    if(!args.convert_filename)
+        return;
+
+    std::ofstream out{args.convert_filename->first};
+
+    auto & ext = args.convert_filename->second;
+
+    if(ext == ".bmp")
+        ;// Bmp::write(out, *this, args.bg);
+    #ifdef JPEG_FOUND
+    else if(ext == ".jpeg" || ext == ".jpg")
+        ;// Jpeg::write(out, *this, args.bg);
+    #endif
+    #ifdef PNG_FOUND
+    else if(ext == ".png")
+        ;// Png::write(out, *this, args.bg);
+    #endif
+    else if(ext == ".ppm")
+        Pnm::write(out, *this, args.bg);
+    else
+        throw std::runtime_error {"Unsupported conversion type: " + ext};
+}
+
 #ifdef BIG_ENDIAN
 readb_endian host_endian = readb_endian::BE;
 #else
