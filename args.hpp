@@ -1,6 +1,7 @@
 #ifndef ARGS_HPP
 #define ARGS_HPP
 
+#include <filesystem>
 #include <optional>
 #include <string>
 
@@ -30,7 +31,7 @@ struct Args
     #endif
         aoc_2019_sif,
     } force_file { Force_file::detect };
-    std::optional<std::string> convert_filename;
+    std::optional<std::filesystem::path> convert_filename;
 };
 
 [[nodiscard]] std::optional<Args> parse_args(int argc, char * argv[]);

@@ -244,6 +244,37 @@ private:
         else if(args.count("sif"))
             filetype = Args::Force_file::aoc_2019_sif;
 
+        std::optional<std::filesystem::path> convert_path {args.count("convert") ?
+                                                           std::optional{args["convert"].as<std::string>()} :
+                                                           std::nullopt};
+
+        if(convert_path)
+        {
+            auto ext = convert_path->extension().string();
+
+            if(std::size(ext) == 0)
+            {
+                std::cerr<<options.help("No conversion type specified");
+                return {};
+            }
+
+            for(auto && i: ext)
+                i = std::tolower(i);
+            if(ext != ".bmp"
+            #ifdef JPEG_FOUND
+               && ext != ".jpeg"
+            #endif
+               && ext != ".bpm"
+            #ifdef PNG_FOUND
+               && ext != ".png"
+            #endif
+              )
+            {
+                std::cerr<<options.help("Unsupported conversion type: " + ext);
+                return {};
+            }
+        }
+
         return Args{
             args["input"].as<std::string>(),
             args["output"].as<std::string>(),
@@ -256,7 +287,7 @@ private:
             color,
             args.count("ascii") || color == Args::Color::NONE,
             filetype,
-            (args.count("convert") ? std::optional{args["convert"].as<std::string>()} : std::nullopt)
+            convert_path
         };
     }
     catch(const cxxopts::OptionException & e)
