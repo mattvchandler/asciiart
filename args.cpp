@@ -1,5 +1,6 @@
 #include "args.hpp"
 
+#include <algorithm>
 #include <filesystem>
 #include <iostream>
 #include <vector>
@@ -105,23 +106,29 @@ private:
     inline static const std::string POS_HELP_INDENT = "  ";
 };
 
-#ifdef PNG_FOUND
-#define PNG_CONVERT_FORMAT ",png"
-#else
-#define PNG_CONVERT_FORMAT
-#endif
-
-#ifdef JPEG_FOUND
-#define JPEG_CONVERT_FORMAT ",jpeg"
-#else
-#define JPEG_CONVERT_FORMAT
-#endif
-
-#define CONVERT_FORMATS "bmp" JPEG_CONVERT_FORMAT PNG_CONVERT_FORMAT ",ppm"
-
 [[nodiscard]] std::optional<Args> parse_args(int argc, char * argv[])
 {
     Optional_pos options{argv[0], "Convert an image to ASCII art"};
+
+    std::vector<std::string> convert_formats =
+    {
+        ".bmp",
+        #ifdef JPEG_FOUND
+        ".jpg", ".jpeg",
+        #endif
+        #ifdef PNG_FOUND
+        ".png",
+        #endif
+        ".ppm",
+    };
+
+    std::string convert_format_list;
+    for(std::size_t i = 0; i < std::size(convert_formats); ++i)
+    {
+        if(i > 0)
+            convert_format_list += ',';
+        convert_format_list += convert_formats[i].substr(1);
+    }
 
     try
     {
@@ -134,7 +141,7 @@ private:
             ("b,bg",      "Background color value for transparent images (0-255)",                         cxxopts::value<int>()->default_value("0"),                 "BG")
             ("i,invert",  "Invert colors")
             ("o,output",  "Output text file path. Output to stdout if '-'",                                cxxopts::value<std::string>()->default_value("-"),         "OUTPUT_FILE")
-            ("v,convert", "Convert input to output file. Valid formats: " CONVERT_FORMATS,                 cxxopts::value<std::string>(),                             "OUTPUT_IMAGE_FILE");
+            ("v,convert", "Convert input to output file. Valid formats: " + convert_format_list,           cxxopts::value<std::string>(),                             "OUTPUT_IMAGE_FILE");
 
         const std::string color_group = "Color";
         options.add_options(color_group)
@@ -264,15 +271,8 @@ private:
 
             for(auto && i: ext)
                 i = std::tolower(i);
-            if(ext != ".bmp"
-            #ifdef JPEG_FOUND
-               && ext != ".jpeg" && ext != ".jpg"
-            #endif
-            #ifdef PNG_FOUND
-               && ext != ".png"
-            #endif
-               && ext != ".ppm"
-              )
+
+            if(std::find(std::begin(convert_formats), std::end(convert_formats), ext) == std::end(convert_formats))
             {
                 std::cerr<<options.help("Unsupported conversion type: " + ext);
                 return {};
