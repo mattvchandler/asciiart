@@ -104,6 +104,20 @@ private:
     inline static const std::string POS_HELP_INDENT = "  ";
 };
 
+#ifdef PNG_FOUND
+#define PNG_CONVERT_FORMAT ",png"
+#else
+#define PNG_CONVERT_FORMAT
+#endif
+
+#ifdef JPEG_FOUND
+#define JPEG_CONVERT_FORMAT ",jpeg"
+#else
+#define JPEG_CONVERT_FORMAT
+#endif
+
+#define CONVERT_FORMATS "bmp" JPEG_CONVERT_FORMAT ",pbm" PNG_CONVERT_FORMAT
+
 [[nodiscard]] std::optional<Args> parse_args(int argc, char * argv[])
 {
     Optional_pos options{argv[0], "Convert an image to ASCII art"};
@@ -111,14 +125,15 @@ private:
     try
     {
         options.add_options()
-            ("h,help",   "Show this message and quit")
-            ("f,font",   "Font name to render. Uses fontconfig to find",                                  cxxopts::value<std::string>()->default_value("monospace"),  "FONT_PATTERN")
-            ("s,size",   "Font size, in points",                                                          cxxopts::value<float>()->default_value("12.0"),             "")
-            ("r,rows",   "# of output rows. Enter a negative value to preserve aspect ratio with --cols", cxxopts::value<int>()->default_value("-1"),                 "ROWS")
-            ("c,cols",   "# of output cols",                                                              cxxopts::value<int>()->default_value("80"),                 "COLS")
-            ("b,bg",     "Background color value for transparent images(0-255)",                          cxxopts::value<int>()->default_value("0"),                  "BG")
-            ("i,invert", "Invert colors")
-            ("o,output", "Output text file path. Output to stdout if '-'",                                cxxopts::value<std::string>()->default_value("-"),          "OUTPUT_FILE");
+            ("h,help",    "Show this message and quit")
+            ("f,font",    "Font name to render. Uses fontconfig to find",                                  cxxopts::value<std::string>()->default_value("monospace"), "FONT_PATTERN")
+            ("s,size",    "Font size, in points",                                                          cxxopts::value<float>()->default_value("12.0"),            "")
+            ("r,rows",    "# of output rows. Enter a negative value to preserve aspect ratio with --cols", cxxopts::value<int>()->default_value("-1"),                "ROWS")
+            ("c,cols",    "# of output cols",                                                              cxxopts::value<int>()->default_value("80"),                "COLS")
+            ("b,bg",      "Background color value for transparent images (0-255)",                         cxxopts::value<int>()->default_value("0"),                 "BG")
+            ("i,invert",  "Invert colors")
+            ("o,output",  "Output text file path. Output to stdout if '-'",                                cxxopts::value<std::string>()->default_value("-"),         "OUTPUT_FILE")
+            ("v,convert", "Convert input to output file. Valid formats: " CONVERT_FORMATS,                 cxxopts::value<std::string>(),                             "OUTPUT_IMAGE_FILE");
 
         const std::string color_group = "Color";
         options.add_options(color_group)
@@ -241,6 +256,7 @@ private:
             color,
             args.count("ascii") || color == Args::Color::NONE,
             filetype,
+            (args.count("convert") ? std::optional{args["convert"].as<std::string>()} : std::nullopt)
         };
     }
     catch(const cxxopts::OptionException & e)
