@@ -110,8 +110,12 @@ void Image::convert(const Args & args) const
     else if(ext == ".png")
         ;// Png::write(out, *this, args.invert);
     #endif
+    else if(ext == ".pbm")
+        Pnm::write_pbm(out, *this, args.bg, args.invert);
+    else if(ext == ".pgm")
+        Pnm::write_pgm(out, *this, args.bg, args.invert);
     else if(ext == ".ppm")
-        Pnm::write(out, *this, args.bg, args.invert);
+        Pnm::write_ppm(out, *this, args.bg, args.invert);
     else
         throw std::runtime_error {"Unsupported conversion type: " + ext};
 }

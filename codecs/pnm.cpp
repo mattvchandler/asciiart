@@ -165,7 +165,8 @@ void Pnm::read_P4(std::istream & input)
     // ignore trailing space after header
     input.ignore(1);
     std::bitset<8> bits;
-    int bits_read = 0;
+    int bits_read {0};
+
     for(std::size_t row = 0; row < height_; ++row)
     {
         for(std::size_t col = 0; col < width_; ++col)
@@ -217,7 +218,58 @@ void Pnm::read_P6(std::istream & input)
     }
 }
 
-void Pnm::write(std::ostream & out, const Image & img, unsigned char bg, bool invert)
+void Pnm::write_pbm(std::ostream & out, const Image & img, unsigned char bg, bool invert)
+{
+    out<<"P4\n"<<img.get_width()<<" "<<img.get_height()<<'\n';
+
+    std::bitset<8> bits {0};
+    int bits_written {0};
+
+    auto write = [&out, &bits, &bits_written]()
+    {
+        out.put(static_cast<unsigned char>(bits.to_ulong()));
+        bits = 0;
+        bits_written = 0;
+    };
+
+    for(std::size_t row = 0; row < img.get_height(); ++row)
+    {
+        for(std::size_t col = 0; col < img.get_width(); ++col)
+        {
+            FColor fcolor {img[row][col]};
+            fcolor.alpha_blend(bg / 255.0f);
+            if(invert)
+                fcolor.invert();
+
+            bits[7 - (bits_written++)] = fcolor.to_gray() < 0.5f;
+
+            if(bits_written >= 8)
+                write();
+        }
+        if(bits_written > 0)
+            write();
+    }
+}
+
+void Pnm::write_pgm(std::ostream & out, const Image & img, unsigned char bg, bool invert)
+{
+    out<<"P5\n"<<img.get_width()<<" "<<img.get_height()<<"\n255\n";
+
+    for(std::size_t row = 0; row < img.get_height(); ++row)
+    {
+        for(std::size_t col = 0; col < img.get_width(); ++col)
+        {
+            FColor fcolor {img[row][col]};
+            fcolor.alpha_blend(bg / 255.0f);
+            if(invert)
+                fcolor.invert();
+
+            out.put(static_cast<unsigned char>(fcolor.to_gray() * 255.0f));
+        }
+    }
+}
+
+void Pnm::write_ppm(std::ostream & out, const Image & img, unsigned char bg, bool invert)
 {
     out<<"P6\n"<<img.get_width()<<" "<<img.get_height()<<"\n255\n";
 
@@ -225,7 +277,6 @@ void Pnm::write(std::ostream & out, const Image & img, unsigned char bg, bool in
     {
         for(std::size_t col = 0; col < img.get_width(); ++col)
         {
-            // TODO: alpha blending - move asciiart's color and image.hpp color classes into their own header(s)
             FColor fcolor {img[row][col]};
             fcolor.alpha_blend(bg / 255.0f);
             if(invert)

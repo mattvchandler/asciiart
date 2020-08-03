@@ -119,7 +119,7 @@ private:
         #ifdef PNG_FOUND
         ".png",
         #endif
-        ".ppm",
+        ".pbm", ".pgm", ".ppm",
     };
 
     std::string convert_format_list;
