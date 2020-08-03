@@ -2,6 +2,8 @@
 
 #include <stdexcept>
 
+#include "readb.hpp"
+
 struct Tga_data
 {
     bool rle_compressed {false};

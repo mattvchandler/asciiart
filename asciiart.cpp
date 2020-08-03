@@ -63,23 +63,10 @@ constexpr auto build_color_table()
 
 constexpr auto color_table = build_color_table();
 
-float color_dist(const FColor & a, const FColor & b)
-{
-    auto key = std::pair{a, b};
-    static std::map<decltype(key), float> lru_cache;
-
-    if(auto lru = lru_cache.find(key); lru != std::end(lru_cache))
-        return lru->second;
-
-    auto dist = std::sqrt((a.r - b.r) * (a.r - b.r) + (a.g - b.g) * (a.g - b.g) + (a.b - b.b) * (a.b - b.b));
-    lru_cache.emplace(key, dist);
-
-    return dist;
-}
-
 template<Args::Color color_type>
 int find_closest_table_color(const Color & color)
 {
+     // TODO: slow
     static_assert(color_type == Args::Color::ANSI4 || color_type == Args::Color::ANSI8, "Only ANSI4 and ANSI8 colors supported");
 
     static std::map<Color, std::size_t> lru_cache;

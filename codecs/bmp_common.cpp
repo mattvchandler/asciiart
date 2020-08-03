@@ -3,6 +3,8 @@
 #include <bitset>
 #include <stdexcept>
 
+#include "readb.hpp"
+
 void read_bmp_file_header(std::istream & in, bmp_data & bmp, std::size_t & file_pos)
 {
     in.ignore(10);
