@@ -63,28 +63,6 @@ constexpr auto build_color_table()
 
 constexpr auto color_table = build_color_table();
 
-template<Args::Color color_type>
-int find_closest_table_color(const Color & color)
-{
-     // TODO: slow
-    static_assert(color_type == Args::Color::ANSI4 || color_type == Args::Color::ANSI8, "Only ANSI4 and ANSI8 colors supported");
-
-    static std::map<Color, std::size_t> lru_cache;
-
-    if(auto lru = lru_cache.find(color); lru != std::end(lru_cache))
-        return lru->second;
-
-    auto end = std::end(color_table);
-    if constexpr(color_type == Args::Color::ANSI4)
-        end = std::begin(color_table) + 16;
-
-    auto min = std::min_element(std::begin(color_table), end, [color = FColor{color}](const Color & a, const Color & b) { return color_dist(a, color) < color_dist(b, color); });
-    auto dist = std::distance(std::begin(color_table), min);
-
-    lru_cache.emplace(color, dist);
-    return dist;
-}
-
 enum class Color_mode {FG, BG};
 class set_color
 {
@@ -110,7 +88,7 @@ public:
         {
             if(color_type == Args::Color::ANSI8)
             {
-                auto index = find_closest_table_color<Args::Color::ANSI8>(color);
+                auto index = std::distance(std::begin(color_table), find_closest_palette_color(std::begin(color_table), std::end(color_table), color));
 
                 if(color_mode == Color_mode::FG)
                     os << "38";
@@ -121,7 +99,7 @@ public:
             }
             else // ANSI4
             {
-                auto index = find_closest_table_color<Args::Color::ANSI4>(color);
+                auto index = std::distance(std::begin(color_table), find_closest_palette_color(std::begin(color_table), std::begin(color_table) + 16, color));
 
                 int offset = 40;
 

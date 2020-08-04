@@ -1,8 +1,9 @@
 #ifndef COLOR_HPP
 #define COLOR_HPP
 
+#include <algorithm>
 #include <array>
-#include <map>
+#include <vector>
 
 #include <cmath>
 
@@ -96,16 +97,13 @@ struct FColor
 
 inline float color_dist(const FColor & a, const FColor & b)
 {
-    auto key = std::pair{a, b};
-    static std::map<decltype(key), float> lru_cache;
+    return std::sqrt((a.r - b.r) * (a.r - b.r) + (a.g - b.g) * (a.g - b.g) + (a.b - b.b) * (a.b - b.b));
+}
 
-    if(auto lru = lru_cache.find(key); lru != std::end(lru_cache))
-        return lru->second;
-
-    auto dist = std::sqrt((a.r - b.r) * (a.r - b.r) + (a.g - b.g) * (a.g - b.g) + (a.b - b.b) * (a.b - b.b));
-    lru_cache.emplace(key, dist);
-
-    return dist;
+template <typename Iter>
+Iter find_closest_palette_color(Iter palette_start, Iter palette_end, const Color & color)
+{
+    return std::min_element(palette_start, palette_end, [color = FColor{color}](const Color & a, const Color & b) { return color_dist(a, color) < color_dist(b, color); });
 }
 
 #endif // COLOR_HPP

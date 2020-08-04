@@ -96,7 +96,7 @@ void Image::convert(const Args & args) const
     if(!args.convert_filename)
         return;
 
-    std::ofstream out{args.convert_filename->first};
+    std::ofstream out{args.convert_filename->first, std::ios_base::binary};
 
     auto & ext = args.convert_filename->second;
 
