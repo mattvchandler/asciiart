@@ -27,6 +27,14 @@ struct Color
         else
             return false;
     }
+
+    constexpr bool operator==(const Color & other) const
+    {
+        return r == other.r
+            && g == other.g
+            && b == other.b
+            && a == other.a;
+    }
 };
 
 struct FColor
@@ -70,12 +78,13 @@ struct FColor
             return false;
     }
 
-    void alpha_blend(float bg)
+    FColor & alpha_blend(float bg)
     {
         r = r * a + bg * (1.0f - a);
         g = g * a + bg * (1.0f - a);
         b = b * a + bg * (1.0f - a);
         a = 1.0f;
+        return *this;
     }
     float to_gray() const
     {
@@ -92,6 +101,71 @@ struct FColor
         r = 1.0f - r;
         g = 1.0f - g;
         b = 1.0f - b;
+    }
+
+    FColor & operator+=(const FColor & other)
+    {
+        r += other.r;
+        g += other.g;
+        b += other.b;
+        a += other.a;
+        return *this;
+    }
+
+    FColor & operator-=(const FColor & other)
+    {
+        r -= other.r;
+        g -= other.g;
+        b -= other.b;
+        a -= other.a;
+        return *this;
+    }
+
+    FColor & operator*=(float other)
+    {
+        r *= other;
+        g *= other;
+        b *= other;
+        a *= other;
+        return *this;
+    }
+
+    FColor & operator/=(float other)
+    {
+        r /= other;
+        g /= other;
+        b /= other;
+        a /= other;
+        return *this;
+    }
+
+    FColor operator+(const FColor & other) const
+    {
+        return FColor{*this} += other;
+    }
+
+    FColor operator-(const FColor & other) const
+    {
+        return FColor{*this} -= other;
+    }
+
+    FColor operator*(float other) const
+    {
+        return FColor{*this} *= other;
+    }
+
+    FColor operator/(float other) const
+    {
+        return FColor{*this} /= other;
+    }
+
+    FColor & clamp()
+    {
+        r = std::clamp(r, 0.0f, 1.0f);
+        g = std::clamp(g, 0.0f, 1.0f);
+        b = std::clamp(b, 0.0f, 1.0f);
+        a = std::clamp(a, 0.0f, 1.0f);
+        return *this;
     }
 };
 

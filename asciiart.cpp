@@ -88,7 +88,7 @@ public:
         {
             if(color_type == Args::Color::ANSI8)
             {
-                auto index = std::distance(std::begin(color_table), find_closest_palette_color(std::begin(color_table), std::end(color_table), color));
+                auto index = std::distance(std::begin(color_table), std::find(std::begin(color_table), std::end(color_table), color));
 
                 if(color_mode == Color_mode::FG)
                     os << "38";
@@ -99,7 +99,7 @@ public:
             }
             else // ANSI4
             {
-                auto index = std::distance(std::begin(color_table), find_closest_palette_color(std::begin(color_table), std::begin(color_table) + 16, color));
+                auto index = std::distance(std::begin(color_table), std::find(std::begin(color_table), std::begin(color_table) + 16, color));
 
                 int offset = 40;
 
@@ -151,12 +151,24 @@ void write_ascii(const Image & img, const Char_vals & char_vals, const Args & ar
     {
         for(std::size_t col = 0; col < scaled_img.get_width(); ++col)
         {
-            FColor color = scaled_img[row][col];
-            color.alpha_blend(bg);
+            scaled_img[row][col] = FColor{scaled_img[row][col]}.alpha_blend(bg);
+        }
+    }
+
+    if(args.color == Args::Color::ANSI8)
+        scaled_img.dither(std::begin(color_table), std::end(color_table));
+    else if(args.color == Args::Color::ANSI4)
+        scaled_img.dither(std::begin(color_table), std::begin(color_table) + 16);
+
+    for(std::size_t row = 0; row < scaled_img.get_height(); ++row)
+    {
+        for(std::size_t col = 0; col < scaled_img.get_width(); ++col)
+        {
+            auto & color = scaled_img[row][col];
 
             char disp_char = ' ';
             if(args.force_ascii || args.color == Args::Color::NONE)
-                disp_char = char_vals[static_cast<unsigned char>(color.to_gray() * 255.0f)];
+                disp_char = char_vals[static_cast<unsigned char>(FColor{color}.to_gray() * 255.0f)];
 
             if(args.color == Args::Color::NONE)
             {
