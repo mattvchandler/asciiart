@@ -36,6 +36,8 @@ public:
     static bool header_cmp(unsigned char a, char b);
     static std::vector<unsigned char> read_input_to_memory(std::istream & input);
 
+    Image scale(std::size_t new_width, std::size_t new_height) const;
+
     void convert(const Args & args) const;
 
 protected:

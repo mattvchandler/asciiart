@@ -143,56 +143,20 @@ void write_ascii(const Image & img, const Char_vals & char_vals, const Args & ar
     if(!out)
         throw std::runtime_error{"Could not open output file " + (args.output_filename == "-" ? "" : ("(" + args.output_filename + ") ")) + ": " + std::string{std::strerror(errno)}};
 
-    const auto px_col = static_cast<float>(img.get_width()) / args.cols;
-    const auto px_row = args.rows > 0 ? static_cast<float>(img.get_height()) / args.rows : px_col * 2.0f;
-
     const auto bg = args.bg / 255.0f;
 
-    for(float row = 0.0f; row < static_cast<float>(img.get_height()); row += px_row)
+    auto scaled_img = img.scale(args.cols, (args.rows > 0 ? args.rows : img.get_height() * args.cols / img.get_width() / 2));
+
+    for(std::size_t row = 0; row < scaled_img.get_height(); ++row)
     {
-        for(float col = 0.0f; col < static_cast<float>(img.get_width()); col += px_col)
+        for(std::size_t col = 0; col < scaled_img.get_width(); ++col)
         {
-            float r_sum = 0.0f;
-            float g_sum = 0.0f;
-            float b_sum = 0.0f;
-            float a_sum = 0.0f;
-
-            float cell_count {0.0f};
-
-            for(float y = row; y < row + px_row && y < img.get_height(); y += 1.0f)
-            {
-                for(float x = col; x < col + px_col && x < img.get_width(); x += 1.0f)
-                {
-                    auto x_ind = static_cast<std::size_t>(x);
-                    auto y_ind = static_cast<std::size_t>(y);
-                    if(x_ind >= img.get_width() || y_ind >= img.get_height())
-                        throw std::runtime_error{"Output coords out of range"};
-
-                    auto pix = img[y_ind][x_ind];
-
-                    r_sum += static_cast<float>(pix.r) * static_cast<float>(pix.r);
-                    g_sum += static_cast<float>(pix.g) * static_cast<float>(pix.g);
-                    b_sum += static_cast<float>(pix.b) * static_cast<float>(pix.b);
-                    a_sum += static_cast<float>(pix.a) * static_cast<float>(pix.a);
-
-                    cell_count += 1.0f;
-                }
-            }
-
-            FColor color {
-                std::sqrt(r_sum / cell_count) / 255.0f,
-                std::sqrt(g_sum / cell_count) / 255.0f,
-                std::sqrt(b_sum / cell_count) / 255.0f,
-                std::sqrt(a_sum / cell_count) / 255.0f
-            };
-
+            FColor color = scaled_img[row][col];
             color.alpha_blend(bg);
-            if(args.invert)
-                color.invert();
 
             char disp_char = ' ';
             if(args.force_ascii || args.color == Args::Color::NONE)
-                disp_char =char_vals[static_cast<unsigned char>(color.to_gray() * 255.0f)];
+                disp_char = char_vals[static_cast<unsigned char>(color.to_gray() * 255.0f)];
 
             if(args.color == Args::Color::NONE)
             {
@@ -206,6 +170,7 @@ void write_ascii(const Image & img, const Char_vals & char_vals, const Args & ar
                     out<<set_color(color, args.color, Color_mode::BG)<<' ';
             }
         }
+
         if(args.color != Args::Color::NONE)
             out<<clear_color;
         out<<'\n';

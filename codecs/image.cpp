@@ -91,6 +91,59 @@ void Image::transpose_image(exif::Orientation orientation)
     }
 }
 
+Image Image::scale(std::size_t new_width, std::size_t new_height) const
+{
+    Image new_img;
+    new_img.set_size(new_width, new_height);
+
+    const auto px_col = static_cast<float>(width_)  / static_cast<float>(new_width);
+    const auto px_row = static_cast<float>(height_) / static_cast<float>(new_height);
+
+    float row = 0.0f;
+    for(std::size_t new_row = 0; new_row < new_height; ++new_row, row += px_row)
+    {
+        float col = 0.0f;
+        for(std::size_t new_col = 0; new_col < new_width; ++new_col, col += px_col)
+        {
+            float r_sum = 0.0f;
+            float g_sum = 0.0f;
+            float b_sum = 0.0f;
+            float a_sum = 0.0f;
+
+            float cell_count {0.0f};
+
+            for(float y = row; y < row + px_row && y < height_; y += 1.0f)
+            {
+                for(float x = col; x < col + px_col && x < width_; x += 1.0f)
+                {
+                    auto x_ind = static_cast<std::size_t>(x);
+                    auto y_ind = static_cast<std::size_t>(y);
+                    if(x_ind >= width_ || y_ind >= height_)
+                        throw std::runtime_error{"Output coords out of range"};
+
+                    auto pix = image_data_[y_ind][x_ind];
+
+                    r_sum += static_cast<float>(pix.r) * static_cast<float>(pix.r);
+                    g_sum += static_cast<float>(pix.g) * static_cast<float>(pix.g);
+                    b_sum += static_cast<float>(pix.b) * static_cast<float>(pix.b);
+                    a_sum += static_cast<float>(pix.a) * static_cast<float>(pix.a);
+
+                    cell_count += 1.0f;
+                }
+            }
+
+            new_img.image_data_[new_row][new_col] = Color{
+                static_cast<unsigned char>(std::sqrt(r_sum / cell_count)),
+                static_cast<unsigned char>(std::sqrt(g_sum / cell_count)),
+                static_cast<unsigned char>(std::sqrt(b_sum / cell_count)),
+                static_cast<unsigned char>(std::sqrt(a_sum / cell_count))
+            };
+        }
+    }
+
+    return new_img;
+}
+
 void Image::convert(const Args & args) const
 {
     if(!args.convert_filename)
