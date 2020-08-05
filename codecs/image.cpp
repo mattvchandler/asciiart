@@ -269,6 +269,8 @@ void Image::convert(const Args & args) const
         return;
 
     std::ofstream out{args.convert_filename->first, std::ios_base::binary};
+    if(!out)
+        throw std::runtime_error {"Could not open " + args.convert_filename->first + " for writing: " + std::strerror(errno)};
 
     auto & ext = args.convert_filename->second;
 
@@ -276,7 +278,7 @@ void Image::convert(const Args & args) const
         ;// Bmp::write(out, *this, args.invert);
     #ifdef JPEG_FOUND
     else if(ext == ".jpeg" || ext == ".jpg")
-        ;// Jpeg::write(out, *this, args.bg, args.invert);
+        Jpeg::write(out, *this, args.bg, args.invert);
     #endif
     #ifdef PNG_FOUND
     else if(ext == ".png")

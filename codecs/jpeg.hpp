@@ -24,6 +24,8 @@ class Jpeg final: public Image
 {
 public:
     explicit Jpeg(std::istream & input);
+
+    static void write(std::ostream & out, const Image & img, unsigned char bg, bool invert);
 };
 #endif
 #endif // JPEG_HPP

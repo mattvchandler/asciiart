@@ -97,6 +97,8 @@ exif::Orientation get_orientation([[maybe_unused]] const jpeg_decompress_struct 
 
 Jpeg::Jpeg(std::istream & input)
 {
+    std::vector<unsigned char> buffer;
+
     jpeg_decompress_struct cinfo;
     my_jpeg_error jerr;
 
@@ -105,13 +107,13 @@ Jpeg::Jpeg(std::istream & input)
 
     my_jpeg_source source(input);
 
-    jpeg_create_decompress(&cinfo);
-
     if(setjmp(jerr.setjmp_buffer))
     {
         jpeg_destroy_decompress(&cinfo);
-        throw std::runtime_error{"Error reading with libjpg"};
+        throw std::runtime_error{"Error reading with libjpeg"};
     }
+
+    jpeg_create_decompress(&cinfo);
 
     cinfo.src = &source;
 
@@ -133,9 +135,10 @@ Jpeg::Jpeg(std::istream & input)
     if(cinfo.output_components != 3)
         throw std::runtime_error{"JPEG not converted to RGB"};
 
+    buffer.resize(cinfo.output_width * 3);
+
     while(cinfo.output_scanline < cinfo.output_height)
     {
-        std::vector<unsigned char> buffer(cinfo.output_width * 3);
         auto ptr = std::data(buffer);
         jpeg_read_scanlines(&cinfo, &ptr, 1);
         for(std::size_t i = 0; i < cinfo.output_width; ++i)
@@ -147,4 +150,105 @@ Jpeg::Jpeg(std::istream & input)
 
     jpeg_finish_decompress(&cinfo);
     jpeg_destroy_decompress(&cinfo);
+}
+
+class my_jpeg_dest: public jpeg_destination_mgr
+{
+public:
+    explicit my_jpeg_dest(std::ostream & output):
+        output_{output}
+    {
+        init_destination = init;
+        empty_output_buffer = empty_buffer;
+        term_destination = term;
+        next_output_byte = nullptr;
+        free_in_buffer = 0;
+    }
+
+private:
+
+    static void init(j_compress_ptr cinfo)
+    {
+        auto & dest = *static_cast<my_jpeg_dest*>(cinfo->dest);
+        dest.next_output_byte = std::data(dest.buffer_);
+        dest.free_in_buffer = std::size(dest.buffer_);
+    }
+
+    static boolean empty_buffer(j_compress_ptr cinfo)
+    {
+        auto & dest = *static_cast<my_jpeg_dest*>(cinfo->dest);
+        dest.output_.write(reinterpret_cast<char *>(std::data(dest.buffer_)), std::size(dest.buffer_));
+        if(dest.output_.bad())
+            std::longjmp(static_cast<my_jpeg_error *>(cinfo->err)->setjmp_buffer, 1);
+
+        dest.next_output_byte = std::data(dest.buffer_);
+        dest.free_in_buffer = std::size(dest.buffer_);
+
+        return true;
+    }
+
+    static void term(j_compress_ptr cinfo)
+    {
+        auto & dest = *static_cast<my_jpeg_dest*>(cinfo->dest);
+
+        if(dest.free_in_buffer < std::size(dest.buffer_))
+        {
+            dest.output_.write(reinterpret_cast<char *>(std::data(dest.buffer_)), std::size(dest.buffer_) - dest.free_in_buffer);
+            dest.output_.flush();
+        }
+    }
+
+    std::ostream & output_;
+    std::array<JOCTET, 4096> buffer_;
+};
+
+void Jpeg::write(std::ostream & out, const Image & img, unsigned char bg, bool invert)
+{
+    std::vector<unsigned char> buffer(img.get_width() * 3);
+
+    jpeg_compress_struct cinfo;
+    my_jpeg_error jerr;
+
+    cinfo.err = jpeg_std_error(&jerr);
+
+    my_jpeg_dest dest(out);
+
+    if(setjmp(jerr.setjmp_buffer))
+    {
+        jpeg_destroy_compress(&cinfo);
+        throw std::runtime_error{"Error writing with libjpeg"};
+    }
+
+    jpeg_create_compress(&cinfo);
+
+    cinfo.dest = &dest;
+    cinfo.image_width = img.get_width();
+    cinfo.image_height = img.get_height();
+    cinfo.input_components = 3;
+    cinfo.in_color_space = JCS_RGB;
+
+    jpeg_set_defaults(&cinfo);
+
+    jpeg_start_compress(&cinfo, true);
+
+    while(cinfo.next_scanline < cinfo.image_height)
+    {
+        for(std::size_t col = 0; col < img.get_width(); ++col)
+        {
+            FColor fcolor = img[cinfo.next_scanline][col];
+            fcolor.alpha_blend(bg / 255.0f);
+            if(invert)
+                fcolor.invert();
+
+            buffer[col * 3    ] = static_cast<unsigned char>(fcolor.r * 255.0f);
+            buffer[col * 3 + 1] = static_cast<unsigned char>(fcolor.g * 255.0f);
+            buffer[col * 3 + 2] = static_cast<unsigned char>(fcolor.b * 255.0f);
+        }
+
+        auto buffer_ptr = std::data(buffer);
+        jpeg_write_scanlines(&cinfo, &buffer_ptr, 1);
+    }
+
+    jpeg_finish_compress(&cinfo);
+    jpeg_destroy_compress(&cinfo);
 }
