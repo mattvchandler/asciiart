@@ -41,7 +41,7 @@ public:
     static std::vector<unsigned char> read_input_to_memory(std::istream & input);
 
     Image scale(std::size_t new_width, std::size_t new_height) const;
-
+    std::vector<Color> generate_palette(std::size_t num_colors, bool onebit_alpha = false) const;
     void convert(const Args & args) const;
 
     template <typename Iter>

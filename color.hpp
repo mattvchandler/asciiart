@@ -35,6 +35,70 @@ struct Color
             && b == other.b
             && a == other.a;
     }
+
+    Color & operator+=(const Color & other)
+    {
+        r += other.r;
+        g += other.g;
+        b += other.b;
+        a += other.a;
+        return *this;
+    }
+    Color & operator-=(const Color & other)
+    {
+        r -= other.r;
+        g -= other.g;
+        b -= other.b;
+        a -= other.a;
+        return *this;
+    }
+
+    Color & operator*=(decltype(r) other)
+    {
+        r *= other;
+        g *= other;
+        b *= other;
+        a *= other;
+        return *this;
+    }
+    Color & operator/=(decltype(r) other)
+    {
+        r /= other;
+        g /= other;
+        b /= other;
+        a /= other;
+        return *this;
+    }
+    Color & operator%=(decltype(r) other)
+    {
+        r %= other;
+        g %= other;
+        b %= other;
+        a %= other;
+        return *this;
+    }
+
+    Color operator+(const Color & other) const
+    {
+        return Color{*this} += other;
+    }
+    Color operator-(const Color & other) const
+    {
+        return Color{*this} -= other;
+    }
+
+    Color operator*(decltype(r) other) const
+    {
+        return Color{*this} *= other;
+    }
+    Color operator/(decltype(r) other) const
+    {
+        return Color{*this} /= other;
+    }
+    Color operator%(decltype(r) other) const
+    {
+        return Color{*this} %= other;
+    }
 };
 
 struct FColor
@@ -111,7 +175,6 @@ struct FColor
         a += other.a;
         return *this;
     }
-
     FColor & operator-=(const FColor & other)
     {
         r -= other.r;
@@ -129,7 +192,6 @@ struct FColor
         a *= other;
         return *this;
     }
-
     FColor & operator/=(float other)
     {
         r /= other;
@@ -143,18 +205,16 @@ struct FColor
     {
         return FColor{*this} += other;
     }
-
     FColor operator-(const FColor & other) const
     {
         return FColor{*this} -= other;
     }
 
-    FColor operator*(float other) const
+    FColor operator*(decltype(r) other) const
     {
         return FColor{*this} *= other;
     }
-
-    FColor operator/(float other) const
+    FColor operator/(decltype(r) other) const
     {
         return FColor{*this} /= other;
     }

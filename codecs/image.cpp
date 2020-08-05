@@ -4,6 +4,7 @@
 #include <iostream>
 #include <stdexcept>
 
+#include <cassert>
 #include <cmath>
 #include <cstring>
 
@@ -142,6 +143,124 @@ Image Image::scale(std::size_t new_width, std::size_t new_height) const
     }
 
     return new_img;
+}
+
+std::vector<Color> Image::generate_palette(std::size_t num_colors, bool gif_transparency) const
+{
+    if(num_colors == 0)
+        throw std::domain_error {"empty palette requested"};
+
+    if((num_colors & (num_colors - 1)) != 0)
+        throw std::domain_error {"palette_size must be a power of 2"};
+
+    std::vector<Color> palette(width_ * height_);
+
+    for(std::size_t row = 0; row < height_; ++row)
+    {
+        for(std::size_t col = 0; col < width_; ++col)
+        {
+            Color c = image_data_[row][col];
+            if(gif_transparency)
+            {
+                if(c.a > 127)
+                    c.a = 255;
+                else
+                    c = {0, 0, 0, 0};
+            }
+
+            palette[row * width_ + col] = c;
+        }
+    }
+
+    if(std::size(palette) <= num_colors)
+    {
+        palette.resize(num_colors);
+        return palette;
+    }
+
+    std::vector partitions = { std::pair{std::begin(palette), std::end(palette)} };
+
+    // TODO: slow
+    while(std::size(partitions) < num_colors)
+    {
+        decltype(partitions) next_partitions;
+        for(auto && [begin, end]: partitions)
+        {
+            // find which color has the maximum range, and sort this partion by that color's value
+            Color min = {
+                std::numeric_limits<decltype(Color::r)>::max(),
+                std::numeric_limits<decltype(Color::g)>::max(),
+                std::numeric_limits<decltype(Color::b)>::max(),
+                gif_transparency ? std::numeric_limits<decltype(Color::a)>::min() : std::numeric_limits<decltype(Color::a)>::max()};
+            Color max = {
+                std::numeric_limits<decltype(Color::r)>::min(),
+                std::numeric_limits<decltype(Color::g)>::min(),
+                std::numeric_limits<decltype(Color::b)>::min(),
+                std::numeric_limits<decltype(Color::a)>::min()};
+
+            for(auto i = begin; i != end; ++i)
+            {
+                min.r = std::min(min.r, i->r);
+                max.r = std::max(max.r, i->r);
+                min.g = std::min(min.g, i->g);
+                max.g = std::max(max.g, i->g);
+                min.b = std::min(min.b, i->b);
+                max.b = std::max(max.b, i->b);
+                min.a = std::min(min.a, i->a);
+                max.a = std::max(max.a, i->a);
+            }
+
+            auto r_range = max.r - min.r;
+            auto g_range = max.g - min.g;
+            auto b_range = max.b - min.b;
+            auto a_range = max.a - min.a;
+
+            if(r_range > g_range  && r_range > b_range && r_range > a_range)
+                std::sort(begin, end, [](const Color & a, const Color & b){ return a.r < b.r; });
+
+            else if(g_range > b_range && g_range > a_range)
+                std::sort(begin, end, [](const Color & a, const Color & b){ return a.g < b.g; });
+
+            else if(b_range > a_range)
+                std::sort(begin, end, [](const Color & a, const Color & b){ return a.b < b.b; });
+
+            else
+                std::sort(begin, end, [](const Color & a, const Color & b){ return a.a < b.a; });
+
+            auto mid = begin + std::distance(begin, end) / 2;
+            next_partitions.emplace_back(begin, mid);
+            next_partitions.emplace_back(mid, end);
+        }
+
+        std::swap(next_partitions, partitions);
+    }
+
+    decltype(palette) reduced_pallete(num_colors);
+
+    assert(std::size(partitions) == num_colors && std::size(reduced_pallete) == num_colors);
+
+    for(std::size_t i = 0; i < num_colors; ++i)
+    {
+        auto && [begin, end] = partitions[i];
+        std::size_t r_avg = 0, g_avg = 0, b_avg = 0, a_avg = 0;
+        for(auto j = begin; j != end; ++j)
+        {
+            r_avg += j->r;
+            g_avg += j->g;
+            b_avg += j->b;
+            a_avg += j->a;
+        }
+        auto n = std::distance(begin, end);
+        reduced_pallete[i] = Color
+        {
+            static_cast<decltype(Color::r)>(r_avg / n),
+            static_cast<decltype(Color::g)>(g_avg / n),
+            static_cast<decltype(Color::b)>(b_avg / n),
+            static_cast<decltype(Color::a)>(a_avg / n)
+        };
+    }
+
+    return reduced_pallete;
 }
 
 void Image::convert(const Args & args) const
