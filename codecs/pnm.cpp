@@ -222,6 +222,23 @@ void Pnm::write_pbm(std::ostream & out, const Image & img, unsigned char bg, boo
 {
     out<<"P4\n"<<img.get_width()<<" "<<img.get_height()<<'\n';
 
+    Image img_copy(img.get_width(), img.get_height());
+    for(std::size_t row = 0; row < img_copy.get_height(); ++row)
+    {
+        for(std::size_t col = 0; col < img_copy.get_width(); ++col)
+        {
+            FColor fcolor {img[row][col]};
+            fcolor.alpha_blend(bg / 255.0f);
+            if(invert)
+                fcolor.invert();
+            auto l = static_cast<unsigned char>(fcolor.to_gray() * 255.0f);
+            img_copy[row][col] = {l, l, l, 255};
+        }
+    }
+
+    std::vector bw_palette {Color{0}, Color{255}};
+    img_copy.dither(std::begin(bw_palette), std::end(bw_palette));
+
     std::bitset<8> bits {0};
     int bits_written {0};
 
@@ -232,16 +249,11 @@ void Pnm::write_pbm(std::ostream & out, const Image & img, unsigned char bg, boo
         bits_written = 0;
     };
 
-    for(std::size_t row = 0; row < img.get_height(); ++row)
+    for(std::size_t row = 0; row < img_copy.get_height(); ++row)
     {
-        for(std::size_t col = 0; col < img.get_width(); ++col)
+        for(std::size_t col = 0; col < img_copy.get_width(); ++col)
         {
-            FColor fcolor {img[row][col]};
-            fcolor.alpha_blend(bg / 255.0f);
-            if(invert)
-                fcolor.invert();
-
-            bits[7 - (bits_written++)] = fcolor.to_gray() < 0.5f;
+            bits[7 - (bits_written++)] = img_copy[row][col].r == 0;
 
             if(bits_written >= 8)
                 write();

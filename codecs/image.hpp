@@ -16,6 +16,9 @@ constexpr std::size_t max_header_len = 12; // 12 bytes needed to identify JPEGs
 class Image
 {
 public:
+    Image() = default;
+    Image(std::size_t w, std::size_t h) { set_size(w, h); }
+
     virtual ~Image() = default;
 
     void swap(Image & other)
