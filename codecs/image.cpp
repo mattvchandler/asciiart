@@ -280,7 +280,7 @@ void Image::convert(const Args & args) const
     #endif
     #ifdef PNG_FOUND
     else if(ext == ".png")
-        ;// Png::write(out, *this, args.invert);
+        Png::write(out, *this, args.invert);
     #endif
     else if(ext == ".pbm")
         Pnm::write_pbm(out, *this, args.bg, args.invert);

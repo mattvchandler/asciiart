@@ -3,6 +3,8 @@
 #include <iostream>
 #include <stdexcept>
 
+#include <csetjmp>
+
 #include <png.h>
 
 #ifdef EXIF_FOUND
@@ -13,17 +15,11 @@ void read_fn(png_structp png_ptr, png_bytep data, png_size_t length) noexcept
 {
     auto in = static_cast<std::istream *>(png_get_io_ptr(png_ptr));
     if(!in)
-    {
-        std::cerr<<"FATAL ERROR: Could not get input pointer\n";
-        std::exit(EXIT_FAILURE);
-    }
+        std::longjmp(png_jmpbuf(png_ptr), 1);
 
     in->read(reinterpret_cast<char *>(data), length);
     if(in->bad())
-    {
-        std::cerr<<"FATAL ERROR: Could not read PNG image\n";
-        std::exit(EXIT_FAILURE);
-    }
+        std::longjmp(png_jmpbuf(png_ptr), 1);
 }
 Png::Png(std::istream & input)
 {
@@ -119,4 +115,74 @@ Png::Png(std::istream & input)
     #endif
 
     png_destroy_read_struct(&png_ptr, &info_ptr, &end_info_ptr);
+}
+
+void write_fn(png_structp png_ptr, png_bytep data, png_size_t length) noexcept
+{
+    auto out = static_cast<std::ostream *>(png_get_io_ptr(png_ptr));
+    if(!out)
+        std::longjmp(png_jmpbuf(png_ptr), 1);
+
+    out->write(reinterpret_cast<char *>(data), length);
+    if(out->bad())
+        std::longjmp(png_jmpbuf(png_ptr), 1);
+}
+void flush_fn(png_structp png_ptr)
+{
+    auto out = static_cast<std::ostream *>(png_get_io_ptr(png_ptr));
+    if(!out)
+        std::longjmp(png_jmpbuf(png_ptr), 1);
+
+    out->flush();
+}
+void Png::write(std::ostream & out, const Image & img, bool invert)
+{
+    Image img_copy(img.get_width(), img.get_height());
+    for(std::size_t row = 0; row < img_copy.get_height(); ++row)
+    {
+        for(std::size_t col = 0; col < img_copy.get_width(); ++col)
+        {
+            FColor fcolor {img[row][col]};
+            if(invert)
+                fcolor.invert();
+            img_copy[row][col] = fcolor;
+        }
+    }
+
+    std::vector<const unsigned char *> row_ptrs(img_copy.get_height());
+    for(std::size_t i = 0; i < img_copy.get_height(); ++i)
+        row_ptrs[i] = reinterpret_cast<decltype(row_ptrs)::value_type>(std::data(img_copy[i]));
+
+    auto png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
+    if(!png_ptr)
+        throw std::runtime_error{"Error initializing libpng"};
+
+    auto info_ptr = png_create_info_struct(png_ptr);
+    if(!info_ptr)
+    {
+        png_destroy_write_struct(&png_ptr, nullptr);
+        throw std::runtime_error{"Error initializing libpng info"};
+    }
+
+    if(setjmp(png_jmpbuf(png_ptr)))
+    {
+        png_destroy_write_struct(&png_ptr, &info_ptr);
+        throw std::runtime_error{"Error writing with libpng"};
+    }
+
+    // set custom write callbacks to write to std::ostream
+    png_set_write_fn(png_ptr, &out, write_fn, flush_fn);
+
+    png_set_IHDR(png_ptr, info_ptr,
+                 img.get_width(), img.get_height(),
+                 8, PNG_COLOR_TYPE_RGB_ALPHA,
+                 PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+
+    png_set_rows(png_ptr, info_ptr, const_cast<png_bytepp>(std::data(row_ptrs)));
+
+    png_write_png(png_ptr, info_ptr, PNG_TRANSFORM_IDENTITY, nullptr);
+
+    png_write_end(png_ptr, nullptr);
+
+    png_destroy_write_struct(&png_ptr, &info_ptr);
 }
