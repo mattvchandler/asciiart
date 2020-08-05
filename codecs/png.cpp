@@ -137,21 +137,28 @@ void flush_fn(png_structp png_ptr)
 }
 void Png::write(std::ostream & out, const Image & img, bool invert)
 {
-    Image img_copy(img.get_width(), img.get_height());
-    for(std::size_t row = 0; row < img_copy.get_height(); ++row)
+    const Image * img_p = &img;
+
+    std::unique_ptr<Image> img_copy{nullptr};
+    if(invert)
     {
-        for(std::size_t col = 0; col < img_copy.get_width(); ++col)
+        img_copy = std::make_unique<Image>(img.get_width(), img.get_height());
+        for(std::size_t row = 0; row < img_copy->get_height(); ++row)
         {
-            FColor fcolor {img[row][col]};
-            if(invert)
-                fcolor.invert();
-            img_copy[row][col] = fcolor;
+            for(std::size_t col = 0; col < img_copy->get_width(); ++col)
+            {
+                FColor fcolor {img[row][col]};
+                if(invert)
+                    fcolor.invert();
+                (*img_copy)[row][col] = fcolor;
+            }
         }
+        img_p = img_copy.get();
     }
 
-    std::vector<const unsigned char *> row_ptrs(img_copy.get_height());
-    for(std::size_t i = 0; i < img_copy.get_height(); ++i)
-        row_ptrs[i] = reinterpret_cast<decltype(row_ptrs)::value_type>(std::data(img_copy[i]));
+    std::vector<const unsigned char *> row_ptrs(img_p->get_height());
+    for(std::size_t i = 0; i < img_p->get_height(); ++i)
+        row_ptrs[i] = reinterpret_cast<decltype(row_ptrs)::value_type>(std::data((*img_p)[i]));
 
     auto png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
     if(!png_ptr)
