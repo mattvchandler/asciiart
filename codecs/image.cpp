@@ -2,6 +2,8 @@
 
 #include <fstream>
 #include <iostream>
+#include <limits>
+#include <set>
 #include <stdexcept>
 
 #include <cassert>
@@ -147,7 +149,7 @@ Image Image::scale(std::size_t new_width, std::size_t new_height) const
 
 std::vector<Color> Image::generate_palette(std::size_t num_colors, bool gif_transparency) const
 {
-    // TODO - very poor results with gif_transparency
+    // TODO: this handles transparency extremely poorly
     if(num_colors == 0)
         throw std::domain_error {"empty palette requested"};
 
@@ -160,16 +162,7 @@ std::vector<Color> Image::generate_palette(std::size_t num_colors, bool gif_tran
     {
         for(std::size_t col = 0; col < width_; ++col)
         {
-            Color c = image_data_[row][col];
-            if(gif_transparency)
-            {
-                if(c.a > 127)
-                    c.a = 255;
-                else
-                    c = {0, 0, 0, 0};
-            }
-
-            palette[row * width_ + col] = c;
+            palette[row * width_ + col] = image_data_[row][col];
         }
     }
 
@@ -192,12 +185,12 @@ std::vector<Color> Image::generate_palette(std::size_t num_colors, bool gif_tran
                 std::numeric_limits<decltype(Color::r)>::max(),
                 std::numeric_limits<decltype(Color::g)>::max(),
                 std::numeric_limits<decltype(Color::b)>::max(),
-                gif_transparency ? std::numeric_limits<decltype(Color::a)>::min() : std::numeric_limits<decltype(Color::a)>::max()};
+                0};
             Color max = {
                 std::numeric_limits<decltype(Color::r)>::min(),
                 std::numeric_limits<decltype(Color::g)>::min(),
                 std::numeric_limits<decltype(Color::b)>::min(),
-                std::numeric_limits<decltype(Color::a)>::min()};
+                0};
 
             for(auto i = begin; i != end; ++i)
             {
@@ -207,26 +200,20 @@ std::vector<Color> Image::generate_palette(std::size_t num_colors, bool gif_tran
                 max.g = std::max(max.g, i->g);
                 min.b = std::min(min.b, i->b);
                 max.b = std::max(max.b, i->b);
-                min.a = std::min(min.a, i->a);
-                max.a = std::max(max.a, i->a);
             }
 
             auto r_range = max.r - min.r;
             auto g_range = max.g - min.g;
             auto b_range = max.b - min.b;
-            auto a_range = max.a - min.a;
 
-            if(r_range > g_range  && r_range > b_range && r_range > a_range)
+            if(r_range > g_range  && r_range > b_range)
                 std::sort(begin, end, [](const Color & a, const Color & b){ return a.r < b.r; });
 
-            else if(g_range > b_range && g_range > a_range)
+            else if(g_range > b_range)
                 std::sort(begin, end, [](const Color & a, const Color & b){ return a.g < b.g; });
 
-            else if(b_range > a_range)
-                std::sort(begin, end, [](const Color & a, const Color & b){ return a.b < b.b; });
-
             else
-                std::sort(begin, end, [](const Color & a, const Color & b){ return a.a < b.a; });
+                std::sort(begin, end, [](const Color & a, const Color & b){ return a.b < b.b; });
 
             auto mid = begin + std::distance(begin, end) / 2;
             next_partitions.emplace_back(begin, mid);
@@ -259,9 +246,24 @@ std::vector<Color> Image::generate_palette(std::size_t num_colors, bool gif_tran
             static_cast<decltype(Color::b)>(b_avg / n),
             static_cast<decltype(Color::a)>(a_avg / n)
         };
+
+        if(gif_transparency)
+        {
+            if(reduced_pallete[i].a > 127)
+                reduced_pallete[i].a = 255;
+            else
+                reduced_pallete[i] = Color {0, 0, 0, 0};
+        }
     }
 
-    return reduced_pallete;
+    std::set unique_palette(std::begin(reduced_pallete), std::end(reduced_pallete));
+    std::vector<Color> final_palette(num_colors);
+    std::copy(std::begin(unique_palette), std::end(unique_palette), std::begin(final_palette));
+    std::fill(std::begin(final_palette) + std::size(unique_palette), std::end(final_palette), Color{0});
+
+    assert(std::size(final_palette) == num_colors);
+
+    return final_palette;
 }
 
 void Image::convert(const Args & args) const
