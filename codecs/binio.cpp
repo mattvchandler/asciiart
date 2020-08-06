@@ -117,3 +117,41 @@ void readb(std::istream & i, std::int8_t & t)
     i.read(reinterpret_cast<char*>(&t), sizeof(t));
 }
 
+void writeb(std::ostream & o, std::uint32_t t, binio_endian endian)
+{
+    o.write(reinterpret_cast<char*>(&t), sizeof(t));
+    if(host_endian != endian)
+    {
+        if(endian == binio_endian::LE)
+            t = le32toh(t);
+        else
+            t = be32toh(t);
+    }
+}
+void writeb(std::ostream & o, std::int32_t t, binio_endian endian)
+{
+    writeb(o, *reinterpret_cast<std::uint32_t*>(&t), endian);
+}
+void writeb(std::ostream & o, std::uint16_t t, binio_endian endian)
+{
+    o.write(reinterpret_cast<char*>(&t), sizeof(t));
+    if(host_endian != endian)
+    {
+        if(endian == binio_endian::LE)
+            t = le16toh(t);
+        else
+            t = be16toh(t);
+    }
+}
+void writeb(std::ostream & o, std::int16_t t, binio_endian endian)
+{
+    writeb(o, *reinterpret_cast<std::uint16_t*>(&t), endian);
+}
+void writeb(std::ostream & o, std::uint8_t t)
+{
+    o.write(reinterpret_cast<char*>(&t), sizeof(t));
+}
+void writeb(std::ostream & o, std::int8_t t)
+{
+    o.write(reinterpret_cast<char*>(&t), sizeof(t));
+}
