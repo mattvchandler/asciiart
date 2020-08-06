@@ -147,6 +147,7 @@ Image Image::scale(std::size_t new_width, std::size_t new_height) const
 
 std::vector<Color> Image::generate_palette(std::size_t num_colors, bool gif_transparency) const
 {
+    // TODO - very poor results with gif_transparency
     if(num_colors == 0)
         throw std::domain_error {"empty palette requested"};
 
@@ -276,6 +277,10 @@ void Image::convert(const Args & args) const
 
     if(ext == ".bmp")
         ;// Bmp::write(out, *this, args.invert);
+    #ifdef GIF_FOUND
+    else if(ext == ".gif")
+        Gif::write(out, *this, args.invert);
+    #endif
     #ifdef JPEG_FOUND
     else if(ext == ".jpeg" || ext == ".jpg")
         Jpeg::write(out, *this, args.bg, args.invert);

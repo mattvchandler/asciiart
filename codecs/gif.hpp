@@ -17,6 +17,8 @@ class Gif final: public Image
 {
 public:
     explicit Gif(std::istream & input);
+
+    static void write(std::ostream & out, const Image & img, bool invert);
 };
 #endif
 #endif // GIF_HPP
