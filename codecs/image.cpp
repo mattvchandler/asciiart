@@ -278,7 +278,7 @@ void Image::convert(const Args & args) const
     auto & ext = args.convert_filename->second;
 
     if(ext == ".bmp")
-        ;// Bmp::write(out, *this, args.invert);
+        Bmp::write(out, *this, args.invert);
     #ifdef GIF_FOUND
     else if(ext == ".gif")
         Gif::write(out, *this, args.invert);

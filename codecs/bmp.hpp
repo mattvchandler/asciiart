@@ -13,5 +13,7 @@ class Bmp final: public Image
 {
 public:
     explicit Bmp(std::istream & input);
+
+    static void write(std::ostream & out, const Image & img, bool invert);
 };
 #endif // BMP_HPP

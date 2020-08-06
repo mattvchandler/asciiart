@@ -29,3 +29,10 @@ Bmp::Bmp(std::istream & input)
             throw std::runtime_error{"Error reading BMP: unexpected end of file"};
     }
 }
+
+void Bmp::write(std::ostream & out, const Image & img, bool invert)
+{
+    write_bmp_file_header(out, img.get_width(), img.get_height());
+    write_bmp_info_header(out, img.get_width(), img.get_height());
+    write_bmp_data(out, img, invert);
+}
