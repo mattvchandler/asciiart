@@ -2,7 +2,7 @@
 
 #include <stdexcept>
 
-#include "readb.hpp"
+#include "binio.hpp"
 
 struct Tga_data
 {

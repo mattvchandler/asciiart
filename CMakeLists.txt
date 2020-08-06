@@ -58,7 +58,7 @@ add_executable(asciiart
     font.cpp
     main.cpp
     codecs/image.cpp
-    codecs/readb.cpp
+    codecs/binio.cpp
     codecs/bmp.cpp
     codecs/bmp_common.cpp
     codecs/ico.cpp

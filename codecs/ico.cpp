@@ -6,7 +6,7 @@
 
 #include "bmp_common.hpp"
 #include "png.hpp"
-#include "readb.hpp"
+#include "binio.hpp"
 
 struct Ico_header
 {

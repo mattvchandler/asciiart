@@ -3,7 +3,7 @@
 #include <bitset>
 #include <stdexcept>
 
-#include "readb.hpp"
+#include "binio.hpp"
 
 void read_bmp_file_header(std::istream & in, bmp_data & bmp, std::size_t & file_pos)
 {

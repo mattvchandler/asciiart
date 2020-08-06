@@ -1,11 +1,11 @@
-#include "readb.hpp"
+#include "binio.hpp"
 
 #include "config.h"
 
 #ifdef BIG_ENDIAN
-static const readb_endian host_endian = readb_endian::BE;
+static const binio_endian host_endian = binio_endian::BE;
 #else
-static const readb_endian host_endian = readb_endian::LE;
+static const binio_endian host_endian = binio_endian::LE;
 #endif
 
 #ifndef HAS_BSWAP16
@@ -78,33 +78,33 @@ std::uint32_t be32toh(std::uint32_t a)
 }
 #endif
 
-void readb(std::istream & i, std::uint32_t & t, readb_endian endian)
+void readb(std::istream & i, std::uint32_t & t, binio_endian endian)
 {
     i.read(reinterpret_cast<char*>(&t), sizeof(t));
     if(host_endian != endian)
     {
-        if(endian == readb_endian::LE)
+        if(endian == binio_endian::LE)
             t = le32toh(t);
         else
             t = be32toh(t);
     }
 }
-void readb(std::istream & i, std::int32_t & t, readb_endian endian)
+void readb(std::istream & i, std::int32_t & t, binio_endian endian)
 {
     readb(i, reinterpret_cast<std::uint32_t&>(t), endian);
 }
-void readb(std::istream & i, std::uint16_t & t, readb_endian endian)
+void readb(std::istream & i, std::uint16_t & t, binio_endian endian)
 {
     i.read(reinterpret_cast<char*>(&t), sizeof(t));
     if(host_endian != endian)
     {
-        if(endian == readb_endian::LE)
+        if(endian == binio_endian::LE)
             t = le16toh(t);
         else
             t = be16toh(t);
     }
 }
-void readb(std::istream & i, std::int16_t & t, readb_endian endian)
+void readb(std::istream & i, std::int16_t & t, binio_endian endian)
 {
     readb(i, reinterpret_cast<std::uint16_t&>(t), endian);
 }
