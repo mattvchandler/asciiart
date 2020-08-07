@@ -244,3 +244,87 @@ Tga::Tga(std::istream & input)
             throw std::runtime_error{"Error reading TGA: unexpected end of file"};
     }
 }
+
+void Tga::write(std::ostream & out, const Image & img, bool invert)
+{
+    if(img.get_width() > std::numeric_limits<std::uint16_t>::max() || img.get_height() > std::numeric_limits<std::uint16_t>::max())
+        throw std::runtime_error{"Image dimensions (" + std::to_string(img.get_width()) + "x" + std::to_string(img.get_height()) + ") exceed max TGA size (" + std::to_string(std::numeric_limits<std::uint16_t>::max()) + "x" + std::to_string(std::numeric_limits<std::uint16_t>::max()) + ")"};
+
+    writeb(out, std::uint8_t{0});  // image ID field size (omitted)
+    writeb(out, std::uint8_t{0});  // color map type. 0 is none
+    writeb(out, std::uint8_t{10}); // image type RLE compressed color
+
+    // color map specification (unused, so all 0s)
+    const std::array<std::uint8_t, 5> color_map_spec = {0, 0, 0, 0, 0};
+    out.write(reinterpret_cast<const char *>(std::data(color_map_spec)), std::size(color_map_spec));
+
+    writeb(out, std::uint16_t{0});                             // x origin
+    writeb(out, std::uint16_t{0});                             // y origin
+    writeb(out, static_cast<std::uint16_t>(img.get_width()));  // width
+    writeb(out, static_cast<std::uint16_t>(img.get_height())); // height
+    writeb(out, std::uint8_t{32});                             // bpp
+    writeb(out, std::uint8_t{0});                              // image descriptor (store bottom to top, non-interleaved)
+
+    for(std::size_t row = img.get_height(); row -- > 0;)
+    {
+        std::vector<Color> non_rle_buf;
+        auto write_non_rle = [&non_rle_buf, &out]()
+        {
+            if(std::empty(non_rle_buf))
+                return;
+
+            writeb(out, static_cast<uint8_t>(std::size(non_rle_buf) - 1));
+
+            for(auto && color: non_rle_buf)
+            {
+                writeb(out, color.b);
+                writeb(out, color.g);
+                writeb(out, color.r);
+                writeb(out, color.a);
+            }
+            non_rle_buf.clear();
+        };
+
+        auto write_rle = [&out](const Color & color, unsigned int count)
+        {
+            writeb(out, static_cast<uint8_t>((count - 1) | 0x80u));
+            writeb(out, color.b);
+            writeb(out, color.g);
+            writeb(out, color.r);
+            writeb(out, color.a);
+        };
+
+        for(std::size_t col = 0; col < img.get_width();)
+        {
+            auto c = img[row][col];
+
+            unsigned int rle_count {1};
+
+            for(std::size_t x = col + 1; x < img.get_width() && img[row][x] == c && rle_count < 128; ++x, ++rle_count); // count number of consecutive pixels with the same color
+
+            if(invert)
+            {
+                c.r = 255 - c.r;
+                c.g = 255 - c.g;
+                c.b = 255 - c.b;
+            }
+
+            if(rle_count > 2)
+            {
+                write_non_rle();
+                write_rle(c, rle_count);
+
+                col += rle_count;
+            }
+            else
+            {
+                non_rle_buf.push_back(c);
+                if(std::size(non_rle_buf) == 128)
+                    write_non_rle();
+                ++col;
+            }
+        }
+
+        write_non_rle();
+    }
+}

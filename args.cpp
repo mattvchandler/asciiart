@@ -124,6 +124,7 @@ private:
         ".png",
         #endif
         ".pbm", ".pgm", ".ppm",
+        ".tga"
     };
 
     std::string convert_format_list;

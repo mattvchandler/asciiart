@@ -32,3 +32,4 @@ formats:
 * JPEG (requires libjpeg)
 * PNG (requires libpng)
 * PPM / PGM / PBM
+* TGA

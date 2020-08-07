@@ -301,6 +301,8 @@ void Image::convert(const Args & args) const
         Pnm::write_pgm(out, *this, args.bg, args.invert);
     else if(ext == ".ppm")
         Pnm::write_ppm(out, *this, args.bg, args.invert);
+    else if(ext == ".tga")
+        Tga::write(out, *this, args.invert);
     else
         throw std::runtime_error {"Unsupported conversion type: " + ext};
 }
