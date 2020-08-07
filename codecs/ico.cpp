@@ -104,7 +104,7 @@ Ico::Ico(std::istream & input)
 }
 
 
-enum class Ico_type: uint16_t {ico = 1, cur = 2};
+enum class Ico_type: std::uint16_t {ico = 1, cur = 2};
 
 void ico_write_common(std::ostream & out, const Image & img, bool invert, Ico_type ico_type)
 {
@@ -130,8 +130,8 @@ void ico_write_common(std::ostream & out, const Image & img, bool invert, Ico_ty
 
     // ICONDIR struct
     writeb(out, std::uint16_t{0});                                                                        // reserved. must be 0
-    writeb(out, static_cast<uint16_t>(ico_type));                                                         // ico / cur type
-    writeb(out, uint16_t{1});                                                                             // number of images in the file
+    writeb(out, static_cast<std::uint16_t>(ico_type));                                                    // ico / cur type
+    writeb(out, std::uint16_t{1});                                                                        // number of images in the file
 
     // ICONDIRENTRY struct
     writeb(out, img.get_width()  >= 256 ? std::uint8_t{0} : static_cast<std::uint8_t>(img.get_width()));  // width
@@ -140,13 +140,13 @@ void ico_write_common(std::ostream & out, const Image & img, bool invert, Ico_ty
     writeb(out, std::uint8_t{0});                                                                         // reserved. must be 0
     if(ico_type == Ico_type::ico)
     {
-        writeb(out, uint16_t{1});  // # of color planes
-        writeb(out, uint16_t{32}); // bpp
+        writeb(out, std::uint16_t{1});  // # of color planes
+        writeb(out, std::uint16_t{32}); // bpp
     }
     else // if(ico_type == Ico_type::cur)
     {
-        writeb(out, uint16_t{0}); // cursor hotspot x coord (UL corner)
-        writeb(out, uint16_t{0}); // cursor hotspot y coord
+        writeb(out, std::uint16_t{0}); // cursor hotspot x coord (UL corner)
+        writeb(out, std::uint16_t{0}); // cursor hotspot y coord
     }
     writeb(out, static_cast<std::uint32_t>(std::size(img_data_buf))); // image data size
     writeb(out, std::uint32_t{6 + 16}); //offset of image data. ICONDIR (6 bytes) + 1x ICONDIRENTRY (16 bytes);

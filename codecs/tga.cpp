@@ -273,7 +273,7 @@ void Tga::write(std::ostream & out, const Image & img, bool invert)
             if(std::empty(non_rle_buf))
                 return;
 
-            writeb(out, static_cast<uint8_t>(std::size(non_rle_buf) - 1));
+            writeb(out, static_cast<std::uint8_t>(std::size(non_rle_buf) - 1));
 
             for(auto && color: non_rle_buf)
             {
@@ -287,7 +287,7 @@ void Tga::write(std::ostream & out, const Image & img, bool invert)
 
         auto write_rle = [&out](const Color & color, unsigned int count)
         {
-            writeb(out, static_cast<uint8_t>((count - 1) | 0x80u));
+            writeb(out, static_cast<std::uint8_t>((count - 1) | 0x80u));
             writeb(out, color.b);
             writeb(out, color.g);
             writeb(out, color.r);

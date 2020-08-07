@@ -397,8 +397,8 @@ void write_bmp_file_header(std::ostream & out, std::uint32_t width, std::uint32_
     // BMP file header
     out.write("BM", 2);       // Magic Number
     writeb(out, file_size);   // File size
-    writeb(out, uint16_t{0}); // unused
-    writeb(out, uint16_t{0}); // unused
+    writeb(out, std::uint16_t{0}); // unused
+    writeb(out, std::uint16_t{0}); // unused
     writeb(out, data_offset); // pixel array offset
 }
 
@@ -412,7 +412,7 @@ void write_bmp_info_header(std::ostream & out, std::uint32_t width, std::uint32_
         height *= 2;
 
     // BITMAPINFOHEADER
-    writeb(out, uint32_t{header_size});             // size of header (BITMAPINFOHEADER or BITMAPV4INFOHEADER)
+    writeb(out, std::uint32_t{header_size});        // size of header (BITMAPINFOHEADER or BITMAPV4INFOHEADER)
     writeb(out, static_cast<std::int32_t>(width));  // width
     writeb(out, static_cast<std::int32_t>(height)); // height
     writeb(out, std::uint16_t{1});                  // number of color planes
