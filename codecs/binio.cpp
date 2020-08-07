@@ -108,11 +108,11 @@ void readb(std::istream & i, std::int16_t & t, binio_endian endian)
 {
     readb(i, reinterpret_cast<std::uint16_t&>(t), endian);
 }
-void readb(std::istream & i, std::uint8_t & t)
+void readb(std::istream & i, std::uint8_t & t, binio_endian)
 {
     i.read(reinterpret_cast<char*>(&t), sizeof(t));
 }
-void readb(std::istream & i, std::int8_t & t)
+void readb(std::istream & i, std::int8_t & t, binio_endian)
 {
     i.read(reinterpret_cast<char*>(&t), sizeof(t));
 }
@@ -147,11 +147,11 @@ void writeb(std::ostream & o, std::int16_t t, binio_endian endian)
 {
     writeb(o, *reinterpret_cast<std::uint16_t*>(&t), endian);
 }
-void writeb(std::ostream & o, std::uint8_t t)
+void writeb(std::ostream & o, std::uint8_t t, binio_endian)
 {
     o.write(reinterpret_cast<char*>(&t), sizeof(t));
 }
-void writeb(std::ostream & o, std::int8_t t)
+void writeb(std::ostream & o, std::int8_t t, binio_endian)
 {
     o.write(reinterpret_cast<char*>(&t), sizeof(t));
 }

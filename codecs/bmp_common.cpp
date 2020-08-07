@@ -67,9 +67,7 @@ void read_bmp_info_header(std::istream & in, bmp_data & bmp, std::size_t & file_
             in.ignore(2);
             readb(in, bmp.bpp);
 
-            std::underlying_type_t<bmp_data::Compression> compression;
-            readb(in, compression);
-            bmp.compression = static_cast<bmp_data::Compression>(compression);
+            readb(in, bmp.compression);
 
             in.ignore(12);
             readb(in, bmp.palette_size);
@@ -408,8 +406,7 @@ void write_bmp_info_header(std::ostream & out, std::uint32_t width, std::uint32_
 {
     const std::uint32_t header_size = v4_header ? 108 : 40;
     const std::uint32_t data_size = width * height * 4; // 4 bytes per pixel
-    const auto compression = static_cast<std::underlying_type_t<bmp_data::Compression>>(
-            v4_header ? bmp_data::Compression::BI_BITFIELDS : bmp_data::Compression::BI_RGB);
+    const auto compression = v4_header ? bmp_data::Compression::BI_BITFIELDS : bmp_data::Compression::BI_RGB;
 
     if(double_height_for_ico_and_mask)
         height *= 2;
