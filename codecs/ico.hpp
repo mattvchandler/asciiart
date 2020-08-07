@@ -15,5 +15,8 @@ class Ico final: public Image
 {
 public:
     explicit Ico(std::istream & input);
+
+    static void write_cur(std::ostream & out, const Image & img, bool invert);
+    static void write_ico(std::ostream & out, const Image & img, bool invert);
 };
 #endif // ICO_HPP

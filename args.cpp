@@ -113,6 +113,7 @@ private:
     std::vector<std::string> convert_formats =
     {
         ".bmp",
+        ".cur",".ico",
         #ifdef GIF_FOUND
         ".gif",
         #endif

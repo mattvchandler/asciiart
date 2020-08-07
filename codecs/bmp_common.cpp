@@ -389,27 +389,33 @@ void read_bmp_data(std::istream & in, const bmp_data & bmp, std::size_t & file_p
         read_rle(in, bmp, image_data, file_pos);
 }
 
-void write_bmp_file_header(std::ostream & out, std::uint32_t width, std::uint32_t height)
+void write_bmp_file_header(std::ostream & out, std::uint32_t width, std::uint32_t height, bool v4_header)
 {
-    const std::uint32_t header_size = 14 + 108; // File header (14 bytes) + BITMAPV4HEADER (108 bytes)
+    const std::uint32_t header_size = v4_header ? 108 : 40;
+    const std::uint32_t data_offset = 14 + header_size; // File header (14 bytes) + BITMAPV4HEADER (108 bytes) or BITMAPINFOHEADER (40 bytes)
     const std::uint32_t data_size = width * height * 4; // 4 bytes per pixel
-    const std::uint32_t file_size = header_size + data_size;
+    const std::uint32_t file_size = data_offset + data_size;
 
     // BMP file header
     out.write("BM", 2);       // Magic Number
     writeb(out, file_size);   // File size
     writeb(out, uint16_t{0}); // unused
     writeb(out, uint16_t{0}); // unused
-    writeb(out, header_size); // pixel array offset
+    writeb(out, data_offset); // pixel array offset
 }
 
-void write_bmp_info_header(std::ostream & out, std::uint32_t width, std::uint32_t height)
+void write_bmp_info_header(std::ostream & out, std::uint32_t width, std::uint32_t height, bool v4_header, bool double_height_for_ico_and_mask)
 {
+    const std::uint32_t header_size = v4_header ? 108 : 40;
     const std::uint32_t data_size = width * height * 4; // 4 bytes per pixel
-    const auto compression = static_cast<std::underlying_type_t<bmp_data::Compression>>(bmp_data::Compression::BI_BITFIELDS);
+    const auto compression = static_cast<std::underlying_type_t<bmp_data::Compression>>(
+            v4_header ? bmp_data::Compression::BI_BITFIELDS : bmp_data::Compression::BI_RGB);
 
-    // BITMAPV4INFOHEADER
-    writeb(out, uint32_t{108});                     // size of BITMAPV4INFOHEADER
+    if(double_height_for_ico_and_mask)
+        height *= 2;
+
+    // BITMAPINFOHEADER
+    writeb(out, uint32_t{header_size});             // size of header (BITMAPINFOHEADER or BITMAPV4INFOHEADER)
     writeb(out, static_cast<std::int32_t>(width));  // width
     writeb(out, static_cast<std::int32_t>(height)); // height
     writeb(out, std::uint16_t{1});                  // number of color planes
@@ -420,15 +426,20 @@ void write_bmp_info_header(std::ostream & out, std::uint32_t width, std::uint32_
     writeb(out, std::int32_t{2835});                // vert print resolution
     writeb(out, std::uint32_t{0});                  // # of palette colors
     writeb(out, std::uint32_t{0});                  // # of important palette colors
-    writeb(out, std::uint32_t{0x00FF0000});         // red mask
-    writeb(out, std::uint32_t{0x0000FF00});         // green mask
-    writeb(out, std::uint32_t{0x000000FF});         // blue mask
-    writeb(out, std::uint32_t{0xFF000000});         // alpha mask
 
-    // colorspace & gamma - not used, but BITMAPV3INFOHEADER doesn't seem to have transparency supported very well
-    out.write("Win ", 4);
-    const std::array<std::uint32_t, 12> colorspace_gamma {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-    out.write(reinterpret_cast<const char *>(std::data(colorspace_gamma)), std::size(colorspace_gamma) * sizeof(decltype(colorspace_gamma)::value_type));
+    // BITMAPV4INFOHEADER specific-fields
+    if(v4_header)
+    {
+        writeb(out, std::uint32_t{0x00FF0000}); // red mask
+        writeb(out, std::uint32_t{0x0000FF00}); // green mask
+        writeb(out, std::uint32_t{0x000000FF}); // blue mask
+        writeb(out, std::uint32_t{0xFF000000}); // alpha mask
+
+        // colorspace & gamma - not used, but BITMAPV3INFOHEADER doesn't seem to have transparency supported very well
+        out.write("Win ", 4);
+        const std::array<std::uint32_t, 12> colorspace_gamma {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+        out.write(reinterpret_cast<const char *>(std::data(colorspace_gamma)), std::size(colorspace_gamma) * sizeof(decltype(colorspace_gamma)::value_type));
+    }
 }
 
 void write_bmp_data(std::ostream & out, const Image & img, bool invert)

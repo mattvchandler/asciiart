@@ -27,8 +27,8 @@ void read_bmp_file_header(std::istream & in, bmp_data & bmp, std::size_t & file_
 void read_bmp_info_header(std::istream & in, bmp_data & bmp, std::size_t & file_pos);
 void read_bmp_data(std::istream & in, const bmp_data & bmp, std::size_t & file_pos, std::vector<std::vector<Color>> & image_data);
 
-// writing functions create a V4 32bpp RGBA bitmap
-void write_bmp_file_header(std::ostream & out, std::uint32_t width, std::uint32_t height);
-void write_bmp_info_header(std::ostream & out, std::uint32_t width, std::uint32_t height);
+// writing functions create a V4 or V1 32bpp RGBA bitmap
+void write_bmp_file_header(std::ostream & out, std::uint32_t width, std::uint32_t height, bool v4_header = true);
+void write_bmp_info_header(std::ostream & out, std::uint32_t width, std::uint32_t height, bool v4_header = true, bool double_height_for_ico_and_mask = false);
 void write_bmp_data(std::ostream & out, const Image & img, bool invert);
 #endif // BMP_COMMON_HPP

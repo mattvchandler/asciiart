@@ -1,5 +1,6 @@
 #include "ico.hpp"
 
+#include <sstream>
 #include <stdexcept>
 
 #include <cstdint>
@@ -52,7 +53,7 @@ Ico::Ico(std::istream & input)
             Png png_img {input};
             swap(png_img);
             #else
-            throw std::runtime_error{"Could not read PNG encoded IOC / CUR: Not compiled with PNG support"};
+            throw std::runtime_error{"Could not read PNG encoded ICO / CUR: Not compiled with PNG support"};
             #endif
             return;
         }
@@ -100,4 +101,64 @@ Ico::Ico(std::istream & input)
         else
             throw std::runtime_error{"Error reading ICO / CUR: unexpected end of file"};
     }
+}
+
+
+enum class Ico_type: uint16_t {ico = 1, cur = 2};
+
+void ico_write_common(std::ostream & out, const Image & img, bool invert, Ico_type ico_type)
+{
+    if(img.get_width() > 256 || img.get_height() > 256)
+        throw std::runtime_error{"Image dimensions (" + std::to_string(img.get_width()) + "x" + std::to_string(img.get_height()) + ") exceed max CUR/ICO size (256x256)"};
+
+    // generate either png or bmp data
+    std::ostringstream image_data;
+    #ifdef PNG_FOUND
+    if(ico_type == Ico_type::ico && (img.get_width() > 48 || img.get_height() > 48))
+    {
+        Png::write(image_data, img, invert);
+    }
+    else
+    {
+    #endif
+        write_bmp_info_header(image_data, img.get_width(), img.get_height(), false, true);
+        write_bmp_data(image_data, img, invert);
+    #ifdef PNG_FOUND
+    }
+    #endif
+    auto img_data_buf = image_data.str(); // TODO: c++20 adds a view method. use that to prevent this copy
+
+    // ICONDIR struct
+    writeb(out, std::uint16_t{0});                                                                        // reserved. must be 0
+    writeb(out, static_cast<uint16_t>(ico_type));                                                         // ico / cur type
+    writeb(out, uint16_t{1});                                                                             // number of images in the file
+
+    // ICONDIRENTRY struct
+    writeb(out, img.get_width()  >= 256 ? std::uint8_t{0} : static_cast<std::uint8_t>(img.get_width()));  // width
+    writeb(out, img.get_height() >= 256 ? std::uint8_t{0} : static_cast<std::uint8_t>(img.get_height())); // height
+    writeb(out, std::uint8_t{0});                                                                         // # of palette colors
+    writeb(out, std::uint8_t{0});                                                                         // reserved. must be 0
+    if(ico_type == Ico_type::ico)
+    {
+        writeb(out, uint16_t{1});  // # of color planes
+        writeb(out, uint16_t{32}); // bpp
+    }
+    else // if(ico_type == Ico_type::cur)
+    {
+        writeb(out, uint16_t{0}); // cursor hotspot x coord (UL corner)
+        writeb(out, uint16_t{0}); // cursor hotspot y coord
+    }
+    writeb(out, static_cast<std::uint32_t>(std::size(img_data_buf))); // image data size
+    writeb(out, std::uint32_t{6 + 16}); //offset of image data. ICONDIR (6 bytes) + 1x ICONDIRENTRY (16 bytes);
+
+    out.write(std::data(img_data_buf), std::size(img_data_buf));
+}
+
+void Ico::write_cur(std::ostream & out, const Image & img, bool invert)
+{
+    ico_write_common(out, img, invert, Ico_type::cur);
+}
+void Ico::write_ico(std::ostream & out, const Image & img, bool invert)
+{
+    ico_write_common(out, img, invert, Ico_type::ico);
 }

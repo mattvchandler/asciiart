@@ -279,6 +279,10 @@ void Image::convert(const Args & args) const
 
     if(ext == ".bmp")
         Bmp::write(out, *this, args.invert);
+    else if(ext == ".cur")
+        Ico::write_cur(out, *this, args.invert);
+    else if(ext == ".ico")
+        Ico::write_ico(out, *this, args.invert);
     #ifdef GIF_FOUND
     else if(ext == ".gif")
         Gif::write(out, *this, args.invert);
