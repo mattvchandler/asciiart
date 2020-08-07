@@ -135,6 +135,9 @@ std::ostream & clear_color(std::ostream & os)
 
 void write_ascii(const Image & img, const Char_vals & char_vals, const Args & args)
 {
+    if(img.get_width() == 0 || img.get_height() == 0)
+        return;
+
     std::ofstream output_file;
     if(args.output_filename != "-")
         output_file.open(args.output_filename);
