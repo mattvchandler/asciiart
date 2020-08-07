@@ -21,3 +21,14 @@ Supports a variety of image formats:
 * TIFF (requires libtiff)
 * WebP (requires libwebp)
 * XPM (requires libxpm)
+
+Basic conversion is also supported for some formats with the `--convert` flag.
+Conversion can be done from any of the above formats to one of the following
+formats:
+
+* BMP
+* GIF (requires giflib)
+* ICO / CUR
+* JPEG (requires libjpeg)
+* PNG (requires libpng)
+* PPM / PGM / PBM
