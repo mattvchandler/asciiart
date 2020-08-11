@@ -13,6 +13,7 @@ Supports a variety of image formats:
 * ICO / CUR
 * JPEG (requires libjpeg)
 * JPEG 2000 (requires OpenJPEG)
+* PCX
 * PNG (requires libpng)
 * PPM / PGM / PBM
 * [SIF](https://adventofcode.com/2019/day/8)
@@ -30,6 +31,7 @@ formats:
 * GIF (requires giflib)
 * ICO / CUR
 * JPEG (requires libjpeg)
+* PCX
 * PNG (requires libpng)
 * PPM / PGM / PBM
 * TGA

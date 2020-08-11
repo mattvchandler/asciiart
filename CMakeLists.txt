@@ -62,6 +62,7 @@ add_executable(asciiart
     codecs/bmp.cpp
     codecs/bmp_common.cpp
     codecs/ico.cpp
+    codecs/pcx.cpp
     codecs/pnm.cpp
     codecs/sif.cpp
     codecs/tga.cpp

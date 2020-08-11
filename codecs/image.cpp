@@ -26,6 +26,7 @@
 #include "ico.hpp"
 #include "jp2.hpp"
 #include "jpeg.hpp"
+#include "pcx.hpp"
 #include "png.hpp"
 #include "pnm.hpp"
 #include "sif.hpp"
@@ -291,6 +292,8 @@ void Image::convert(const Args & args) const
     else if(ext == ".jpeg" || ext == ".jpg")
         Jpeg::write(out, *this, args.bg, args.invert);
     #endif
+    else if(ext == ".pcx")
+        Pcx::write(out, *this, args.bg, args.invert);
     #ifdef PNG_FOUND
     else if(ext == ".png")
         Png::write(out, *this, args.invert);
@@ -442,6 +445,10 @@ void Image::convert(const Args & args) const
             throw std::runtime_error{"Not compiled with WEBP support"};
             #endif
         }
+        else if(extension == ".pcx")
+        {
+            return std::make_unique<Pcx>(input);
+        }
         else if(extension == ".svg" || extension == ".svgz")
         {
             #ifdef SVG_FOUND
@@ -474,6 +481,9 @@ void Image::convert(const Args & args) const
         {
             throw std::runtime_error{"Unknown input file format"};
         }
+        break;
+    case Args::Force_file::pcx:
+        return std::make_unique<Pcx>(input);
         break;
     #ifdef SVG_FOUND
     case Args::Force_file::svg:

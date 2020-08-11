@@ -22,6 +22,7 @@ struct Args
     enum class Force_file
     {
         detect,                  // detect filetype by header
+        pcx,
         tga,
     #ifdef SVG_FOUND
         svg,

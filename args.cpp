@@ -120,6 +120,7 @@ private:
         #ifdef JPEG_FOUND
         ".jpg", ".jpeg",
         #endif
+        ".pcx",
         #ifdef PNG_FOUND
         ".png",
         #endif
@@ -158,6 +159,7 @@ private:
 
         const std::string filetype_group = "Input file detection override";
         options.add_options(filetype_group)("tga", "Interpret input as a TGA file");
+        options.add_options(filetype_group)("pcx", "Interpret input as a PCX file");
 
     #ifdef SVG_FOUND
         options.add_options(filetype_group)("svg", "Interpret input as an SVG file");
@@ -231,6 +233,7 @@ private:
         auto filetype {Args::Force_file::detect};
 
         if(args.count("tga")
+                + args.count("pcx")
     #ifdef SVG_FOUND
                 + args.count("svg")
     #endif
@@ -246,6 +249,8 @@ private:
 
         if(args.count("tga"))
             filetype = Args::Force_file::tga;
+        else if(args.count("pcx"))
+            filetype = Args::Force_file::pcx;
     #ifdef SVG_FOUND
         else if(args.count("svg"))
             filetype = Args::Force_file::svg;

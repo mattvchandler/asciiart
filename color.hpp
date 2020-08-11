@@ -14,6 +14,39 @@ struct Color
     constexpr Color(unsigned char r, unsigned char g, unsigned char b, unsigned char a = 0xFF): r{r}, g{g}, b{b}, a{a} {}
     constexpr explicit Color(unsigned char y): r{y}, g{y}, b{y} {}
 
+    constexpr const unsigned char & operator[](unsigned char i) const
+    {
+        switch(i)
+        {
+        case 0:
+            return r;
+        case 1:
+            return g;
+        case 2:
+            return b;
+        case 3:
+            return a;
+        default:
+            throw std::logic_error{"color index out of bounds"};
+        }
+    }
+    constexpr unsigned char & operator[](unsigned char i)
+    {
+        switch(i)
+        {
+        case 0:
+            return r;
+        case 1:
+            return g;
+        case 2:
+            return b;
+        case 3:
+            return a;
+        default:
+            throw std::logic_error{"color index out of bounds"};
+        }
+    }
+
     constexpr bool operator<(const Color & other) const
     {
         if(r < other.r)
