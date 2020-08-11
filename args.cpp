@@ -154,14 +154,19 @@ private:
     {
         options.add_options()
             ("h,help",    "Show this message and quit")
-            ("f,font",    "Font name to render. Uses fontconfig to find",                                  cxxopts::value<std::string>()->default_value("monospace"), "FONT_PATTERN")
-            ("s,size",    "Font size, in points",                                                          cxxopts::value<float>()->default_value("12.0"),            "")
-            ("r,rows",    "# of output rows. Enter a negative value to preserve aspect ratio with --cols", cxxopts::value<int>()->default_value("-1"),                "ROWS")
-            ("c,cols",    "# of output cols",                                                              cxxopts::value<int>()->default_value("80"),                "COLS")
-            ("b,bg",      "Background color value for transparent images (0-255)",                         cxxopts::value<int>()->default_value("0"),                 "BG")
+            ("r,rows",    "# of output rows. Enter a negative value to preserve aspect ratio with --cols", cxxopts::value<int>()->default_value("-1"),        "ROWS")
+            ("c,cols",    "# of output cols",                                                              cxxopts::value<int>()->default_value("80"),        "COLS")
+            ("b,bg",      "Background color value for transparent images (0-255)",                         cxxopts::value<int>()->default_value("0"),         "BG")
             ("i,invert",  "Invert colors")
-            ("o,output",  "Output text file path. Output to stdout if '-'",                                cxxopts::value<std::string>()->default_value("-"),         "OUTPUT_FILE")
-            ("v,convert", "Convert input to output file. Valid formats: " + convert_format_list,           cxxopts::value<std::string>(),                             "OUTPUT_IMAGE_FILE");
+            ("o,output",  "Output text file path. Output to stdout if '-'",                                cxxopts::value<std::string>()->default_value("-"), "OUTPUT_FILE")
+            ("v,convert", "Convert input to output file. Valid formats: " + convert_format_list,           cxxopts::value<std::string>(),                     "OUTPUT_IMAGE_FILE");
+
+        #if defined(FONTCONFIG_FOUND) && defined(FREETYPE_FOUND)
+        const std::string font_group = "Text display options";
+        options.add_options(font_group)
+            ("f,font",    "Font name to render. Uses fontconfig to find",cxxopts::value<std::string>()->default_value("monospace"), "FONT_PATTERN")
+            ("s,size",    "Font size, in points",                        cxxopts::value<float>()->default_value("12.0"),            "");
+        #endif
 
         const std::string color_group = "Color";
         options.add_options(color_group)
@@ -306,8 +311,12 @@ private:
         return Args{
             args["input"].as<std::string>(),
             args["output"].as<std::string>(),
+        #if defined(FONTCONFIG_FOUND) && defined(FREETYPE_FOUND)
             args["font"].as<std::string>(),
             args["size"].as<float>(),
+        #else
+            {},{},
+        #endif
             args["rows"].as<int>(),
             args["cols"].as<int>(),
             static_cast<unsigned char>(args["bg"].as<int>()),

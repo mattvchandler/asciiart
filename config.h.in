@@ -1,3 +1,6 @@
+#cmakedefine FONTCONFIG_FOUND 1
+#cmakedefine FREETYPE_FOUND   1
+
 #cmakedefine AVIF_FOUND   1
 #cmakedefine BPG_FOUND    1
 #cmakedefine EXIF_FOUND   1

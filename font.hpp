@@ -1,15 +1,8 @@
 #ifndef FONT_HPP
 #define FONT_HPP
 
-#include <algorithm>
 #include <array>
-#include <stdexcept>
 #include <string>
-#include <vector>
-
-#include <fontconfig/fontconfig.h>
-#include <ft2build.h>
-#include FT_FREETYPE_H
 
 using Char_vals = std::array<char, 256>;
 

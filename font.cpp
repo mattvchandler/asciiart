@@ -1,9 +1,20 @@
 #include "font.hpp"
 
+#include <algorithm>
 #include <stdexcept>
+#include <vector>
+
+#include "config.h"
+
+#if defined(FONTCONFIG_FOUND) && defined(FREETYPE_FOUND)
+#include <fontconfig/fontconfig.h>
+#include <ft2build.h>
+#include FT_FREETYPE_H
+#endif
 
 [[nodiscard]] std::string get_font_path(const std::string & font_name)
 {
+#if defined(FONTCONFIG_FOUND) && defined(FREETYPE_FOUND)
     struct Fontconfig
     {
         FcConfig * config {nullptr};
@@ -74,10 +85,17 @@
     }
 
     throw std::runtime_error{"No fonts found matching: " + font_name};
+#else
+    // supress unused parameter warnings
+    (void)font_name;
+
+    return {};
+#endif
 }
 
 [[nodiscard]] Char_vals get_char_values(const std::string & font_path, float font_size)
 {
+#if defined(FONTCONFIG_FOUND) && defined(FREETYPE_FOUND)
     struct Freetype
     {
         FT_Library lib {nullptr};
@@ -155,4 +173,31 @@
     }
 
     return char_vals;
+#else
+    // supress unused parameter warnings
+    (void)font_path, (void)font_size;
+    // if we don't have fontconfig / freetype, use this pregenerated list instead
+    return
+    {
+        ' ', '`', '`', '`', '`', '`', '`', '`', '`', '`', '`', '`', '`', '`',
+        '`', '`', '`', '`', '`', '.', '.', '.', '.', '.', '.', '.', '.', '-',
+        '\'', ',', ',', ',', ',', ',', ',', ':', ':', ':', ':', ':', ':', ':',
+        ':', ':', ':', ':', ':', ':', ':', ':', ':', ':', ':', '"', '"', '~',
+        '^', '^', ';', ';', ';', '_', '_', '_', '!', '!', '!', '!', '!', '!',
+        '!', '!', '!', '!', '!', '!', '!', '!', '!', '!', '!', '!', '*', '*',
+        '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '\\',
+        '\\', '/', 'r', '(', '(', ')', '|', '|', '+', '>', '<', '=', '?', 'c',
+        'c', 'c', 'c', 'c', 'c', 'l', 'l', 'l', 'l', 'l', 'l', 'l', 'l', 'i',
+        'i', 'i', 'i', '[', ']', 'v', 's', 'L', '7', 'j', 'z', 'x', 'x', 't',
+        'J', '}', '{', 'T', 'Y', '1', 'f', 'C', 'n', 'n', 'n', 'n', 'n', 'u',
+        'I', 'I', 'I', 'I', 'I', 'o', 'o', '2', 'F', '3', '3', '3', 'S', 'S',
+        'S', 'y', 'y', 'y', '5', 'V', 'e', 'a', 'w', 'w', 'w', 'Z', 'h', 'h',
+        '4', 'X', '%', 'k', 'P', 'P', '$', '$', 'G', 'G', 'G', 'G', 'G', 'U',
+        'U', 'U', 'E', 'E', '&', 'm', 'b', 'b', 'b', 'b', 'd', '9', 'p', 'q',
+        'A', '6', 'O', 'K', '#', '0', 'H', 'H', '8', '8', '8', '8', '8', 'D',
+        'D', 'g', 'g', 'R', 'Q', 'Q', 'Q', 'Q', '@', '@', '@', '@', '@', '@',
+        '@', '@', '@', '@', '@', '@', '@', '@', '@', 'B', 'B', 'B', 'N', 'W',
+        'W', 'M', 'M', 'M'
+    };
+#endif
 }
