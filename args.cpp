@@ -59,8 +59,22 @@ public:
 
     std::string help(const std::vector<std::string> & groups ={}, const std::string & msg = "")
     {
-        auto txt = cxxopts::Options::help(groups);
-        if(std::empty(groups))
+        std::vector<std::string> pos_last_groups = groups;
+
+        if(std::empty(pos_last_groups))
+            pos_last_groups = cxxopts::Options::groups();
+
+        auto pos_i = std::find(std::begin(pos_last_groups), std::end(pos_last_groups), POS_GROUP_NAME);
+        bool has_pos = pos_i != std::end(pos_last_groups);
+        if(has_pos)
+        {
+            pos_last_groups.erase(pos_i);
+            pos_last_groups.push_back(POS_GROUP_NAME);
+        }
+
+        auto txt = cxxopts::Options::help(pos_last_groups);
+
+        if(has_pos)
         {
             std::size_t longest = 0;
             std::vector<std::pair<std::string, cxxopts::HelpOptionDetails>> pos;
@@ -86,8 +100,8 @@ public:
                     space = '\n' + space;
 
                 txt += POS_HELP_INDENT + name + space
-                     + cxxopts::format_description(opt, longest + cxxopts::OPTION_DESC_GAP, allowed)
-                     + '\n';
+                    + cxxopts::format_description(opt, longest + cxxopts::OPTION_DESC_GAP, allowed)
+                    + '\n';
             }
         }
 
