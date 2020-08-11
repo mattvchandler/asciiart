@@ -131,7 +131,7 @@ private:
     for(std::size_t i = 0; i < std::size(convert_formats); ++i)
     {
         if(i > 0)
-            convert_format_list += ',';
+            convert_format_list += ", ";
         convert_format_list += convert_formats[i].substr(1);
     }
 
