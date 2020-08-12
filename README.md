@@ -29,6 +29,7 @@ formats:
 
 * AVIF (requires libavif)
 * BMP
+* FLIF (requires libflif)
 * GIF (requires giflib)
 * ICO / CUR
 * JPEG (requires libjpeg)

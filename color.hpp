@@ -47,6 +47,15 @@ struct Color
         }
     }
 
+    Color & invert()
+    {
+        r = 255 - r;
+        g = 255 - g;
+        b = 255 - b;
+
+        return *this;
+    }
+
     constexpr bool operator<(const Color & other) const
     {
         if(r < other.r)
@@ -193,11 +202,13 @@ struct FColor
 
         return 0.2126f * luminance_color[0] + 0.7152f * luminance_color[1] + 0.0722f * luminance_color[2];
     }
-    void invert()
+    FColor & invert()
     {
         r = 1.0f - r;
         g = 1.0f - g;
         b = 1.0f - b;
+
+        return *this;
     }
 
     FColor & operator+=(const FColor & other)

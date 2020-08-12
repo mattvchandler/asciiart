@@ -1,19 +1,20 @@
 #cmakedefine FONTCONFIG_FOUND 1
 #cmakedefine FREETYPE_FOUND   1
 
-#cmakedefine AVIF_FOUND   1
-#cmakedefine BPG_FOUND    1
-#cmakedefine EXIF_FOUND   1
-#cmakedefine FLIF_FOUND   1
-#cmakedefine GIF_FOUND    1
-#cmakedefine HEIF_FOUND   1
-#cmakedefine JP2_FOUND    1
-#cmakedefine JPEG_FOUND   1
-#cmakedefine PNG_FOUND    1
-#cmakedefine SVG_FOUND    1
-#cmakedefine TIFF_FOUND   1
-#cmakedefine WEBP_FOUND   1
-#cmakedefine XPM_FOUND    1
+#cmakedefine AVIF_FOUND       1
+#cmakedefine BPG_FOUND        1
+#cmakedefine EXIF_FOUND       1
+#cmakedefine FLIF_ENC_FOUND   1
+#cmakedefine FLIF_DEC_FOUND   1
+#cmakedefine GIF_FOUND        1
+#cmakedefine HEIF_FOUND       1
+#cmakedefine JP2_FOUND        1
+#cmakedefine JPEG_FOUND       1
+#cmakedefine PNG_FOUND        1
+#cmakedefine SVG_FOUND        1
+#cmakedefine TIFF_FOUND       1
+#cmakedefine WEBP_FOUND       1
+#cmakedefine XPM_FOUND        1
 
 #cmakedefine HAS_UNISTD   1
 #cmakedefine HAS_ENDIAN   1

@@ -131,6 +131,9 @@ private:
         #endif
         ".bmp",
         ".cur",".ico",
+        #ifdef FLIF_ENC_FOUND
+        ".flif",
+        #endif
         #ifdef GIF_FOUND
         ".gif",
         #endif

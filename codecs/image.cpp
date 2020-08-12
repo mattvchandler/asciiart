@@ -289,6 +289,10 @@ void Image::convert(const Args & args) const
         Ico::write_cur(out, *this, args.invert);
     else if(ext == ".ico")
         Ico::write_ico(out, *this, args.invert);
+    #ifdef FLIF_ENC_FOUND
+    else if(ext == ".flif")
+        Flif::write(out, *this, args.invert);
+    #endif
     #ifdef GIF_FOUND
     else if(ext == ".gif")
         Gif::write(out, *this, args.invert);
@@ -372,7 +376,7 @@ void Image::convert(const Args & args) const
         }
         else if(is_flif(header))
         {
-            #ifdef FLIF_FOUND
+            #ifdef FLIF_DEC_FOUND
             return std::make_unique<Flif>(input);
             #else
             throw std::runtime_error{"Not compiled with FLIF support"};

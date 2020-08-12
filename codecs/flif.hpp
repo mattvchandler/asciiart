@@ -11,11 +11,17 @@ inline bool is_flif(const Image::Header & header)
     return std::equal(std::begin(flif_header), std::end(flif_header), std::begin(header), Image::header_cmp);
 }
 
-#ifdef FLIF_FOUND
+#if defined(FLIF_ENC_FOUND) || defined(FLIF_DEC_FOUND)
 class Flif final: public Image
 {
 public:
+    #ifdef FLIF_DEC_FOUND
     explicit Flif(std::istream & input);
+    #endif
+
+    #ifdef FLIF_ENC_FOUND
+    static void write(std::ostream & out, const Image & img, bool invert);
+    #endif
 };
 #endif
 #endif // FLIF_HPP
