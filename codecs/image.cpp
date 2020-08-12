@@ -278,7 +278,12 @@ void Image::convert(const Args & args) const
 
     auto & ext = args.convert_filename->second;
 
-    if(ext == ".bmp")
+    if(false); // dummy statement
+    #ifdef AVIF_FOUND
+    else if(ext == ".avif")
+        Avif::write(out, *this, args.invert);
+    #endif
+    else if(ext == ".bmp")
         Bmp::write(out, *this, args.invert);
     else if(ext == ".cur")
         Ico::write_cur(out, *this, args.invert);

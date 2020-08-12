@@ -67,3 +67,66 @@ Avif::Avif(std::istream & input)
 
     avifDecoderDestroy(decoder);
 }
+
+void Avif::write(std::ostream & out, const Image & img, bool invert)
+{
+    auto image = avifImageCreate(img.get_width(), img.get_height(), 8, AVIF_PIXEL_FORMAT_YUV420);
+
+    image->colorPrimaries          = AVIF_COLOR_PRIMARIES_BT709;
+    image->transferCharacteristics = AVIF_TRANSFER_CHARACTERISTICS_SRGB;
+    image->matrixCoefficients      = AVIF_MATRIX_COEFFICIENTS_BT709;
+    image->yuvRange                = AVIF_RANGE_FULL;
+
+    avifImageAllocatePlanes(image, AVIF_PLANES_YUV);
+
+    avifRGBImage rgb;
+    avifRGBImageSetDefaults(&rgb, image);
+
+    rgb.depth  = 8;
+    rgb.format = AVIF_RGB_FORMAT_RGBA;
+
+    avifRGBImageAllocatePixels(&rgb);
+
+    rgb.rowBytes = img.get_width() * 4;
+
+    for(std::size_t row = 0; row < img.get_height(); ++row)
+    {
+        for(std::size_t col = 0; col < img.get_height(); ++col)
+        {
+            auto & color = img[row][col];
+
+            auto pixel = rgb.pixels + row * rgb.rowBytes + col * 4;
+            for(std::size_t i = 0; i < 4; ++i)
+            {
+                if(invert && i < 4)
+                    pixel[i] = 255 - color[i];
+                else
+                    pixel[i] = color[i];
+            }
+        }
+    }
+
+    avifImageRGBToYUV(image, &rgb);
+    avifRGBImageFreePixels(&rgb);
+
+    avifRWData output     = AVIF_DATA_EMPTY;
+    auto encoder          = avifEncoderCreate();
+    encoder->maxThreads   = 1;
+    encoder->minQuantizer = AVIF_QUANTIZER_LOSSLESS;
+    encoder->maxQuantizer = AVIF_QUANTIZER_LOSSLESS;
+
+    if(auto result = avifEncoderWrite(encoder, image, &output); result != AVIF_RESULT_OK)
+    {
+        avifImageDestroy(image);
+        avifRWDataFree(&output);
+        avifEncoderDestroy(encoder);
+
+        throw std::runtime_error{"Error writing AVIF file: " + std::string{avifResultToString(result)}};
+    }
+
+    out.write(reinterpret_cast<char *>(output.data), output.size);
+
+    avifImageDestroy(image);
+    avifRWDataFree(&output);
+    avifEncoderDestroy(encoder);
+}

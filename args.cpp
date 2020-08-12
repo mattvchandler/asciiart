@@ -126,6 +126,9 @@ private:
 
     std::vector<std::string> convert_formats =
     {
+        #ifdef AVIF_FOUND
+        ".avif",
+        #endif
         ".bmp",
         ".cur",".ico",
         #ifdef GIF_FOUND

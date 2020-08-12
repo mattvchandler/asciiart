@@ -32,6 +32,8 @@ class Avif final: public Image
 {
 public:
     explicit Avif(std::istream & input);
+
+    static void write(std::ostream & out, const Image & img, bool invert);
 };
 #endif
 #endif // AVIF_HPP

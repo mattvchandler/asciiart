@@ -27,6 +27,7 @@ Basic conversion is also supported for some formats with the `--convert` flag.
 Conversion can be done from any of the above formats to one of the following
 formats:
 
+* AVIF (requires libavif)
 * BMP
 * GIF (requires giflib)
 * ICO / CUR
