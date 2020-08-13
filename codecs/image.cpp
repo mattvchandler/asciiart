@@ -297,6 +297,10 @@ void Image::convert(const Args & args) const
     else if(ext == ".gif")
         Gif::write(out, *this, args.invert);
     #endif
+    #ifdef HEIF_FOUND
+    else if(ext == ".heif")
+        Heif::write(out, *this, args.invert);
+    #endif
     #ifdef JPEG_FOUND
     else if(ext == ".jpeg" || ext == ".jpg")
         Jpeg::write(out, *this, args.bg, args.invert);

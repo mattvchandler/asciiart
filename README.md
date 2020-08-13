@@ -31,6 +31,7 @@ formats:
 * BMP
 * FLIF (requires libflif)
 * GIF (requires giflib)
+* HEIF / HEIC (requires libheif)
 * ICO / CUR
 * JPEG (requires libjpeg)
 * PCX

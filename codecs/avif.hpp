@@ -11,11 +11,9 @@
 inline bool is_avif(const Image::Header & header)
 {
     const std::array<unsigned char, 4> ftyp_header = {'f', 't', 'y', 'p'};
-    const std::array<std::array<unsigned char, 4>, 4> brand = {{
+    const std::array<std::array<unsigned char, 4>, 2> brand = {{
         {'a', 'v', 'i', 'f'},
         {'a', 'v', 'i', 's'},
-        {'m', 'i', 'f', '1'},
-        {'m', 's', 'f', '1'},
     }};
 
     if(!std::equal(std::begin(ftyp_header), std::end(ftyp_header), std::begin(header) + 4, Image::header_cmp))

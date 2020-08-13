@@ -124,6 +124,7 @@ private:
 {
     Optional_pos options{argv[0], "Convert an image to ASCII art"};
 
+    // TODO: similar list for input arg
     std::vector<std::string> convert_formats =
     {
         #ifdef AVIF_FOUND
@@ -136,6 +137,9 @@ private:
         #endif
         #ifdef GIF_FOUND
         ".gif",
+        #endif
+        #ifdef HEIF_FOUND
+        ".heif",
         #endif
         #ifdef JPEG_FOUND
         ".jpg", ".jpeg",
