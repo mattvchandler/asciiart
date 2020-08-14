@@ -305,6 +305,10 @@ void Image::convert(const Args & args) const
     else if(ext == ".jpeg" || ext == ".jpg")
         Jpeg::write(out, *this, args.bg, args.invert);
     #endif
+    #ifdef JP2_FOUND
+    else if(ext == ".jp2")
+        Jp2::write(out, *this, args.invert);
+    #endif
     else if(ext == ".pcx")
         Pcx::write(out, *this, args.bg, args.invert);
     #ifdef PNG_FOUND

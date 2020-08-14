@@ -13,15 +13,15 @@
 
 #include "jp2_color.hpp"
 
-struct Reader
+struct JP2_io
 {
-    std::size_t pos;
+    std::size_t pos {0};
     std::vector<unsigned char> data;
 };
 
 OPJ_SIZE_T read_fun(void * buffer, OPJ_SIZE_T num_bytes, void * user)
 {
-    auto input = reinterpret_cast<Reader*>(user);
+    auto input = reinterpret_cast<JP2_io*>(user);
     if(!input)
         return -1;
 
@@ -38,6 +38,56 @@ OPJ_SIZE_T read_fun(void * buffer, OPJ_SIZE_T num_bytes, void * user)
     return num_bytes;
 }
 
+OPJ_SIZE_T write_fun(void * buffer, OPJ_SIZE_T num_bytes, void * user)
+{
+    auto out = reinterpret_cast<JP2_io*>(user);
+    if(!out)
+        return -1;
+
+    if(out->pos + num_bytes > std::size(out->data))
+        out->data.resize(out->pos + num_bytes);
+
+    std::memcpy(std::data(out->data) + out->pos, buffer, num_bytes);
+
+    out->pos += num_bytes;
+
+    return num_bytes;
+}
+
+OPJ_OFF_T skip_fun(OPJ_OFF_T off, void * user)
+{
+    auto out = reinterpret_cast<JP2_io*>(user);
+    if(!out)
+        return -1;
+
+    if(off > 0 && out->pos + off > std::size(out->data))
+    {
+        out->data.resize(out->pos + off);
+        std::memset(std::data(out->data) + out->pos, 0, off);
+    }
+
+    out->pos += off;
+
+    return off;
+}
+
+OPJ_BOOL seek_fun(OPJ_OFF_T pos, void * user)
+{
+    auto out = reinterpret_cast<JP2_io*>(user);
+    if(!out)
+        return OPJ_FALSE;
+
+    if(static_cast<std::size_t>(pos) > std::size(out->data))
+    {
+        out->data.resize(pos);
+        std::memset(std::data(out->data) + out->pos, 0, pos - out->pos);
+    }
+
+    out->pos = pos;
+
+    return OPJ_TRUE;
+}
+
 void error_cb(const char * msg, void*)
 {
     std::cerr<<"[ERROR]: "<<msg<<'\n';
@@ -50,7 +100,7 @@ void warn_cb(const char * msg, void*)
 
 Jp2::Jp2(std::istream & input, Type type)
 {
-    Reader reader {0, Image::read_input_to_memory(input)};
+    JP2_io reader {0, Image::read_input_to_memory(input)};
 
     auto codec_type {OPJ_CODEC_JP2};
     switch(type)
@@ -78,7 +128,7 @@ Jp2::Jp2(std::istream & input, Type type)
         throw std::runtime_error{"Could not set JP2 decoder parameters"};
     }
 
-    auto stream = opj_stream_default_create(true);
+    auto stream = opj_stream_default_create(OPJ_STREAM_READ);
     if(!stream)
     {
         opj_destroy_codec(decoder);
@@ -244,4 +294,111 @@ Jp2::Jp2(std::istream & input, Type type)
 
     transpose_image(orientation);
     #endif
+}
+
+#include <iostream>
+
+void Jp2::write(std::ostream & out, const Image & img, bool invert)
+{
+    opj_cparameters_t parameters;
+    opj_set_default_encoder_parameters(&parameters);
+
+    std::array<opj_image_comptparm, 4> image_param {};
+
+    for(auto && i: image_param)
+    {
+        i = {
+            static_cast<OPJ_UINT32>(parameters.subsampling_dx), // dx
+            static_cast<OPJ_UINT32>(parameters.subsampling_dy), // dy
+            static_cast<OPJ_UINT32>(img.get_width()),
+            static_cast<OPJ_UINT32>(img.get_height()),
+            0, // x0
+            0, // y0
+            8, // prec
+            8, // bpp
+            0, // sgnd
+        };
+    }
+
+    auto image = opj_image_create(4, std::data(image_param), OPJ_CLRSPC_SRGB);
+    if(!image)
+    {
+        throw std::runtime_error{"Could not allocate JP2 image"};
+    }
+
+    image->x0 = 0;
+    image->y0 = 0;
+    image->x1 = (img.get_width() - 1) * parameters.subsampling_dx + 1;
+    image->y1 = (img.get_height() - 1) * parameters.subsampling_dy + 1;
+
+    for(std::size_t row = 0; row < img.get_height(); ++row)
+    {
+        for(std::size_t col = 0; col < img.get_width(); ++col)
+        {
+            for(std::size_t i = 0; i < 4; ++i)
+            {
+                if(invert && i < 3)
+                {
+                    image->comps[i].data[row * img.get_width() + col]
+                        = 255 - img[row][col][i];
+                }
+                else
+                {
+                    image->comps[i].data[row * img.get_width() + col]
+                        = img[row][col][i];
+                }
+            }
+        }
+    }
+
+    auto encoder = opj_create_compress(OPJ_CODEC_JP2);
+    if(!encoder)
+        throw std::runtime_error{"Could not create JP2 encoder"};
+
+    if(!opj_setup_encoder(encoder, &parameters, image))
+    {
+        opj_destroy_codec(encoder);
+        opj_image_destroy(image);
+        throw std::runtime_error{"Could not set JP2 encoder parameters"};
+    }
+
+    auto stream = opj_stream_default_create(OPJ_STREAM_WRITE);
+    if(!stream)
+    {
+        opj_destroy_codec(encoder);
+        opj_image_destroy(image);
+        throw std::runtime_error{"Could not create JP2 stream"};
+    }
+
+    JP2_io output_buffer;
+    opj_stream_set_user_data(stream, &output_buffer, nullptr);
+    opj_stream_set_user_data_length(stream, 0);
+    opj_stream_set_write_function(stream, write_fun);
+    opj_stream_set_skip_function(stream, skip_fun);
+    opj_stream_set_seek_function(stream, seek_fun);
+
+    opj_set_error_handler(encoder, error_cb, nullptr);
+    opj_set_warning_handler(encoder, warn_cb, nullptr);
+
+    if(!opj_start_compress(encoder, image, stream))
+    {
+        opj_destroy_codec(encoder);
+        opj_stream_destroy(stream);
+        opj_image_destroy(image);
+    }
+
+    if(!opj_encode(encoder, stream))
+    {
+        opj_destroy_codec(encoder);
+        opj_stream_destroy(stream);
+        opj_image_destroy(image);
+    }
+
+    opj_end_compress(encoder, stream);
+
+    opj_destroy_codec(encoder);
+    opj_stream_destroy(stream);
+    opj_image_destroy(image);
+
+    out.write(reinterpret_cast<char *>(std::data(output_buffer.data)), std::size(output_buffer.data));
 }

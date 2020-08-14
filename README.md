@@ -24,6 +24,7 @@ Supports a variety of image formats:
 * XPM (requires libxpm)
 
 Basic conversion is also supported for some formats with the `--convert` flag.
+Converted images are always as close to 32bit RGBA as supported by the format.
 Conversion can be done from any of the above formats to one of the following
 formats:
 
@@ -34,7 +35,18 @@ formats:
 * HEIF / HEIC (requires libheif)
 * ICO / CUR
 * JPEG (requires libjpeg)
+* JPEG 2000 (requires OpenJPEG)
 * PCX
 * PNG (requires libpng)
 * PPM / PGM / PBM
 * TGA
+
+### TODO:
+
+Add support for
+
+* JPEG XL (R/W?)
+* OpenEXR (R/W)
+* TIFF (W)
+* WebP (W)
+* XPM (W)

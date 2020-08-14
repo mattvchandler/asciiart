@@ -119,37 +119,40 @@ private:
     inline static const std::string POS_HELP_INDENT = "  ";
 };
 
+// TODO: similar list for input arg
+static const std::vector<std::string> convert_formats =
+{
+    #ifdef AVIF_FOUND
+    ".avif",
+    #endif
+    ".bmp",
+    ".cur",".ico",
+    #ifdef FLIF_ENC_FOUND
+    ".flif",
+    #endif
+    #ifdef GIF_FOUND
+    ".gif",
+    #endif
+    #ifdef HEIF_FOUND
+    ".heif",
+    #endif
+    #ifdef JPEG_FOUND
+    ".jpg", ".jpeg",
+    #endif
+    #ifdef JP2_FOUND
+    ".jp2",
+    #endif
+    ".pcx",
+    #ifdef PNG_FOUND
+    ".png",
+    #endif
+    ".pbm", ".pgm", ".ppm",
+    ".tga"
+};
+
 [[nodiscard]] std::optional<Args> parse_args(int argc, char * argv[])
 {
     Optional_pos options{argv[0], "Convert an image to ASCII art"};
-
-    // TODO: similar list for input arg
-    std::vector<std::string> convert_formats =
-    {
-        #ifdef AVIF_FOUND
-        ".avif",
-        #endif
-        ".bmp",
-        ".cur",".ico",
-        #ifdef FLIF_ENC_FOUND
-        ".flif",
-        #endif
-        #ifdef GIF_FOUND
-        ".gif",
-        #endif
-        #ifdef HEIF_FOUND
-        ".heif",
-        #endif
-        #ifdef JPEG_FOUND
-        ".jpg", ".jpeg",
-        #endif
-        ".pcx",
-        #ifdef PNG_FOUND
-        ".png",
-        #endif
-        ".pbm", ".pgm", ".ppm",
-        ".tga"
-    };
 
     std::string convert_format_list;
     for(std::size_t i = 0; i < std::size(convert_formats); ++i)
