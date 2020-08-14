@@ -6,11 +6,11 @@ Supports a variety of image formats:
 
 * AVIF (requires libavif)
 * BMP
+* CUR / ICO
 * BPG (requires libbpg)
 * FLIF (requires libflif)
 * GIF (requires giflib)
 * HEIF / HEIC (requires libheif)
-* ICO / CUR
 * JPEG (requires libjpeg)
 * JPEG 2000 (requires OpenJPEG)
 * PCX
@@ -30,10 +30,10 @@ formats:
 
 * AVIF (requires libavif)
 * BMP
+* CUR / ICO
 * FLIF (requires libflif)
 * GIF (requires giflib)
 * HEIF / HEIC (requires libheif)
-* ICO / CUR
 * JPEG (requires libjpeg)
 * JPEG 2000 (requires OpenJPEG)
 * PCX
@@ -47,6 +47,7 @@ Add support for
 
 * JPEG XL (R/W?)
 * OpenEXR (R/W)
+* PFM (R/W)
 * TIFF (W)
 * WebP (W)
 * XPM (W)

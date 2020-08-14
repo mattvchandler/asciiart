@@ -119,8 +119,50 @@ private:
     inline static const std::string POS_HELP_INDENT = "  ";
 };
 
-// TODO: similar list for input arg
-static const std::vector<std::string> convert_formats =
+static const std::vector<std::string> input_formats =
+{
+    #ifdef AVIF_FOUND
+    "AVIF",
+    #endif
+    "BMP",
+    #ifdef BPG_FOUND
+    "BPG",
+    #endif
+    "CUR","ICO",
+    #ifdef FLIF_ENC_FOUND
+    "FLIF",
+    #endif
+    #ifdef GIF_FOUND
+    "GIF",
+    #endif
+    #ifdef HEIF_FOUND
+    "HEIF",
+    #endif
+    #ifdef JPEG_FOUND
+    "JPEG",
+    #endif
+    #ifdef JP2_FOUND
+    "JPEG 2000",
+    #endif
+    "PCX",
+    #ifdef PNG_FOUND
+    "PNG",
+    #endif
+    "PBM", "PGM", "PPM",
+    "SIF",
+    #ifdef TIFF_FOUND
+    "TIFF",
+    #endif
+    #ifdef WEBP_FOUND
+    "WebP",
+    #endif
+    #ifdef XPM_FOUND
+    "XPM",
+    #endif
+    "TGA"
+};
+
+static const std::vector<std::string> output_formats =
 {
     #ifdef AVIF_FOUND
     ".avif",
@@ -154,12 +196,20 @@ static const std::vector<std::string> convert_formats =
 {
     Optional_pos options{argv[0], "Convert an image to ASCII art"};
 
-    std::string convert_format_list;
-    for(std::size_t i = 0; i < std::size(convert_formats); ++i)
+    std::string input_format_list;
+    for(std::size_t i = 0; i < std::size(input_formats); ++i)
     {
         if(i > 0)
-            convert_format_list += ", ";
-        convert_format_list += convert_formats[i].substr(1);
+            input_format_list += ", ";
+        input_format_list += input_formats[i];
+    }
+
+    std::string output_format_list;
+    for(std::size_t i = 0; i < std::size(output_formats); ++i)
+    {
+        if(i > 0)
+            output_format_list += ", ";
+        output_format_list += output_formats[i].substr(1);
     }
 
     try
@@ -171,7 +221,7 @@ static const std::vector<std::string> convert_formats =
             ("b,bg",      "Background color value for transparent images (0-255)",                         cxxopts::value<int>()->default_value("0"),         "BG")
             ("i,invert",  "Invert colors")
             ("o,output",  "Output text file path. Output to stdout if '-'",                                cxxopts::value<std::string>()->default_value("-"), "OUTPUT_FILE")
-            ("v,convert", "Convert input to output file. Valid formats: " + convert_format_list,           cxxopts::value<std::string>(),                     "OUTPUT_IMAGE_FILE");
+            ("v,convert", "Convert input to output file. Supported formats: " + output_format_list,        cxxopts::value<std::string>(),                     "OUTPUT_IMAGE_FILE");
 
         #if defined(FONTCONFIG_FOUND) && defined(FREETYPE_FOUND)
         const std::string font_group = "Text display options";
@@ -191,7 +241,7 @@ static const std::vector<std::string> convert_formats =
             ("ascii",     "use ascii chars for display. More dense chars will be used for higher luminosity colors. Enabled automatically when --nocolor set")
             ("space",     "use spaces for display. Not allowed when --ascii set");
 
-        const std::string filetype_group = "Input file detection override";
+        const std::string filetype_group = "Input file detection override (for formats that can't reliably be identified by file signature)";
         options.add_options(filetype_group)("tga", "Interpret input as a TGA file");
         options.add_options(filetype_group)("pcx", "Interpret input as a PCX file");
 
@@ -205,7 +255,7 @@ static const std::vector<std::string> convert_formats =
         options.add_options(filetype_group)("sif", "Interpret input as a Space Image Format file (from Advent of Code 2019)");
 
         options.add_positionals()
-            ("input", "Input image path. Read from stdin if -", cxxopts::value<std::string>()->default_value("-"));
+            ("input", "Input image path. Read from stdin if -. Supported formats: " + input_format_list, cxxopts::value<std::string>()->default_value("-"));
 
         auto args = options.parse(argc, const_cast<const char **&>(argv));
 
@@ -337,7 +387,7 @@ static const std::vector<std::string> convert_formats =
             for(auto && i: ext)
                 i = std::tolower(i);
 
-            if(std::find(std::begin(convert_formats), std::end(convert_formats), ext) == std::end(convert_formats))
+            if(std::find(std::begin(output_formats), std::end(output_formats), ext) == std::end(output_formats))
             {
                 std::cerr<<options.help("Unsupported conversion type: " + ext);
                 return {};
