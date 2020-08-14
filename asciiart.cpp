@@ -202,9 +202,12 @@ void write_ascii(const Image & img, const Char_vals & char_vals, const Args & ar
     {
         for(std::size_t col = 0; col < scaled_img.get_width(); ++col)
         {
-            auto disp_c = FColor{scaled_img[row][col]}.alpha_blend(bg);
+            FColor disp_c {scaled_img[row][col]};
+
             if(args.invert)
                 disp_c.invert();
+
+            disp_c.alpha_blend(bg);
 
             scaled_img[row][col] = disp_c;
         }

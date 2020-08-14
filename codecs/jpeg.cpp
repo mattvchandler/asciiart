@@ -236,9 +236,10 @@ void Jpeg::write(std::ostream & out, const Image & img, unsigned char bg, bool i
         for(std::size_t col = 0; col < img.get_width(); ++col)
         {
             FColor fcolor = img[cinfo.next_scanline][col];
-            fcolor.alpha_blend(bg / 255.0f);
             if(invert)
                 fcolor.invert();
+
+            fcolor.alpha_blend(bg / 255.0f);
 
             buffer[col * 3    ] = static_cast<unsigned char>(fcolor.r * 255.0f);
             buffer[col * 3 + 1] = static_cast<unsigned char>(fcolor.g * 255.0f);

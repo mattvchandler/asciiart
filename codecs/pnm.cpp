@@ -228,9 +228,12 @@ void Pnm::write_pbm(std::ostream & out, const Image & img, unsigned char bg, boo
         for(std::size_t col = 0; col < img_copy.get_width(); ++col)
         {
             FColor fcolor {img[row][col]};
-            fcolor.alpha_blend(bg / 255.0f);
+
             if(invert)
                 fcolor.invert();
+
+            fcolor.alpha_blend(bg / 255.0f);
+
             auto l = static_cast<unsigned char>(fcolor.to_gray() * 255.0f);
             img_copy[row][col] = {l, l, l, 255};
         }
@@ -272,9 +275,11 @@ void Pnm::write_pgm(std::ostream & out, const Image & img, unsigned char bg, boo
         for(std::size_t col = 0; col < img.get_width(); ++col)
         {
             FColor fcolor {img[row][col]};
-            fcolor.alpha_blend(bg / 255.0f);
+
             if(invert)
                 fcolor.invert();
+
+            fcolor.alpha_blend(bg / 255.0f);
 
             out.put(static_cast<unsigned char>(fcolor.to_gray() * 255.0f));
         }
@@ -290,9 +295,11 @@ void Pnm::write_ppm(std::ostream & out, const Image & img, unsigned char bg, boo
         for(std::size_t col = 0; col < img.get_width(); ++col)
         {
             FColor fcolor {img[row][col]};
-            fcolor.alpha_blend(bg / 255.0f);
+
             if(invert)
                 fcolor.invert();
+
+            fcolor.alpha_blend(bg / 255.0f);
 
             Color color = fcolor;
 

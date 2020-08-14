@@ -395,11 +395,11 @@ void Pcx::write(std::ostream & out, const Image & img, unsigned char bg, bool in
                 // count number of identical consecutive values
                 for(std::size_t x = col + 1; x < img.get_width() && img[row][x][plane] == b && rle_count < 63u; ++x, ++rle_count);
 
-                // blend alpha
-                b = static_cast<decltype(b)>((b / 255.0f * img[row][col].a / 255.0f + bg / 255.0f * (1.0f - img[row][col].a / 255.0f)) * 255.0f);
-
                 if(invert)
                     b = 255 - b;
+
+                // blend alpha
+                b = static_cast<decltype(b)>((b / 255.0f * img[row][col].a / 255.0f + bg / 255.0f * (1.0f - img[row][col].a / 255.0f)) * 255.0f);
 
                 if(rle_count > 1 || (b & 0xC0u) == 0xC0u)
                     writeb(out, static_cast<std::uint8_t>(0xC0u | rle_count));
