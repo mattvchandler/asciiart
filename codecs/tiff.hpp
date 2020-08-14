@@ -17,6 +17,8 @@ class Tiff final: public Image
 {
 public:
     explicit Tiff(std::istream & input);
+
+    static void write(std::ostream & out, const Image & img, bool invert);
 };
 #endif
 #endif // TIFF_HPP

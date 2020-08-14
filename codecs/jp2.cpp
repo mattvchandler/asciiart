@@ -32,7 +32,7 @@ OPJ_SIZE_T read_fun(void * buffer, OPJ_SIZE_T num_bytes, void * user)
     if(num_bytes > remaining)
         num_bytes = remaining;
 
-    memcpy(buffer, &input->data[input->pos], num_bytes);
+    std::memcpy(buffer, std::data(input->data) + input->pos, num_bytes);
     input->pos += num_bytes;
 
     return num_bytes;
@@ -48,7 +48,6 @@ OPJ_SIZE_T write_fun(void * buffer, OPJ_SIZE_T num_bytes, void * user)
         out->data.resize(out->pos + num_bytes);
 
     std::memcpy(std::data(out->data) + out->pos, buffer, num_bytes);
-
     out->pos += num_bytes;
 
     return num_bytes;
@@ -61,10 +60,7 @@ OPJ_OFF_T skip_fun(OPJ_OFF_T off, void * user)
         return -1;
 
     if(off > 0 && out->pos + off > std::size(out->data))
-    {
         out->data.resize(out->pos + off);
-        std::memset(std::data(out->data) + out->pos, 0, off);
-    }
 
     out->pos += off;
 
@@ -78,10 +74,7 @@ OPJ_BOOL seek_fun(OPJ_OFF_T pos, void * user)
         return OPJ_FALSE;
 
     if(static_cast<std::size_t>(pos) > std::size(out->data))
-    {
         out->data.resize(pos);
-        std::memset(std::data(out->data) + out->pos, 0, pos - out->pos);
-    }
 
     out->pos = pos;
 

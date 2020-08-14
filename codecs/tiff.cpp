@@ -6,11 +6,18 @@
 #include <tiff.h>
 #include <tiffio.h>
 
-struct Tiff_reader
+struct Tiff_io
 {
-    explicit Tiff_reader(std::istream & input):
+    Tiff_io() = default;
+
+    explicit Tiff_io(std::istream & input):
         data { Image::read_input_to_memory(input) }
     {}
+
+    void write(std::ostream & out) const
+    {
+        out.write(reinterpret_cast<const char *>(std::data(data)), std::size(data));
+    }
 
     std::vector<unsigned char> data;
     std::size_t pos {0};
@@ -18,41 +25,57 @@ struct Tiff_reader
 
 tsize_t tiff_read(thandle_t hnd, tdata_t data, tsize_t size)
 {
-    auto in = reinterpret_cast<Tiff_reader*>(hnd);
-    auto read_size = std::min(static_cast<size_t>(size), std::size(in->data) - in->pos);
-    std::memcpy(data, std::data(in->data) + in->pos, read_size);
-    in->pos += read_size;
+    auto io = reinterpret_cast<Tiff_io*>(hnd);
+    auto read_size = std::min(static_cast<size_t>(size), std::size(io->data) - io->pos);
+    std::memcpy(data, std::data(io->data) + io->pos, read_size);
+    io->pos += read_size;
     return read_size;
+}
+
+tsize_t tiff_write(thandle_t hnd, tdata_t data, tsize_t size)
+{
+    auto io = reinterpret_cast<Tiff_io*>(hnd);
+
+    if(io->pos + size > std::size(io->data))
+        io->data.resize(io->pos + size);
+
+    std::memcpy(std::data(io->data) + io->pos, data, size);
+    io->pos += size;
+
+    return size;
 }
 
 toff_t tiff_seek(thandle_t hnd, toff_t off, int whence)
 {
-    auto in = reinterpret_cast<Tiff_reader*>(hnd);
+    auto io = reinterpret_cast<Tiff_io*>(hnd);
     switch(whence)
     {
         case SEEK_SET:
-            in->pos = off;
+            io->pos = off;
             break;
         case SEEK_CUR:
-            in->pos += off;
+            io->pos += off;
             break;
         case SEEK_END:
-            in->pos = std::size(in->data) - off;
+            io->pos = std::size(io->data) - off;
     }
-    return in->pos;
+    if(io->pos > std::size(io->data))
+        io->data.resize(io->pos);
+
+    return io->pos;
 }
 
 toff_t tiff_size(thandle_t hnd)
 {
-    auto in = reinterpret_cast<Tiff_reader*>(hnd);
-    return std::size(in->data);
+    auto io = reinterpret_cast<Tiff_io*>(hnd);
+    return std::size(io->data);
 }
 
 Tiff::Tiff(std::istream & input)
 {
     // libtiff does kind of a stupid thing and will seek backwards, which Header_stream doesn't support (because we can read from a pipe)
     // read the whole, huge file into memory instead
-    Tiff_reader tiff_reader(input);
+    Tiff_io tiff_reader(input);
 
     TIFFSetWarningHandler(nullptr);
 
@@ -87,4 +110,47 @@ Tiff::Tiff(std::istream & input)
     }
 
     TIFFClose(tiff);
+}
+
+void Tiff::write(std::ostream & out, const Image & img, bool invert)
+{
+    Tiff_io tiff_writer;
+
+    auto tiff = TIFFClientOpen("TIFF", "w", &tiff_writer, [](auto,auto,auto){return tsize_t{0};}, tiff_write, tiff_seek, [](auto){return 0;}, tiff_size, [](auto,auto,auto){return 0;}, [](auto,auto,auto){});
+    if(!tiff)
+        throw std::runtime_error{"Error writing TIFF data"};
+
+    TIFFSetField(tiff, TIFFTAG_IMAGEWIDTH, img.get_width());
+    TIFFSetField(tiff, TIFFTAG_IMAGELENGTH, img.get_height());
+    TIFFSetField(tiff, TIFFTAG_SAMPLESPERPIXEL, 4);
+    TIFFSetField(tiff, TIFFTAG_BITSPERSAMPLE, 8);
+    TIFFSetField(tiff, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);
+    TIFFSetField(tiff, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
+    TIFFSetField(tiff, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_RGB);
+
+    if(static_cast<std::size_t>(TIFFScanlineSize(tiff)) != img.get_width() * 4)
+    {
+        TIFFClose(tiff);
+        throw std::runtime_error{"TIFF scanline size incorrect"};
+    }
+
+    std::vector<Color> rowbuf(img.get_width());
+    for(std::size_t row = 0; row < img.get_height(); ++row)
+    {
+        for(std::size_t col = 0; col < img.get_width(); ++col)
+        {
+            rowbuf[col] = img[row][col];
+            if(invert)
+                rowbuf[col].invert();
+        }
+        if(TIFFWriteScanline(tiff, std::data(rowbuf), row, 0) < 0)
+        {
+            TIFFClose(tiff);
+            throw std::runtime_error{"Error writing TIFF data"};
+        }
+    }
+
+    TIFFClose(tiff);
+
+    tiff_writer.write(out);
 }

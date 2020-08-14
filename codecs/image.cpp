@@ -323,6 +323,10 @@ void Image::convert(const Args & args) const
         Pnm::write_ppm(out, *this, args.bg, args.invert);
     else if(ext == ".tga")
         Tga::write(out, *this, args.invert);
+    #ifdef TIFF_FOUND
+    else if(ext == ".tif")
+        Tiff::write(out, *this, args.invert);
+    #endif
     else
         throw std::runtime_error {"Unsupported conversion type: " + ext};
 }

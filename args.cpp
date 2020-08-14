@@ -189,7 +189,10 @@ static const std::vector<std::string> output_formats =
     ".png",
     #endif
     ".pbm", ".pgm", ".ppm",
-    ".tga"
+    ".tga",
+    #ifdef TIFF_FOUND
+    ".tif",
+    #endif
 };
 
 [[nodiscard]] std::optional<Args> parse_args(int argc, char * argv[])
