@@ -4,6 +4,7 @@
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
 
@@ -63,59 +64,103 @@ constexpr auto build_color_table()
 
 constexpr auto color_table = build_color_table();
 
-enum class Color_mode {FG, BG};
 class set_color
 {
 public:
-    explicit set_color(const Color & color, Args::Color color_type, Color_mode color_mode)
+    explicit set_color(const std::optional<Color> & fg_color, const std::optional<Color> & bg_color, Args::Color color_type)
     {
-        if(color_type != Args::Color::ANSI4 && color_type != Args::Color::ANSI8 && color_type != Args::Color::ANSI24)
+        if(color_type != Args::Color::NONE && color_type != Args::Color::ANSI4 && color_type != Args::Color::ANSI8 && color_type != Args::Color::ANSI24)
             throw std::runtime_error{"Unsupported set_color mode"};
 
-        std::ostringstream os;
-        os<<"\x1B[";
+        enum class Color_mode {none, fg_only, bg_only, both} color_mode;
 
-        if (color_type == Args::Color::ANSI24)
-        {
-            if (color_mode == Color_mode::FG)
-                os << "38";
-            else
-                os << "48";
+        if(!fg_color && !bg_color)
+            color_mode = Color_mode::none;
 
-            os << ";2;" << static_cast<int>(color.r) << ';' << static_cast<int>(color.g) << ';' << static_cast<int>(color.b);
-        }
+        else if(fg_color && !bg_color)
+            color_mode = Color_mode::fg_only;
+
+        else if(!fg_color && fg_color)
+            color_mode = Color_mode::bg_only;
+
         else
+            color_mode = Color_mode::both;
+
+        std::ostringstream os;
+
+        if(color_type == Args::Color::ANSI24)
         {
-            if(color_type == Args::Color::ANSI8)
+            switch(color_mode)
             {
-                auto index = std::distance(std::begin(color_table), std::find(std::begin(color_table), std::end(color_table), color));
-
-                if(color_mode == Color_mode::FG)
-                    os << "38";
-                else
-                    os << "48";
-
-                os << ";5;" << index;
+                case Color_mode::none:
+                    break;
+                case Color_mode::fg_only:
+                    os << "\x1B[38;2;" << static_cast<int>(fg_color->r) << ';' << static_cast<int>(fg_color->g) << ';' << static_cast<int>(fg_color->b) << 'm';
+                    break;
+                case Color_mode::bg_only:
+                    os << "\x1B[48;2;" << static_cast<int>(bg_color->r) << ';' << static_cast<int>(bg_color->g) << ';' << static_cast<int>(bg_color->b) << 'm';
+                    break;
+                case Color_mode::both:
+                    os << "\x1B[38;2;" << static_cast<int>(fg_color->r) << ';' << static_cast<int>(fg_color->g) << ';' << static_cast<int>(fg_color->b)
+                       <<     ";48;2;" << static_cast<int>(bg_color->r) << ';' << static_cast<int>(bg_color->g) << ';' << static_cast<int>(bg_color->b) << 'm';
+                    break;
             }
-            else // ANSI4
+        }
+        else if(color_type == Args::Color::ANSI8)
+        {
+            switch(color_mode)
             {
-                auto index = std::distance(std::begin(color_table), std::find(std::begin(color_table), std::begin(color_table) + 16, color));
+                case Color_mode::none:
+                    break;
+                case Color_mode::fg_only:
+                    os << "\x1B[38;5;" << std::distance(std::begin(color_table), std::find(std::begin(color_table), std::end(color_table), *fg_color)) << 'm';
+                    break;
+                case Color_mode::bg_only:
+                    os << "\x1B[48;5;" << std::distance(std::begin(color_table), std::find(std::begin(color_table), std::end(color_table), *bg_color)) << 'm';
+                    break;
+                case Color_mode::both:
+                    os << "\x1B[38;5;" << std::distance(std::begin(color_table), std::find(std::begin(color_table), std::end(color_table), *fg_color))
+                       <<     ";48;5;" << std::distance(std::begin(color_table), std::find(std::begin(color_table), std::end(color_table), *bg_color)) << 'm';
+                    break;
+            }
+        }
+        else if(color_type == Args::Color::ANSI4)
+        {
+            std::array<int, 2> index {};
 
-                int offset = 40;
+            if(fg_color)
+                index[0] = std::distance(std::begin(color_table), std::find(std::begin(color_table), std::begin(color_table) + 16, *fg_color));
+            if(bg_color)
+                index[1] = std::distance(std::begin(color_table), std::find(std::begin(color_table), std::begin(color_table) + 16, *bg_color));
 
-                if(color_mode == Color_mode::FG)
-                    offset = 30;
+            for(auto && i: index)
+            {
+                if(i >= 8 && i < 16)
+                    i += 60 - 8;
+                else if(i >= 17)
+                    throw std::logic_error{"ASNI4 index out of range"};
+            }
 
-                if(index < 8)
-                    os <<  index + offset;
-                else if(index < 16)
-                    os << index + offset + 60 - 8;
-                else
-                    throw std::runtime_error{"ASNI4 index out of range"};
+            index[0] += 30;
+            index[1] += 40;
+
+            switch(color_mode)
+            {
+                case Color_mode::none:
+                    break;
+                case Color_mode::fg_only:
+                    os << "\x1B[" << index[0] << 'm';
+                    break;
+                case Color_mode::bg_only:
+                    os << "\x1B[" << index[0] << 'm';
+                    break;
+                case Color_mode::both:
+                    os << "\x1B[" << index[0]
+                    <<     ";" << index[1] << 'm';
+                    break;
             }
         }
 
-        os << 'm';
         command_ = os.str();
     }
 
@@ -147,14 +192,21 @@ void write_ascii(const Image & img, const Char_vals & char_vals, const Args & ar
         throw std::runtime_error{"Could not open output file " + (args.output_filename == "-" ? "" : ("(" + args.output_filename + ") ")) + ": " + std::string{std::strerror(errno)}};
 
     const auto bg = args.bg / 255.0f;
+    auto disp_height = args.rows > 0 ? args.rows : img.get_height() * args.cols / img.get_width() / 2;
+    if(args.disp_char == Args::Disp_char::HALF_BLOCK)
+        disp_height *= 2;
 
-    auto scaled_img = img.scale(args.cols, (args.rows > 0 ? args.rows : img.get_height() * args.cols / img.get_width() / 2));
+    auto scaled_img = img.scale(args.cols, disp_height);
 
     for(std::size_t row = 0; row < scaled_img.get_height(); ++row)
     {
         for(std::size_t col = 0; col < scaled_img.get_width(); ++col)
         {
-            scaled_img[row][col] = FColor{scaled_img[row][col]}.alpha_blend(bg);
+            auto disp_c = FColor{scaled_img[row][col]}.alpha_blend(bg);
+            if(args.invert)
+                disp_c.invert();
+
+            scaled_img[row][col] = disp_c;
         }
     }
 
@@ -163,26 +215,27 @@ void write_ascii(const Image & img, const Char_vals & char_vals, const Args & ar
     else if(args.color == Args::Color::ANSI4)
         scaled_img.dither(std::begin(color_table), std::begin(color_table) + 16);
 
-    for(std::size_t row = 0; row < scaled_img.get_height(); ++row)
+    for(std::size_t row = 0; row < (args.disp_char == Args::Disp_char::HALF_BLOCK ? scaled_img.get_height() / 2 : scaled_img.get_height()); ++row)
     {
         for(std::size_t col = 0; col < scaled_img.get_width(); ++col)
         {
-            auto & color = scaled_img[row][col];
-
-            char disp_char = ' ';
-            if(args.force_ascii || args.color == Args::Color::NONE)
-                disp_char = char_vals[static_cast<unsigned char>(FColor{color}.to_gray() * 255.0f)];
-
-            if(args.color == Args::Color::NONE)
+            switch(args.disp_char)
             {
-                out<<disp_char;
-            }
-            else
-            {
-                if(args.force_ascii)
-                    out<<set_color(color, args.color, Color_mode::FG)<<disp_char;
-                else
-                    out<<set_color(color, args.color, Color_mode::BG)<<' ';
+                case Args::Disp_char::HALF_BLOCK:
+                    out<<set_color(scaled_img[row * 2][col], scaled_img[row * 2 + 1][col], args.color) << u8"▀";
+                    break;
+
+                case Args::Disp_char::SPACE:
+                    out<<set_color({}, scaled_img[row][col], args.color) << " ";
+                    break;
+
+                case Args::Disp_char::ASCII:
+                {
+                    auto color = scaled_img[row][col];
+                    auto disp_char = char_vals[static_cast<unsigned char>(FColor{color}.to_gray() * 255.0f)];
+                    out<<set_color(color, {}, args.color) << disp_char;
+                    break;
+                }
             }
         }
 

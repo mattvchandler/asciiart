@@ -180,11 +180,14 @@ private:
 
         const std::string color_group = "Color";
         options.add_options(color_group)
-            ("ansi4",   "use 4-bit ANSI colors")
-            ("ansi8",   "use 8-bit ANSI colors")
-            ("ansi24",  "use 24-bit ANSI colors. Default when output is stdout to terminal")
-            ("nocolor", "disable colors. Default when output is not stdout to terminal")
-            ("ascii",   "use ascii chars instead of colored backgrounds. Enabled when --nocolor set");
+            ("ansi4",     "use 4-bit ANSI colors")
+            ("ansi8",     "use 8-bit ANSI colors")
+            ("ansi24",    "use 24-bit ANSI colors. Default when output is stdout to terminal")
+            ("nocolor",   "disable colors. Default when output is not stdout to terminal")
+
+            ("halfblock", "use unicode half-block to display 2 colors per character. Enabled automatically unless overridden by --ascii or --space. Use --space instead if your terminal has problems with unicode output")
+            ("ascii",     "use ascii chars for display. More dense chars will be used for higher luminosity colors. Enabled automatically when --nocolor set")
+            ("space",     "use spaces for display. Not allowed when --ascii set");
 
         const std::string filetype_group = "Input file detection override";
         options.add_options(filetype_group)("tga", "Interpret input as a TGA file");
@@ -259,6 +262,18 @@ private:
         #endif
         }
 
+        if(args.count("halfblock") + args.count("space") + (args.count("ascii") || color == Args::Color::NONE ? 1 : 0) > 1)
+        {
+            std::cerr<<options.help("Only one of --halfblock, --ascii, or --space may be specified")<<'\n';
+            return {};
+        }
+
+        auto disp_char {Args::Disp_char::HALF_BLOCK};
+        if(args.count("ascii") || color == Args::Color::NONE)
+            disp_char = Args::Disp_char::ASCII;
+        else if(args.count("space"))
+            disp_char = Args::Disp_char::SPACE;
+
         auto filetype {Args::Force_file::detect};
 
         if(args.count("tga")
@@ -332,7 +347,7 @@ private:
             static_cast<unsigned char>(args["bg"].as<int>()),
             static_cast<bool>(args.count("invert")),
             color,
-            args.count("ascii") || color == Args::Color::NONE,
+            disp_char,
             filetype,
             convert_path
         };

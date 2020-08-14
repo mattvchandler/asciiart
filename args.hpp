@@ -18,7 +18,7 @@ struct Args
     unsigned char bg;            // BG color value
     bool invert;                 // invert colors
     enum class Color {NONE, ANSI4, ANSI8, ANSI24} color;
-    bool force_ascii;
+    enum class Disp_char {HALF_BLOCK, SPACE, ASCII} disp_char;
     enum class Force_file
     {
         detect,                  // detect filetype by header
