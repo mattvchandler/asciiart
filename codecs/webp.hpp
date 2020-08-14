@@ -18,6 +18,8 @@ class Webp final: public Image
 {
 public:
     explicit Webp(std::istream & input);
+
+    static void write(std::ostream & out, const Image & img, bool invert);
 };
 #endif
 #endif // WEBP_HPP

@@ -41,6 +41,7 @@ formats:
 * PPM / PGM / PBM
 * TGA
 * TIFF (requires libtiff)
+* WebP (requires libwebp)
 
 ### TODO:
 
@@ -49,5 +50,4 @@ Add support for
 * JPEG XL (R/W?)
 * OpenEXR (R/W)
 * PFM (R/W)
-* WebP (W)
 * XPM (W)

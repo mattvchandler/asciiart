@@ -327,6 +327,10 @@ void Image::convert(const Args & args) const
     else if(ext == ".tif")
         Tiff::write(out, *this, args.invert);
     #endif
+    #ifdef WEBP_FOUND
+    else if(ext == ".webp")
+        Webp::write(out, *this, args.invert);
+    #endif
     else
         throw std::runtime_error {"Unsupported conversion type: " + ext};
 }

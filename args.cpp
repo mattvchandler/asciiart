@@ -193,6 +193,9 @@ static const std::vector<std::string> output_formats =
     #ifdef TIFF_FOUND
     ".tif",
     #endif
+    #ifdef WEBP_FOUND
+    ".webp",
+    #endif
 };
 
 [[nodiscard]] std::optional<Args> parse_args(int argc, char * argv[])

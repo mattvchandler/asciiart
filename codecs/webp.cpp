@@ -3,6 +3,7 @@
 #include <stdexcept>
 
 #include <webp/decode.h>
+#include <webp/encode.h>
 
 Webp::Webp(std::istream & input)
 {
@@ -20,12 +21,39 @@ Webp::Webp(std::istream & input)
     {
         for(std::size_t col = 0; col < width_; ++col)
         {
-            image_data_[row][col].r = pix_data[4 * (row * width_ + col)];
-            image_data_[row][col].g = pix_data[4 * (row * width_ + col) + 1];
-            image_data_[row][col].b = pix_data[4 * (row * width_ + col) + 2];
-            image_data_[row][col].a = pix_data[4 * (row * width_ + col) + 3];
+            for(std::size_t i = 0; i < 4; ++i)
+            {
+                image_data_[row][col][i] = pix_data[4 * (row * width_ + col) + i];
+            }
         }
     }
 
     WebPFree(pix_data);
+}
+
+void Webp::write(std::ostream & out, const Image & img, bool invert)
+{
+    std::vector<std::uint8_t> data(img.get_width() * img.get_height() * 4);
+
+    for(std::size_t row = 0; row < img.get_height(); ++row)
+    {
+        for(std::size_t col = 0; col < img.get_width(); ++col)
+        {
+            for(std::size_t i = 0; i < 4; ++i)
+            {
+                if(invert && i < 3)
+                    data[row * img.get_width() * 4 + col * 4 + i] = 255 - img[row][col][i];
+                else
+                    data[row * img.get_width() * 4 + col * 4 + i] = img[row][col][i];
+            }
+        }
+    }
+
+    std::uint8_t * output;
+
+    auto output_size = WebPEncodeLosslessRGBA(std::data(data), img.get_width(), img.get_width(), img.get_width() * 4, &output);
+
+    out.write(reinterpret_cast<char *>(output), output_size);
+
+    WebPFree(output);
 }
