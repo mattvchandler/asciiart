@@ -69,7 +69,7 @@ Pcx::Pcx(std::istream & input)
             c.a = 255;
         }
 
-        if(version != 0 || version != 3)
+        if(version != 0 && version != 3)
             palette = std::data(ega_palette);
 
         input.ignore(1); // reserved

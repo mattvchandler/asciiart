@@ -1,7 +1,6 @@
 #include "args.hpp"
 
 #include <algorithm>
-#include <filesystem>
 #include <iostream>
 #include <vector>
 
@@ -310,12 +309,21 @@ private:
         if(args.count("convert"))
         {
             convert_path.emplace();
-            convert_path->first = args["convert"].as<std::string>();
+            auto && [path, ext] = *convert_path;
 
-            std::filesystem::path p = convert_path->first;
-            convert_path->second = p.extension().string();
+            path = args["convert"].as<std::string>();
 
-            auto & ext = convert_path->second;
+            // TODO: if std::filesystem is ever reliably supported across compilers / platforms without needing to link to an extra library, use that to get the extension instead
+            for(std::size_t i = std::size(path); i-- > 0;)
+            {
+                if(path[i] == '.')
+                {
+                    ext = path.substr(i);
+                    break;
+                }
+                else if(path[i] == '/' || path[i] == '\\')
+                    break;
+            }
 
             if(std::size(ext) == 0)
             {

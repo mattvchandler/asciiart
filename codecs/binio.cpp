@@ -2,6 +2,13 @@
 
 #include "config.h"
 
+#ifdef HAS_ENDIAN
+#include <endian.h>
+#endif
+#ifdef HAS_BYTESWAP
+#include <byteswap.h>
+#endif
+
 #ifdef BIG_ENDIAN
 static const binio_endian host_endian = binio_endian::BE;
 #else
