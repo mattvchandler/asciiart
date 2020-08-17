@@ -168,10 +168,7 @@ std::vector<Color> Image::generate_palette(std::size_t num_colors, bool gif_tran
     }
 
     if(std::size(palette) <= num_colors)
-    {
-        palette.resize(num_colors);
         return palette;
-    }
 
     std::vector partitions = { std::pair{std::begin(palette), std::end(palette)} };
 
@@ -258,11 +255,7 @@ std::vector<Color> Image::generate_palette(std::size_t num_colors, bool gif_tran
     }
 
     std::set unique_palette(std::begin(reduced_pallete), std::end(reduced_pallete));
-    std::vector<Color> final_palette(num_colors);
-    std::copy(std::begin(unique_palette), std::end(unique_palette), std::begin(final_palette));
-    std::fill(std::begin(final_palette) + std::size(unique_palette), std::end(final_palette), Color{0});
-
-    assert(std::size(final_palette) == num_colors);
+    std::vector<Color> final_palette(std::begin(unique_palette), std::end(unique_palette));
 
     return final_palette;
 }

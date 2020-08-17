@@ -120,21 +120,9 @@ void Gif::write(std::ostream & out, const Image & img, bool invert)
     {
         for(std::size_t col = 0; col < img.get_width(); ++col)
         {
-            auto & c = img[row][col];
+            img_copy[row][col] = img[row][col];
             if(invert)
-            {
-                img_copy[row][col] = Color
-                {
-                    static_cast<unsigned char>(255 - c.r),
-                    static_cast<unsigned char>(255 - c.g),
-                    static_cast<unsigned char>(255 - c.b),
-                    c.a
-                };
-            }
-            else
-            {
-                img_copy[row][col] = c;
-            }
+                img_copy[row][col].invert();
         }
     }
 
@@ -143,6 +131,14 @@ void Gif::write(std::ostream & out, const Image & img, bool invert)
 
     std::vector<GifColorType> gif_palette(std::size(palette));
     std::transform(std::begin(palette), std::end(palette), std::begin(gif_palette), [](const Color & c) { return GifColorType{ c.r, c.g, c.b }; });
+
+    // Gif generation doesn't seem to work when the # of colors in the palette is < 256, so pad it to that size
+    if(auto old_size = std::size(gif_palette); old_size < 256)
+    {
+        gif_palette.resize(256);
+        std::fill(std::begin(gif_palette) + old_size, std::end(gif_palette), GifColorType{0, 0, 0});
+    }
+
     auto gif_color_map = GifMakeMapObject(std::size(gif_palette), std::data(gif_palette));
     gif_palette.clear();
 
