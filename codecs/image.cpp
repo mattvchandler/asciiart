@@ -247,7 +247,8 @@ std::vector<Color> Image::generate_palette(std::size_t num_colors, bool gif_tran
 
         if(gif_transparency)
         {
-            if(reduced_pallete[i].a > 127)
+            const unsigned char alpha_threshold = 1;
+            if(reduced_pallete[i].a > alpha_threshold)
                 reduced_pallete[i].a = 255;
             else
                 reduced_pallete[i] = Color {0, 0, 0, 0};

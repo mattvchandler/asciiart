@@ -1,6 +1,7 @@
 #include "gif.hpp"
 
 #include <iostream>
+#include <map>
 #include <stdexcept>
 
 #include <cstdlib>
@@ -129,8 +130,16 @@ void Gif::write(std::ostream & out, const Image & img, bool invert)
     auto palette = img_copy.generate_palette(256, true);
     img_copy.dither(std::begin(palette), std::end(palette));
 
+    std::map<Color, std::size_t> color_lookup;
     std::vector<GifColorType> gif_palette(std::size(palette));
-    std::transform(std::begin(palette), std::end(palette), std::begin(gif_palette), [](const Color & c) { return GifColorType{ c.r, c.g, c.b }; });
+
+    for(std::size_t i = 0; i < std::size(palette); ++i)
+    {
+        auto & c = palette[i];
+
+        color_lookup[c] = i;
+        gif_palette[i] = GifColorType{ c.r, c.g, c.b };;
+    }
 
     // Gif generation doesn't seem to work when the # of colors in the palette is < 256, so pad it to that size
     if(auto old_size = std::size(gif_palette); old_size < 256)
@@ -175,15 +184,17 @@ void Gif::write(std::ostream & out, const Image & img, bool invert)
     {
         for(std::size_t col = 0; col < img_copy.get_width(); ++col)
         {
-            auto color = std::find(std::begin(palette), std::end(palette), img_copy[row][col]);
-            if(color == std::end(palette))
+            try
+            {
+                gif_img->RasterBits[row * img_copy.get_width() + col] = color_lookup.at(img_copy[row][col]);
+            }
+            catch(const std::out_of_range &)
             {
                 GifFreeSavedImages(gif);
                 EGifCloseFile(gif, nullptr);
                 GifFreeMapObject(gif_color_map);
                 throw std::runtime_error{"Error finding GIF color in palette"};
             }
-            gif_img->RasterBits[row * img_copy.get_width() + col] = std::distance(std::begin(palette), color);
         }
     }
 
