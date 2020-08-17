@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <array>
+#include <stdexcept>
 #include <vector>
 
 #include <cmath>
@@ -58,16 +59,14 @@ struct Color
 
     constexpr bool operator<(const Color & other) const
     {
-        if(r < other.r)
-            return true;
-        else if(g < other.g)
-            return true;
-        else if(b < other.b)
-            return true;
-        else if(a < other.a)
-            return true;
+        if(a != other.a)
+            return a < other.a;
+        else if(b != other.b)
+            return b < other.b;
+        else if(g != other.g)
+            return g < other.g;
         else
-            return false;
+            return r < other.r;
     }
 
     constexpr bool operator==(const Color & other) const
@@ -172,16 +171,14 @@ struct FColor
 
     constexpr bool operator<(const FColor & other) const
     {
-        if(r < other.r)
-            return true;
-        else if(g < other.g)
-            return true;
-        else if(b < other.b)
-            return true;
-        else if(a < other.a)
-            return true;
+        if(a != other.a)
+            return a < other.a;
+        else if(b != other.b)
+            return b < other.b;
+        else if(g != other.g)
+            return g < other.g;
         else
-            return false;
+            return r < other.r;
     }
 
     FColor & alpha_blend(float bg)
