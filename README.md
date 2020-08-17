@@ -50,4 +50,3 @@ Add support for
 * JPEG XL (R/W?)
 * OpenEXR (R/W)
 * PFM (R/W)
-* XPM (W)

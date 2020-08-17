@@ -8,6 +8,8 @@ class Xpm final: public Image
 {
 public:
     explicit Xpm(std::istream & input);
+
+    static void write(std::ostream & out, const Image & img, bool invert);
 };
 #endif
 #endif // XPM_HPP

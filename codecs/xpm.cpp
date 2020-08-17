@@ -1,8 +1,13 @@
 #include "xpm.hpp"
 
+#include <iomanip>
 #include <map>
+#include <sstream>
 #include <stdexcept>
 #include <string>
+
+#include <cstring>
+#include <climits>
 
 #include  <X11/xpm.h>
 
@@ -669,14 +674,16 @@ const std::map<std::string, Color> color_names
     {"lightgreen",           {144, 238, 144}},
 };
 
+struct My_XpmImage: public XpmImage
+{
+    ~My_XpmImage() { XpmFreeXpmImage(this); }
+};
+
 Xpm::Xpm(std::istream & input)
 {
-    auto data = Image::read_input_to_memory(input);
+    My_XpmImage img;
 
-    struct My_XpmImage: public XpmImage
-    {
-        ~My_XpmImage() { XpmFreeXpmImage(this); }
-    } img;
+    auto data = Image::read_input_to_memory(input);
 
     if(XpmCreateXpmImageFromBuffer(reinterpret_cast<char *>(std::data(data)), &img, nullptr) != XpmSuccess)
         throw std::runtime_error {"Error: Invalid XPM file"};
@@ -757,4 +764,121 @@ Xpm::Xpm(std::istream & input)
             image_data_[row][col] = colors[img.data[row * width_ + col]];
         }
     }
+}
+
+template <typename T>
+auto malloc_wrapper(std::size_t count)
+{
+    return static_cast<T*>(std::malloc(count * sizeof(T)));
+}
+
+void Xpm::write(std::ostream & out, const Image & img, bool invert)
+{
+    Image img_copy{img.get_width(), img.get_height()};
+
+    for(std::size_t row = 0; row < img.get_height(); ++row)
+    {
+        for(std::size_t col = 0; col < img.get_width(); ++col)
+        {
+            img_copy[row][col] = img[row][col];
+            if(invert)
+                img_copy[row][col].invert();
+        }
+    }
+
+    auto palette = img_copy.generate_palette(256, true);
+    img_copy.dither(std::begin(palette), std::end(palette));
+
+    std::map<Color, std::size_t> color_lookup;
+
+    // When we issue XpmCreateDataFromXpmImage(), it will attempt to free this
+    // pointer, so we need to allocate it with malloc. The same happens latetr
+    // with 'data'. This is not documented
+
+    auto colors = malloc_wrapper<XpmColor>(std::size(palette));
+
+    for(std::size_t i = 0; i < std::size(palette); ++i)
+    {
+        color_lookup[palette[i]] = i;
+
+        std::memset(&colors[i], 0, sizeof(XpmColor));
+
+        std::ostringstream chars;
+        chars << std::hex << std::setfill('0') << std::setw(2) << i;
+
+        colors[i].string = strdup(chars.str().c_str());
+
+        std::ostringstream color;
+        if(palette[i] == Color {0, 0, 0, 0})
+        {
+            color << "None";
+        }
+        else
+        {
+            color << '#' << std::hex << std::uppercase << std::setfill('0')
+                << std::setw(2) << static_cast<int>(palette[i].r)
+                << std::setw(2) << static_cast<int>(palette[i].g)
+                << std::setw(2) << static_cast<int>(palette[i].b);
+        }
+
+        colors[i].c_color = strdup(color.str().c_str());
+    }
+
+    // will be freed in XpmCreateDataFromXpmImage - need to use malloc
+    auto data = malloc_wrapper<unsigned int>(img_copy.get_width() * img_copy.get_height());
+
+    for(std::size_t row = 0; row < img_copy.get_height(); ++row)
+    {
+        for(std::size_t col = 0; col < img_copy.get_width(); ++col)
+        {
+            try
+            {
+                data[row * img_copy.get_width() + col] = color_lookup.at(img_copy[row][col]);
+            }
+            catch(const std::out_of_range &)
+            {
+                free(data);
+                free(colors);
+                throw std::runtime_error{ "XPM color index out of range" };
+            }
+        }
+    }
+
+    My_XpmImage image;
+
+    image.width = img_copy.get_width();
+    image.height = img_copy.get_height();
+    image.cpp = 2;
+    image.ncolors = std::size(palette);
+    image.colorTable = colors;
+    image.data = data;
+
+
+    // XpmCreateBufferFromXpmImage has a 16-year old bug that prevents it
+    // from ever working. Instead, use XpmCreateDataFromXpmImage, and write the
+    // syntax around that.
+
+    char ** output;
+    const std::size_t output_size = 1 + image.ncolors + image.height; // data output contains 1 header element, 1 element per color entry, and 1 element per image row
+
+    if(XpmCreateDataFromXpmImage(&output, &image, nullptr) != XpmSuccess)
+    {
+        free(data);
+        free(colors);
+        throw std::runtime_error {"Error writing XPM"};
+    }
+
+    out << "/* XPM */\nstatic char * image[] = {\n";
+
+    for(std::size_t i = 0; i < output_size; ++i)
+    {
+        out << '"' << output[i] << '"';
+        if(i < output_size - 1)
+            out << ',';
+        out << '\n';
+    }
+
+    out << "};\n";
+
+    XpmFree(output);
 }

@@ -325,6 +325,10 @@ void Image::convert(const Args & args) const
     else if(ext == ".webp")
         Webp::write(out, *this, args.invert);
     #endif
+    #ifdef XPM_FOUND
+    else if(ext == ".xpm")
+        Xpm::write(out, *this, args.invert);
+    #endif
     else
         throw std::runtime_error {"Unsupported conversion type: " + ext};
 }

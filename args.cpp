@@ -196,6 +196,9 @@ static const std::vector<std::string> output_formats =
     #ifdef WEBP_FOUND
     ".webp",
     #endif
+    #ifdef XPM_FOUND
+    ".xpm",
+    #endif
 };
 
 [[nodiscard]] std::optional<Args> parse_args(int argc, char * argv[])
