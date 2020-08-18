@@ -28,4 +28,4 @@
 #cmakedefine HAS_BSWAP16  1
 #cmakedefine HAS_BSWAP32  1
 #cmakedefine HAS_BSWAP64  1
-#cmakedefine BIG_ENDIAN   1
+#cmakedefine ASCIIART_BIG_ENDIAN 1

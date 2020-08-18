@@ -2,17 +2,18 @@
 
 #include "config.h"
 
+#ifdef ASCIIART_BIG_ENDIAN
+#error no
+static const binio_endian host_endian = binio_endian::BE;
+#else
+static const binio_endian host_endian = binio_endian::LE;
+#endif
+
 #ifdef HAS_ENDIAN
 #include <endian.h>
 #endif
 #ifdef HAS_BYTESWAP
 #include <byteswap.h>
-#endif
-
-#ifdef BIG_ENDIAN
-static const binio_endian host_endian = binio_endian::BE;
-#else
-static const binio_endian host_endian = binio_endian::LE;
 #endif
 
 #ifndef HAS_BSWAP16
@@ -68,7 +69,7 @@ std::uint64_t bswap_64(std::uint64_t a)
 #ifndef HAS_LE16TOH
 std::uint16_t le16toh(std::uint16_t a)
 {
-#ifdef BIG_ENDIAN
+#ifdef ASCIIART_BIG_ENDIAN
     return bswap_16(a);
 #else
     return a;
@@ -79,7 +80,7 @@ std::uint16_t le16toh(std::uint16_t a)
 #ifndef HAS_BE16TOH
 std::uint16_t be16toh(std::uint16_t a)
 {
-#ifdef BIG_ENDIAN
+#ifdef ASCIIART_BIG_ENDIAN
     return a;
 #else
     return bswap_16(a);
@@ -90,7 +91,7 @@ std::uint16_t be16toh(std::uint16_t a)
 #ifndef HAS_LE32TOH
 std::uint32_t le32toh(std::uint32_t a)
 {
-#ifdef BIG_ENDIAN
+#ifdef ASCIIART_BIG_ENDIAN
     return bswap_32(a);
 #else
     return a;
@@ -101,7 +102,7 @@ std::uint32_t le32toh(std::uint32_t a)
 #ifndef HAS_BE32TOH
 std::uint32_t be32toh(std::uint32_t a)
 {
-#ifdef BIG_ENDIAN
+#ifdef ASCIIART_BIG_ENDIAN
     return a;
 #else
     return bswap_32(a);
@@ -112,7 +113,7 @@ std::uint32_t be32toh(std::uint32_t a)
 #ifndef HAS_LE64TOH
 std::uint64_t le64toh(std::uint64_t a)
 {
-#ifdef BIG_ENDIAN
+#ifdef ASCIIART_BIG_ENDIAN
     return bswap_64(a);
 #else
     return a;
@@ -123,7 +124,7 @@ std::uint64_t le64toh(std::uint64_t a)
 #ifndef HAS_BE64TOH
 std::uint64_t be64toh(std::uint64_t a)
 {
-#ifdef BIG_ENDIAN
+#ifdef ASCIIART_BIG_ENDIAN
     return a;
 #else
     return bswap_64(a);

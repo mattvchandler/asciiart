@@ -56,7 +56,7 @@ check_symbol_exists(bswap_32 "byteswap.h" HAS_BSWAP32)
 check_symbol_exists(bswap_16 "byteswap.h" HAS_BSWAP16)
 
 include(TestBigEndian)
-test_big_endian(BIG_ENDIAN)
+test_big_endian(ASCIIART_BIG_ENDIAN)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
