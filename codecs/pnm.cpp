@@ -115,10 +115,10 @@ void Pnm::read_P1(std::istream & input)
             switch(v)
             {
             case '0':
-                image_data_[row][col] = Color{};
+                image_data_[row][col] = Color{0xFF};
                 break;
             case '1':
-                image_data_[row][col] = Color{0xFF};
+                image_data_[row][col] = Color{};
                 break;
             default:
                 throw std::runtime_error{"Error reading PBM: unknown character: " + std::string{(char)v}};
@@ -180,9 +180,9 @@ void Pnm::read_P4(std::istream & input)
                 bits = input.get();
 
             if(bits[7 - bits_read])
-                image_data_[row][col] = Color{0xFF};
-            else
                 image_data_[row][col] = Color{};
+            else
+                image_data_[row][col] = Color{0xFF};
 
             if(++bits_read >= 8)
                 bits_read = 0;
