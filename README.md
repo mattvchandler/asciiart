@@ -38,7 +38,7 @@ formats:
 * JPEG 2000 (requires OpenJPEG)
 * PCX
 * PNG (requires libpng)
-* PPM / PGM / PBM
+* PPM / PGM / PBM / PAM / PFM
 * TGA
 * TIFF (requires libtiff)
 * WebP (requires libwebp)
@@ -50,5 +50,3 @@ Add support for
 
 * JPEG XL (R/W?)
 * OpenEXR (R/W)
-* PAM (W)
-* PFM (W)

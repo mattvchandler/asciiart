@@ -34,6 +34,8 @@ public:
     static void write_pbm(std::ostream & path, const Image & image, unsigned char bg, bool invert);
     static void write_pgm(std::ostream & path, const Image & image, unsigned char bg, bool invert);
     static void write_ppm(std::ostream & path, const Image & image, unsigned char bg, bool invert);
+    static void write_pam(std::ostream & path, const Image & image, bool invert);
+    static void write_pfm(std::ostream & path, const Image & image, unsigned char bg, bool invert);
 
 private:
     void read_P1(std::istream & input);

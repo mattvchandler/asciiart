@@ -315,6 +315,10 @@ void Image::convert(const Args & args) const
         Pnm::write_pgm(out, *this, args.bg, args.invert);
     else if(ext == ".ppm")
         Pnm::write_ppm(out, *this, args.bg, args.invert);
+    else if(ext == ".pam")
+        Pnm::write_pam(out, *this, args.invert);
+    else if(ext == ".pfm")
+        Pnm::write_pfm(out, *this, args.bg, args.invert);
     else if(ext == ".tga")
         Tga::write(out, *this, args.invert);
     #ifdef TIFF_FOUND

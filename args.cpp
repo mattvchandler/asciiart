@@ -188,7 +188,7 @@ static const std::vector<std::string> output_formats =
     #ifdef PNG_FOUND
     ".png",
     #endif
-    ".pbm", ".pgm", ".ppm",
+    ".pbm", ".pgm", ".ppm", ".pam", ".pfm",
     ".tga",
     #ifdef TIFF_FOUND
     ".tif",

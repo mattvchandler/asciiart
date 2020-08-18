@@ -566,3 +566,49 @@ void Pnm::write_ppm(std::ostream & out, const Image & img, unsigned char bg, boo
         }
     }
 }
+
+void Pnm::write_pam(std::ostream & out, const Image & img, bool invert)
+{
+    out << "P7\n" << "WIDTH "  << img.get_width()  << "\n"
+                  << "HEIGHT " << img.get_height() << "\n"
+                  << "DEPTH "  << 4                << "\n"
+                  << "MAXVAL " << 255              << "\n"
+                  << "TUPLTYPE RGB_ALPHA\n"
+                  << "ENDHDR\n";
+
+    for(std::size_t row = 0; row < img.get_height(); ++row)
+    {
+        for(std::size_t col = 0; col < img.get_width(); ++col)
+        {
+            for(std::size_t i = 0; i < 4; ++i)
+            {
+                if(invert && i < 3)
+                    out.put(255 - img[row][col][i]);
+                else
+                    out.put(img[row][col][i]);
+            }
+        }
+    }
+}
+
+void Pnm::write_pfm(std::ostream & out, const Image & img, unsigned char bg, bool invert)
+{
+    out << "PF\n" << img.get_width() << " " << img.get_height() << "\n-1.0\n";
+
+    for(std::size_t row = img.get_width(); row -- > 0;) // PFM is bottom-to-top
+    {
+        for(std::size_t col = 0; col < img.get_width(); ++col)
+        {
+            FColor f = img[row][col];
+
+            if(invert)
+                f.invert();
+
+            f.alpha_blend(bg / 255.0f);
+
+            writeb(out, f.r);
+            writeb(out, f.g);
+            writeb(out, f.b);
+        }
+    }
+}
