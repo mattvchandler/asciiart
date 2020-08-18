@@ -2,8 +2,12 @@
 
 #include <algorithm>
 #include <bitset>
+#include <iterator>
 #include <limits>
+#include <optional>
+#include <sstream>
 #include <stdexcept>
+#include <utility>
 
 #include <cstdint>
 
@@ -31,11 +35,11 @@ std::uint16_t read_val(std::istream & in)
 
         return static_cast<std::uint16_t>(val);
     }
-    catch(const std::invalid_argument & e)
+    catch(const std::invalid_argument&)
     {
         throw std::runtime_error{"Error reading PNM header: dimensions invalid"};
     }
-    catch(const std::out_of_range & e)
+    catch(const std::out_of_range&)
     {
         throw std::runtime_error{"Error reading PNM header: dimensions out of range"};
     }
@@ -50,24 +54,31 @@ Pnm::Pnm(std::istream & input)
     {
         input >> type;
 
+        // PAM files store their height and width differently than the rest, so skip the rest of this and handle it there
+        if(type == "P7")
+        {
+            read_P7(input);
+            return;
+        }
+
         try
         {
             auto width = std::stoull(read_skip_comments(input));
             auto height = std::stoull(read_skip_comments(input));
             set_size(width, height);
         }
-        catch(const std::invalid_argument & e)
+        catch(const std::invalid_argument&)
         {
-            throw std::runtime_error{"Error reading PNM header: dimensions invalid"};
+            throw std::runtime_error{"Error reading PNM: value invalid"};
         }
-        catch(const std::out_of_range & e)
+        catch(const std::out_of_range&)
         {
-            throw std::runtime_error{"Error reading PNM header: dimensions out of range"};
+            throw std::runtime_error{"Error reading PNM: value out of range"};
         }
     }
-    catch(std::ios_base::failure & e)
+    catch(std::ios_base::failure&)
     {
-        throw std::runtime_error{"Error reading PNM header: could not read file"};
+        throw std::runtime_error{"Error reading PNM: could not read file"};
     }
 
     try
@@ -92,9 +103,18 @@ Pnm::Pnm(std::istream & input)
         case '6':
             read_P6(input);
             break;
+        case '7':
+            read_P6(input);
+            break;
+        case 'F':
+            read_PF_color(input);
+            break;
+        case 'f':
+            read_PF_gray(input);
+            break;
         }
     }
-    catch(std::ios_base::failure & e)
+    catch(std::ios_base::failure&)
     {
         if(input.bad())
             throw std::runtime_error{"Error reading PNM: could not read file"};
@@ -168,7 +188,8 @@ void Pnm::read_P3(std::istream & input)
 void Pnm::read_P4(std::istream & input)
 {
     // ignore trailing space after header
-    input.ignore(1);
+    input.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
     std::bitset<8> bits;
     int bits_read {0};
 
@@ -194,8 +215,9 @@ void Pnm::read_P4(std::istream & input)
 void Pnm::read_P5(std::istream & input)
 {
     auto max_val = static_cast<float>(read_val(input));
+
     // ignore trailing space after header
-    input.ignore(1);
+    input.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
     for(std::size_t row = 0; row < height_; ++row)
     {
@@ -220,8 +242,10 @@ void Pnm::read_P5(std::istream & input)
 void Pnm::read_P6(std::istream & input)
 {
     auto max_val = static_cast<float>(read_val(input));
+
     // ignore trailing space after header
-    input.ignore(1);
+    input.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
     for(std::size_t row = 0; row < height_; ++row)
     {
         if(max_val <= std::numeric_limits<std::uint8_t>::max())
@@ -247,6 +271,206 @@ void Pnm::read_P6(std::istream & input)
                                               static_cast<unsigned char>(g / max_val * 255.0f),
                                               static_cast<unsigned char>(b / max_val * 255.0f)};
             }
+        }
+    }
+}
+
+template <typename T>
+auto pam_read_pix(std::istream & input, std::size_t depth, float max_val_f)
+{
+    Color c;
+    switch(depth)
+    {
+        case 1:
+        {
+            T v;
+            readb(input, v);
+            c = Color{static_cast<unsigned char>(static_cast<float>(v) / max_val_f * 255.0f)};
+            break;
+        }
+        case 2:
+        {
+            T v, a;
+            readb(input, v);
+            readb(input, a);
+            auto v_i = static_cast<unsigned char>(static_cast<float>(v) / max_val_f * 255.0f);
+            c = Color{v_i, v_i, v_i, static_cast<unsigned char>(static_cast<float>(a) / max_val_f * 255.0f)};
+            break;
+        }
+        case 3:
+        {
+            T r, g, b;
+            readb(input, r);
+            readb(input, g);
+            readb(input, b);
+            c = Color{static_cast<unsigned char>(static_cast<float>(r) / max_val_f * 255.0f),
+                      static_cast<unsigned char>(static_cast<float>(g) / max_val_f * 255.0f),
+                      static_cast<unsigned char>(static_cast<float>(b) / max_val_f * 255.0f)};
+            break;
+        }
+        case 4:
+        {
+            T r, g, b, a;
+            readb(input, r);
+            readb(input, g);
+            readb(input, b);
+            readb(input, a);
+            c = Color{static_cast<unsigned char>(static_cast<float>(r) / max_val_f * 255.0f),
+                      static_cast<unsigned char>(static_cast<float>(g) / max_val_f * 255.0f),
+                      static_cast<unsigned char>(static_cast<float>(b) / max_val_f * 255.0f),
+                      static_cast<unsigned char>(static_cast<float>(a) / max_val_f * 255.0f)};
+            break;
+        }
+    }
+
+    return c;
+}
+
+void Pnm::read_P7(std::istream & input)
+{
+    std::optional<std::size_t> width, height, depth;
+    std::optional<std::uint16_t> max_val;
+    std::optional<std::string> tupletype;
+
+    // ignore trailing space after header
+    input.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+    while(true)
+    {
+        std::string line;
+        std::getline(input, line);
+
+        std::istringstream iss(line);
+        std::vector<std::string> tokens;
+        std::copy(std::istream_iterator<std::string>(iss), std::istream_iterator<std::string>(), std::back_inserter(tokens));
+
+        if(std::empty(tokens) || std::empty(tokens[0]) || tokens[0][0] == '#')
+            continue;
+
+        try
+        {
+            if(tokens[0] == "ENDHDR")
+            {
+                break;
+            }
+            else if(tokens[0] == "WIDTH")
+            {
+                auto tmp = std::stoull(tokens.at(1));
+                if(tmp < 1 || tmp > std::numeric_limits<std::size_t>::max())
+                    throw std::out_of_range{""};
+                width.emplace(tmp);
+            }
+            else if(tokens[0] == "HEIGHT")
+            {
+                auto tmp = std::stoull(tokens.at(1));
+                if(tmp < 1 || tmp > std::numeric_limits<std::size_t>::max())
+                    throw std::out_of_range{""};
+                height.emplace(tmp);
+            }
+            else if(tokens[0] == "DEPTH")
+            {
+                auto tmp = std::stoull(tokens.at(1));
+                if(tmp < 1 || tmp > std::numeric_limits<std::size_t>::max())
+                    throw std::out_of_range{""};
+                depth.emplace(tmp);
+            }
+            else if(tokens[0] == "MAXVAL")
+            {
+                auto tmp = std::stoul(tokens.at(1));
+                if(tmp < 1 || tmp > std::numeric_limits<std::uint16_t>::max())
+                    throw std::out_of_range{""};
+                max_val.emplace(tmp);
+            }
+            else if(tokens[0] == "TUPLTYPE")
+            {
+                tupletype.emplace(line.substr(std::size(tokens[0]) + 1));
+            }
+        }
+        catch(const std::invalid_argument&)
+        {
+            throw std::runtime_error{"Invalid PAM header: " + line};
+        }
+        catch(const std::out_of_range&)
+        {
+            throw std::runtime_error{"Invalid PAM header: " + line};
+        }
+    }
+
+    if(!width)
+        throw std::runtime_error{"PAM missing required WIDTH header"};
+    if(!height)
+        throw std::runtime_error{"PAM missing required HEIGHT header"};
+    if(!depth)
+        throw std::runtime_error{"PAM missing required DEPTH header"};
+    if(!max_val)
+        throw std::runtime_error{"PAM missing required MAXVAL header"};
+
+    set_size(*width, *height);
+
+    if(!(*depth == 1 && (*tupletype == "BLACKANDWHITE" || *tupletype == "GRAYSCALE")) &&
+       !(*depth == 2 && (*tupletype == "BLACKANDWHITE_ALPHA" || *tupletype == "GRAYSCALE_ALPHA")) &&
+       !(*depth == 3 && *tupletype == "RGB") &&
+       !(*depth == 4 && *tupletype == "RGB_ALPHA"))
+    {
+        throw std::runtime_error{"Unsupported PAM format"};
+    }
+
+    float max_val_f = static_cast<float>(*max_val);
+
+    for(std::size_t row = 0; row < height_; ++row)
+    {
+        for(std::size_t col = 0; col < width_; ++col)
+        {
+            if(max_val > std::numeric_limits<std::uint8_t>::max())
+                image_data_[row][col] = pam_read_pix<std::uint16_t>(input, *depth, max_val_f);
+            else
+                image_data_[row][col] = pam_read_pix<std::uint8_t>(input, *depth, max_val_f);
+        }
+    }
+}
+
+auto read_pf_header(std::istream & input)
+{
+    auto max_val = std::stof(read_skip_comments(input));
+    auto endian = max_val >= 0.0f ? binio_endian::BE : binio_endian::LE;
+    max_val = std::abs(max_val);
+
+    // ignore trailing space after header
+    input.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+    return std::pair{max_val, endian};
+}
+
+void Pnm::read_PF_color(std::istream & input)
+{
+    auto [max_val, endian] = read_pf_header(input);
+
+    for(std::size_t row = height_; row -- > 0;) // PFM is bottom-to-top
+    {
+        for(std::size_t col = 0; col < width_; ++col)
+        {
+            float r, g, b;
+            readb(input, r, endian);
+            readb(input, g, endian);
+            readb(input, b, endian);
+            image_data_[row][col] = Color{static_cast<unsigned char>(r / max_val * 255.0f),
+                                          static_cast<unsigned char>(g / max_val * 255.0f),
+                                          static_cast<unsigned char>(b / max_val * 255.0f)};
+        }
+    }
+}
+
+void Pnm::read_PF_gray(std::istream & input)
+{
+    auto [max_val, endian] = read_pf_header(input);
+
+    for(std::size_t row = height_; row -- > 0;) // PFM is bottom-to-top
+    {
+        for(std::size_t col = 0; col < width_; ++col)
+        {
+            float val;
+            readb(input, val, endian);
+            image_data_[row][col] = Color { static_cast<unsigned char>(val / max_val * 255.0f) };
         }
     }
 }

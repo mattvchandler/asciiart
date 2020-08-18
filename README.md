@@ -15,7 +15,7 @@ Supports a variety of image formats:
 * JPEG 2000 (requires OpenJPEG)
 * PCX
 * PNG (requires libpng)
-* PPM / PGM / PBM
+* PPM / PGM / PBM / PAM / PFM
 * [SIF](https://adventofcode.com/2019/day/8)
 * SVG (requires librsvg)
 * TGA
@@ -42,6 +42,7 @@ formats:
 * TGA
 * TIFF (requires libtiff)
 * WebP (requires libwebp)
+* XPM (requires libxpm)
 
 ### TODO:
 
@@ -49,4 +50,5 @@ Add support for
 
 * JPEG XL (R/W?)
 * OpenEXR (R/W)
-* PFM (R/W)
+* PAM (W)
+* PFM (W)

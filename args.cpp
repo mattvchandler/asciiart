@@ -148,7 +148,7 @@ static const std::vector<std::string> input_formats =
     #ifdef PNG_FOUND
     "PNG",
     #endif
-    "PBM", "PGM", "PPM",
+    "PBM", "PGM", "PPM", "PAM", "PFM",
     "SIF",
     #ifdef TIFF_FOUND
     "TIFF",
