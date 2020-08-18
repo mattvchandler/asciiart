@@ -2,7 +2,12 @@
 
 #include <algorithm>
 #include <bitset>
+#include <limits>
 #include <stdexcept>
+
+#include <cstdint>
+
+#include "binio.hpp"
 
 std::string read_skip_comments(std::istream & in)
 {
@@ -16,15 +21,15 @@ std::string read_skip_comments(std::istream & in)
     return str;
 }
 
-unsigned char read_val(std::istream & in)
+std::uint16_t read_val(std::istream & in)
 {
     try
     {
-        int val = std::stoi(read_skip_comments(in));
-        if(val > 255 || val < 0)
+        auto val = std::stol(read_skip_comments(in));
+        if(val < std::numeric_limits<std::uint16_t>::min() || val > std::numeric_limits<std::uint16_t>::max())
             throw std::out_of_range{""};
 
-        return static_cast<unsigned char>(val);
+        return static_cast<std::uint16_t>(val);
     }
     catch(const std::invalid_argument & e)
     {
@@ -130,7 +135,7 @@ void Pnm::read_P2(std::istream & input)
     {
         for(std::size_t col = 0; col < width_; ++col)
         {
-            unsigned char v = read_val(input);
+            auto v = read_val(input);
 
             if(v > max_val)
                 throw std::runtime_error{"Error reading PGM: pixel value out of range"};
@@ -148,9 +153,9 @@ void Pnm::read_P3(std::istream & input)
     {
         for(std::size_t col = 0; col < width_; ++col)
         {
-            unsigned char r = read_val(input);
-            unsigned char g = read_val(input);
-            unsigned char b = read_val(input);
+            auto r = read_val(input);
+            auto g = read_val(input);
+            auto b = read_val(input);
 
             if(r > max_val || g > max_val || b > max_val)
                 throw std::runtime_error{"Error reading PPM: pixel value out of range"};
@@ -194,9 +199,21 @@ void Pnm::read_P5(std::istream & input)
 
     for(std::size_t row = 0; row < height_; ++row)
     {
-        std::vector<unsigned char> rowbuf(width_);
-        input.read(reinterpret_cast<char *>(std::data(rowbuf)), std::size(rowbuf));
-        std::transform(std::begin(rowbuf), std::end(rowbuf), std::begin(image_data_[row]), [max_val](unsigned char a) { return Color{static_cast<unsigned char>(a / max_val * 255.0f)}; });
+        if(max_val <= std::numeric_limits<std::uint8_t>::max())
+        {
+            std::vector<unsigned char> rowbuf(width_);
+            input.read(reinterpret_cast<char *>(std::data(rowbuf)), std::size(rowbuf));
+            std::transform(std::begin(rowbuf), std::end(rowbuf), std::begin(image_data_[row]), [max_val](unsigned char a) { return Color{static_cast<unsigned char>(a / max_val * 255.0f)}; });
+        }
+        else
+        {
+            for(std::size_t col = 0; col < width_; ++col)
+            {
+                std::uint16_t val;
+                readb(input, val, binio_endian::BE);
+                image_data_[row][col] = Color{static_cast<unsigned char>(val / max_val * 255.0f)};
+            }
+        }
     }
 }
 
@@ -207,13 +224,29 @@ void Pnm::read_P6(std::istream & input)
     input.ignore(1);
     for(std::size_t row = 0; row < height_; ++row)
     {
-        std::vector<unsigned char> rowbuf(width_ * 3);
-        input.read(reinterpret_cast<char *>(std::data(rowbuf)), std::size(rowbuf));
-        for(std::size_t col = 0; col < width_; ++col)
+        if(max_val <= std::numeric_limits<std::uint8_t>::max())
         {
-            image_data_[row][col].r = static_cast<unsigned char>(rowbuf[3 * col]     / max_val * 255.0f);
-            image_data_[row][col].g = static_cast<unsigned char>(rowbuf[3 * col + 1] / max_val * 255.0f);
-            image_data_[row][col].b = static_cast<unsigned char>(rowbuf[3 * col + 2] / max_val * 255.0f);
+            std::vector<unsigned char> rowbuf(width_ * 3);
+            input.read(reinterpret_cast<char *>(std::data(rowbuf)), std::size(rowbuf));
+            for(std::size_t col = 0; col < width_; ++col)
+            {
+                image_data_[row][col].r = static_cast<unsigned char>(rowbuf[3 * col]     / max_val * 255.0f);
+                image_data_[row][col].g = static_cast<unsigned char>(rowbuf[3 * col + 1] / max_val * 255.0f);
+                image_data_[row][col].b = static_cast<unsigned char>(rowbuf[3 * col + 2] / max_val * 255.0f);
+            }
+        }
+        else
+        {
+            for(std::size_t col = 0; col < width_; ++col)
+            {
+                std::uint16_t r, g, b;
+                readb(input, r, binio_endian::BE);
+                readb(input, g, binio_endian::BE);
+                readb(input, b, binio_endian::BE);
+                image_data_[row][col] = Color{static_cast<unsigned char>(r / max_val * 255.0f),
+                                              static_cast<unsigned char>(g / max_val * 255.0f),
+                                              static_cast<unsigned char>(b / max_val * 255.0f)};
+            }
         }
     }
 }
