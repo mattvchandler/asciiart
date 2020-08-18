@@ -184,21 +184,41 @@ void readb(std::istream & i, std::int8_t & t, binio_endian)
 {
     i.read(reinterpret_cast<char*>(&t), sizeof(t));
 }
-void readb(std::istream & i,         float & t, binio_endian endian)
+void readb(std::istream & i, float & t, binio_endian endian)
 {
     static_assert(sizeof(t) == 4);
-    readb(i, reinterpret_cast<std::uint32_t&>(t), endian);
-}
 
-void readb(std::istream & i,        double & t, binio_endian endian)
+    char buf[4];
+    i.read(buf, sizeof(buf));
+
+    if(host_endian != endian)
+    {
+        std::swap(buf[0], buf[3]);
+        std::swap(buf[1], buf[2]);
+    }
+
+    t = *reinterpret_cast<float *>(buf);
+}
+void readb(std::istream & i, double & t, binio_endian endian)
 {
     static_assert(sizeof(t) == 8);
-    readb(i, reinterpret_cast<std::uint64_t&>(t), endian);
+
+    char buf[8];
+    i.read(buf, sizeof(buf));
+
+    if(host_endian != endian)
+    {
+        std::swap(buf[0], buf[7]);
+        std::swap(buf[1], buf[6]);
+        std::swap(buf[2], buf[5]);
+        std::swap(buf[3], buf[4]);
+    }
+
+    t = *reinterpret_cast<double *>(buf);
 }
 
 void writeb(std::ostream & o, std::uint64_t t, binio_endian endian)
 {
-    o.write(reinterpret_cast<char*>(&t), sizeof(t));
     if(host_endian != endian)
     {
         if(endian == binio_endian::LE)
@@ -206,6 +226,7 @@ void writeb(std::ostream & o, std::uint64_t t, binio_endian endian)
         else
             t = be64toh(t);
     }
+    o.write(reinterpret_cast<char*>(&t), sizeof(t));
 }
 void writeb(std::ostream & o, std::int64_t t, binio_endian endian)
 {
@@ -213,7 +234,6 @@ void writeb(std::ostream & o, std::int64_t t, binio_endian endian)
 }
 void writeb(std::ostream & o, std::uint32_t t, binio_endian endian)
 {
-    o.write(reinterpret_cast<char*>(&t), sizeof(t));
     if(host_endian != endian)
     {
         if(endian == binio_endian::LE)
@@ -221,6 +241,7 @@ void writeb(std::ostream & o, std::uint32_t t, binio_endian endian)
         else
             t = be32toh(t);
     }
+    o.write(reinterpret_cast<char*>(&t), sizeof(t));
 }
 void writeb(std::ostream & o, std::int32_t t, binio_endian endian)
 {
@@ -228,7 +249,6 @@ void writeb(std::ostream & o, std::int32_t t, binio_endian endian)
 }
 void writeb(std::ostream & o, std::uint16_t t, binio_endian endian)
 {
-    o.write(reinterpret_cast<char*>(&t), sizeof(t));
     if(host_endian != endian)
     {
         if(endian == binio_endian::LE)
@@ -236,6 +256,7 @@ void writeb(std::ostream & o, std::uint16_t t, binio_endian endian)
         else
             t = be16toh(t);
     }
+    o.write(reinterpret_cast<char*>(&t), sizeof(t));
 }
 void writeb(std::ostream & o, std::int16_t t, binio_endian endian)
 {
@@ -251,9 +272,35 @@ void writeb(std::ostream & o, std::int8_t t, binio_endian)
 }
 void writeb(std::ostream & o, float t, binio_endian endian)
 {
-    writeb(o, *reinterpret_cast<std::uint32_t*>(&t), endian);
+    static_assert(sizeof(t) == 4);
+
+    char buf[4];
+
+    *reinterpret_cast<float *>(buf) = t;
+
+    if(host_endian != endian)
+    {
+        std::swap(buf[0], buf[3]);
+        std::swap(buf[1], buf[2]);
+    }
+
+    o.write(buf, sizeof(buf));
 }
 void writeb(std::ostream & o, double t, binio_endian endian)
 {
-    writeb(o, *reinterpret_cast<std::uint64_t*>(&t), endian);
+    static_assert(sizeof(t) == 8);
+
+    char buf[8];
+
+    *reinterpret_cast<float *>(buf) = t;
+
+    if(host_endian != endian)
+    {
+        std::swap(buf[0], buf[7]);
+        std::swap(buf[1], buf[6]);
+        std::swap(buf[2], buf[5]);
+        std::swap(buf[3], buf[4]);
+    }
+
+    o.write(buf, sizeof(buf));
 }
