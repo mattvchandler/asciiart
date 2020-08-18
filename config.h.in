@@ -19,10 +19,13 @@
 #cmakedefine HAS_UNISTD   1
 #cmakedefine HAS_ENDIAN   1
 #cmakedefine HAS_BYTESWAP 1
+#cmakedefine HAS_LE64TOH  1
 #cmakedefine HAS_LE32TOH  1
 #cmakedefine HAS_LE16TOH  1
+#cmakedefine HAS_BE64TOH  1
 #cmakedefine HAS_BE32TOH  1
 #cmakedefine HAS_BE16TOH  1
 #cmakedefine HAS_BSWAP16  1
 #cmakedefine HAS_BSWAP32  1
+#cmakedefine HAS_BSWAP64  1
 #cmakedefine BIG_ENDIAN   1

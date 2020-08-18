@@ -23,7 +23,8 @@ std::uint16_t bswap_16(std::uint16_t a)
     #elif defined(_MSC_VER)
     return _byteswap_ushort(a);
     #else
-    return ((a >> 8) & 0x00FF) | ((a << 8) & 0xFF00);
+    return ((a >> 8) & 0x00FFu)
+         | ((a << 8) & 0xFF00u);
     #endif
 }
 #endif
@@ -36,7 +37,30 @@ std::uint32_t bswap_32(std::uint32_t a)
     #elif defined(_MSC_VER)
     return _byteswap_ulong(a);
     #else
-    return ((a >> 24) & 0x000000FF) | ((a >> 8) & 0x0000FF00) | ((a << 8) & 0x00FF0000) | ((a << 24) & 0xFF000000);
+    return ((a >> 24) & 0x000000FFu)
+         | ((a >>  8) & 0x0000FF00u)
+         | ((a <<  8) & 0x00FF0000u)
+         | ((a << 24) & 0xFF000000u);
+    #endif
+}
+#endif
+
+#ifndef HAS_BSWAP64
+std::uint64_t bswap_64(std::uint64_t a)
+{
+    #if defined(__GNUC__) // also clang
+    return __builtin_bswap64(a);
+    #elif defined(_MSC_VER)
+    return _byteswap_uint64(a);
+    #else
+    return ((a >> 56) & 0x00000000000000FFull)
+         | ((a >> 40) & 0x000000000000FF00ull)
+         | ((a >> 24) & 0x0000000000FF0000ull)
+         | ((a >>  8) & 0x00000000FF000000ull)
+         | ((a <<  8) & 0x000000FF00000000ull)
+         | ((a << 24) & 0x0000FF0000000000ull)
+         | ((a << 40) & 0x00FF000000000000ull)
+         | ((a << 56) & 0xFF00000000000000ull)
     #endif
 }
 #endif
@@ -85,6 +109,43 @@ std::uint32_t be32toh(std::uint32_t a)
 }
 #endif
 
+#ifndef HAS_LE64TOH
+std::uint64_t le64toh(std::uint64_t a)
+{
+#ifdef BIG_ENDIAN
+    return bswap_64(a);
+#else
+    return a;
+#endif
+}
+#endif
+
+#ifndef HAS_BE64TOH
+std::uint64_t be64toh(std::uint64_t a)
+{
+#ifdef BIG_ENDIAN
+    return a;
+#else
+    return bswap_64(a);
+#endif
+}
+#endif
+
+void readb(std::istream & i, std::uint64_t & t, binio_endian endian)
+{
+    i.read(reinterpret_cast<char*>(&t), sizeof(t));
+    if(host_endian != endian)
+    {
+        if(endian == binio_endian::LE)
+            t = le64toh(t);
+        else
+            t = be64toh(t);
+    }
+}
+void readb(std::istream & i, std::int64_t & t, binio_endian endian)
+{
+    readb(i, reinterpret_cast<std::uint64_t&>(t), endian);
+}
 void readb(std::istream & i, std::uint32_t & t, binio_endian endian)
 {
     i.read(reinterpret_cast<char*>(&t), sizeof(t));
@@ -123,7 +184,33 @@ void readb(std::istream & i, std::int8_t & t, binio_endian)
 {
     i.read(reinterpret_cast<char*>(&t), sizeof(t));
 }
+void readb(std::istream & i,         float & t, binio_endian endian)
+{
+    static_assert(sizeof(t) == 4);
+    readb(i, reinterpret_cast<std::uint32_t&>(t), endian);
+}
 
+void readb(std::istream & i,        double & t, binio_endian endian)
+{
+    static_assert(sizeof(t) == 8);
+    readb(i, reinterpret_cast<std::uint64_t&>(t), endian);
+}
+
+void writeb(std::ostream & o, std::uint64_t t, binio_endian endian)
+{
+    o.write(reinterpret_cast<char*>(&t), sizeof(t));
+    if(host_endian != endian)
+    {
+        if(endian == binio_endian::LE)
+            t = le64toh(t);
+        else
+            t = be64toh(t);
+    }
+}
+void writeb(std::ostream & o, std::int64_t t, binio_endian endian)
+{
+    writeb(o, *reinterpret_cast<std::uint64_t*>(&t), endian);
+}
 void writeb(std::ostream & o, std::uint32_t t, binio_endian endian)
 {
     o.write(reinterpret_cast<char*>(&t), sizeof(t));
@@ -161,4 +248,12 @@ void writeb(std::ostream & o, std::uint8_t t, binio_endian)
 void writeb(std::ostream & o, std::int8_t t, binio_endian)
 {
     o.write(reinterpret_cast<char*>(&t), sizeof(t));
+}
+void writeb(std::ostream & o, float t, binio_endian endian)
+{
+    writeb(o, *reinterpret_cast<std::uint32_t*>(&t), endian);
+}
+void writeb(std::ostream & o, double t, binio_endian endian)
+{
+    writeb(o, *reinterpret_cast<std::uint64_t*>(&t), endian);
 }
