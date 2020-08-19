@@ -128,14 +128,15 @@ void Gif::write(std::ostream & out, const Image & img, bool invert)
     }
 
     auto palette = img_copy.generate_palette(256, true);
-    img_copy.dither(std::begin(palette), std::end(palette));
+    if(palette.reduced_colors)
+        img_copy.dither(std::begin(palette.palette), std::end(palette.palette));
 
     std::map<Color, std::size_t> color_lookup;
-    std::vector<GifColorType> gif_palette(std::size(palette));
+    std::vector<GifColorType> gif_palette(std::size(palette.palette));
 
-    for(std::size_t i = 0; i < std::size(palette); ++i)
+    for(std::size_t i = 0; i < std::size(palette.palette); ++i)
     {
-        auto & c = palette[i];
+        auto & c = palette.palette[i];
 
         color_lookup[c] = i;
         gif_palette[i] = GifColorType{ c.r, c.g, c.b };;
@@ -198,12 +199,13 @@ void Gif::write(std::ostream & out, const Image & img, bool invert)
         }
     }
 
-    auto transparent_color = std::find_if(std::begin(palette), std::end(palette), [](const Color & c) { return c.a == 0; });
-    if(transparent_color != std::end(palette))
+    // TODO: build hash table
+    auto transparent_color = std::find_if(std::begin(palette.palette), std::end(palette.palette), [](const Color & c) { return c.a == 0; });
+    if(transparent_color != std::end(palette.palette))
     {
         GraphicsControlBlock gcb;
         memset(&gcb, 0, sizeof(gcb));
-        gcb.TransparentColor = std::distance(std::begin(palette), transparent_color);
+        gcb.TransparentColor = std::distance(std::begin(palette.palette), transparent_color);
         if(auto error_code = EGifGCBToSavedExtension(&gcb, gif, 0); error_code != GIF_OK)
         {
             GifFreeSavedImages(gif);

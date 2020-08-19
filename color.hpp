@@ -8,6 +8,16 @@
 
 #include <cmath>
 
+// from boost::hash_combine
+inline std::size_t hash_combine(std::size_t a, std::size_t b)
+{
+    if constexpr(sizeof(std::size_t) == 8)
+        a^= b + 0x9e3779b97f4a7c15ull + (a << 6) + (a >> 2);
+    else
+        a^= b + 0x9e3779b9ul + (a << 6) + (a >> 2);
+    return a;
+}
+
 struct Color
 {
     unsigned char r{0}, g{0}, b{0}, a{0xFF};
@@ -59,14 +69,14 @@ struct Color
 
     constexpr bool operator<(const Color & other) const
     {
-        if(a != other.a)
-            return a < other.a;
-        else if(b != other.b)
-            return b < other.b;
+        if(r != other.r)
+            return r < other.r;
         else if(g != other.g)
             return g < other.g;
+        else if(b != other.b)
+            return b < other.b;
         else
-            return r < other.r;
+            return a < other.a;
     }
 
     constexpr bool operator==(const Color & other) const
@@ -171,14 +181,14 @@ struct FColor
 
     constexpr bool operator<(const FColor & other) const
     {
-        if(a != other.a)
-            return a < other.a;
-        else if(b != other.b)
-            return b < other.b;
+        if(r != other.r)
+            return r < other.r;
         else if(g != other.g)
             return g < other.g;
+        else if(b != other.b)
+            return b < other.b;
         else
-            return r < other.r;
+            return a < other.a;
     }
 
     FColor & alpha_blend(float bg)
@@ -269,6 +279,24 @@ struct FColor
         return *this;
     }
 };
+
+namespace std
+{
+    template<> struct hash<Color>
+    {
+        auto operator()(const Color & c) const
+        {
+            return hash_combine(hash_combine(hash_combine(hash<decltype(c.r)>{}(c.r), hash<decltype(c.g)>{}(c.g)), hash<decltype(c.b)>{}(c.b)), hash<decltype(c.a)>{}(c.a));
+        }
+    };
+    template<> struct hash<FColor>
+    {
+        auto operator()(const FColor & c) const
+        {
+            return hash_combine(hash_combine(hash_combine(hash<decltype(c.r)>{}(c.r), hash<decltype(c.g)>{}(c.g)), hash<decltype(c.b)>{}(c.b)), hash<decltype(c.a)>{}(c.a));
+        }
+    };
+}
 
 inline float color_dist(const FColor & a, const FColor & b)
 {

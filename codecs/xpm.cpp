@@ -5,6 +5,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
 
 #include <cstring>
 #include <climits>
@@ -787,19 +788,22 @@ void Xpm::write(std::ostream & out, const Image & img, bool invert)
     }
 
     auto palette = img_copy.generate_palette(256, true);
-    img_copy.dither(std::begin(palette), std::end(palette));
+    if(palette.reduced_colors)
+    {
+        img_copy.dither(std::begin(palette.palette), std::end(palette.palette));
+    }
 
-    std::map<Color, std::size_t> color_lookup;
+    std::unordered_map<Color, std::size_t> color_lookup;
 
     // When we issue XpmCreateDataFromXpmImage(), it will attempt to free this
     // pointer, so we need to allocate it with malloc. The same happens latetr
     // with 'data'. This is not documented
 
-    auto colors = malloc_wrapper<XpmColor>(std::size(palette));
+    auto colors = malloc_wrapper<XpmColor>(std::size(palette.palette));
 
-    for(std::size_t i = 0; i < std::size(palette); ++i)
+    for(std::size_t i = 0; i < std::size(palette.palette); ++i)
     {
-        color_lookup[palette[i]] = i;
+        color_lookup[palette.palette[i]] = i;
 
         std::memset(&colors[i], 0, sizeof(XpmColor));
 
@@ -809,16 +813,16 @@ void Xpm::write(std::ostream & out, const Image & img, bool invert)
         colors[i].string = strdup(chars.str().c_str());
 
         std::ostringstream color;
-        if(palette[i] == Color {0, 0, 0, 0})
+        if(palette.palette[i] == Color {0, 0, 0, 0})
         {
             color << "None";
         }
         else
         {
             color << '#' << std::hex << std::uppercase << std::setfill('0')
-                << std::setw(2) << static_cast<int>(palette[i].r)
-                << std::setw(2) << static_cast<int>(palette[i].g)
-                << std::setw(2) << static_cast<int>(palette[i].b);
+                << std::setw(2) << static_cast<int>(palette.palette[i].r)
+                << std::setw(2) << static_cast<int>(palette.palette[i].g)
+                << std::setw(2) << static_cast<int>(palette.palette[i].b);
         }
 
         colors[i].c_color = strdup(color.str().c_str());
@@ -849,7 +853,7 @@ void Xpm::write(std::ostream & out, const Image & img, bool invert)
     image.width = img_copy.get_width();
     image.height = img_copy.get_height();
     image.cpp = 2;
-    image.ncolors = std::size(palette);
+    image.ncolors = std::size(palette.palette);
     image.colorTable = colors;
     image.data = data;
 

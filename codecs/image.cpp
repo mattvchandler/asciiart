@@ -1,8 +1,11 @@
 #include "image.hpp"
 
+#include <array>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <limits>
+#include <memory>
 #include <set>
 #include <stdexcept>
 
@@ -148,117 +151,192 @@ Image Image::scale(std::size_t new_width, std::size_t new_height) const
     return new_img;
 }
 
-std::vector<Color> Image::generate_palette(std::size_t num_colors, bool gif_transparency) const
+struct Octree_node // technically this would be a sedectree
 {
-    // TODO: this handles transparency extremely poorly
+    std::uint64_t r{0}, g{0}, b{0}, a{0};
+    std::size_t pixel_count {0};
+    std::array<std::unique_ptr<Octree_node>, 16> children {};
+    // Octree_node * parent {nullptr};
+
+    std::size_t reduce()
+    {
+        assert(pixel_count == 0); // Can't reduce leaf nodes
+
+        Sum s = sum();
+
+        r = s.r;
+        g = s.g;
+        b = s.b;
+        a = s.a;
+        pixel_count = s.pixel_count;
+
+        for(auto && i: children)
+        {
+            if(i)
+                i.reset();
+        }
+
+        return s.leaves_counted;
+    }
+
+    void collect_colors(std::vector<Color> & palette) const
+    {
+
+        if(pixel_count > 0)
+        {
+            palette.emplace_back(r / pixel_count, g / pixel_count, b / pixel_count, a / pixel_count);
+        }
+        else
+        {
+            for(auto && i: children)
+            {
+                if(i)
+                {
+                    i->collect_colors(palette);
+                }
+            }
+        }
+    }
+
+private:
+    struct Sum
+    {
+        std::uint64_t r{0}, g{0}, b{0}, a{0};
+        std::size_t pixel_count {0};
+        std::size_t leaves_counted {0};
+
+        Sum & operator+=(const Sum & other)
+        {
+            r += other.r;
+            g += other.g;
+            b += other.b;
+            a += other.a;
+            pixel_count += other.pixel_count;
+            leaves_counted += other.leaves_counted;
+            return *this;
+        }
+    };
+    Sum sum() const
+    {
+        if(pixel_count > 0)
+            return Sum{r, g, b, a, pixel_count, 1};
+
+        Sum totals;
+
+        for(auto && i: children)
+        {
+            if(i)
+            {
+                totals += i->sum();
+            }
+        }
+
+        return totals;
+    }
+
+};
+
+Image::Pallete_ret Image::generate_palette(std::size_t num_colors, bool gif_transparency) const
+{
+    // TODO: handle transparency
+    // TODO: occasionally unable to find a reducable node on low color counts
     if(num_colors == 0)
         throw std::domain_error {"empty palette requested"};
 
-    if((num_colors & (num_colors - 1)) != 0)
-        throw std::domain_error {"palette_size must be a power of 2"};
+    std::vector<Color> palette;
+    palette.reserve(num_colors);
 
-    std::vector<Color> palette(width_ * height_);
+    // reserve an entry for the transparent color
+    if(gif_transparency)
+        --num_colors;
+
+    std::size_t num_leaves{0};
+    std::size_t total_colors{0};
+    const std::size_t max_depth {8};
+    bool reduced_colors {false};
+
+    Octree_node root;
+
+    std::array<std::vector<Octree_node *>, max_depth> reducible_nodes;
 
     for(std::size_t row = 0; row < height_; ++row)
     {
         for(std::size_t col = 0; col < width_; ++col)
         {
-            palette[row * width_ + col] = image_data_[row][col];
-        }
-    }
+            auto & c = image_data_[row][col];
 
-    if(std::size(palette) <= num_colors)
-        return palette;
+            Octree_node * node = &root;
 
-    std::vector partitions = { std::pair{std::begin(palette), std::end(palette)} };
-
-    // TODO: slow
-    while(std::size(partitions) < num_colors)
-    {
-        decltype(partitions) next_partitions;
-        for(auto && [begin, end]: partitions)
-        {
-            // find which color has the maximum range, and sort this partion by that color's value
-            Color min = {
-                std::numeric_limits<decltype(Color::r)>::max(),
-                std::numeric_limits<decltype(Color::g)>::max(),
-                std::numeric_limits<decltype(Color::b)>::max(),
-                0};
-            Color max = {
-                std::numeric_limits<decltype(Color::r)>::min(),
-                std::numeric_limits<decltype(Color::g)>::min(),
-                std::numeric_limits<decltype(Color::b)>::min(),
-                0};
-
-            for(auto i = begin; i != end; ++i)
+            for(std::size_t i = 0; i < max_depth; ++i)
             {
-                min.r = std::min(min.r, i->r);
-                max.r = std::max(max.r, i->r);
-                min.g = std::min(min.g, i->g);
-                max.g = std::max(max.g, i->g);
-                min.b = std::min(min.b, i->b);
-                max.b = std::max(max.b, i->b);
+                if(node->pixel_count) // is this a leaf node?
+                    break;
+
+                auto index =
+                    (((c.r >> (7 - i)) & 0x01) << 3) |
+                    (((c.g >> (7 - i)) & 0x01) << 2) |
+                    (((c.b >> (7 - i)) & 0x01) << 1) |
+                     ((c.a >> (7 - i)) & 0x01);
+
+                if(!node->children[index])
+                {
+                    node->children[index] = std::make_unique<Octree_node>();
+                    // node->children[index]->parent = node;
+                    if(i < max_depth - 1)
+                        reducible_nodes[i].push_back(node->children[index].get());
+                }
+
+                node = node->children[index].get();
             }
+            // at a leaf node
 
-            auto r_range = max.r - min.r;
-            auto g_range = max.g - min.g;
-            auto b_range = max.b - min.b;
+            // is this a new leaf_node?
+            if(node->pixel_count == 0)
+                ++num_leaves;
 
-            if(r_range > g_range  && r_range > b_range)
-                std::sort(begin, end, [](const Color & a, const Color & b){ return a.r < b.r; });
+            node->r += c.r;
+            node->g += c.g;
+            node->b += c.b;
+            node->a += c.a;
 
-            else if(g_range > b_range)
-                std::sort(begin, end, [](const Color & a, const Color & b){ return a.g < b.g; });
+            ++node->pixel_count;
+            ++total_colors;
 
-            else
-                std::sort(begin, end, [](const Color & a, const Color & b){ return a.b < b.b; });
+            while(num_leaves > num_colors)
+            {
+                reduced_colors = true;
 
-            auto mid = begin + std::distance(begin, end) / 2;
-            next_partitions.emplace_back(begin, mid);
-            next_partitions.emplace_back(mid, end);
-        }
+                // reduce a node to get back under the limit
+                Octree_node * reduce_node {nullptr};
+                for(std::size_t i = max_depth; i-- > 0;)
+                {
+                    if(!std::empty(reducible_nodes[i]))
+                    {
+                        // TODO: find lowest children count
+                        reduce_node = reducible_nodes[i].back();
+                        reducible_nodes[i].pop_back();
+                        break;
+                    }
+                }
 
-        std::swap(next_partitions, partitions);
-    }
+                if(!reduce_node)
+                    throw std::logic_error{"Could not find a node to reduce"};
 
-    decltype(palette) reduced_pallete(num_colors);
-
-    assert(std::size(partitions) == num_colors && std::size(reduced_pallete) == num_colors);
-
-    for(std::size_t i = 0; i < num_colors; ++i)
-    {
-        auto && [begin, end] = partitions[i];
-        std::size_t r_avg = 0, g_avg = 0, b_avg = 0, a_avg = 0;
-        for(auto j = begin; j != end; ++j)
-        {
-            r_avg += j->r;
-            g_avg += j->g;
-            b_avg += j->b;
-            a_avg += j->a;
-        }
-        auto n = std::distance(begin, end);
-        reduced_pallete[i] = Color
-        {
-            static_cast<decltype(Color::r)>(r_avg / n),
-            static_cast<decltype(Color::g)>(g_avg / n),
-            static_cast<decltype(Color::b)>(b_avg / n),
-            static_cast<decltype(Color::a)>(a_avg / n)
-        };
-
-        if(gif_transparency)
-        {
-            const unsigned char alpha_threshold = 1;
-            if(reduced_pallete[i].a > alpha_threshold)
-                reduced_pallete[i].a = 255;
-            else
-                reduced_pallete[i] = Color {0, 0, 0, 0};
+                num_leaves -= reduce_node->reduce() - 1;
+            }
         }
     }
 
-    std::set unique_palette(std::begin(reduced_pallete), std::end(reduced_pallete));
-    std::vector<Color> final_palette(std::begin(unique_palette), std::end(unique_palette));
+    // TODO: lookups for dithering can be done faster if we keep the tree
 
-    return final_palette;
+    root.collect_colors(palette);
+
+    assert(std::size(palette) <= num_colors);
+
+    std::sort(std::begin(palette), std::end(palette));
+
+
+    return {palette, reduced_colors};
 }
 
 void Image::convert(const Args & args) const

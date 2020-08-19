@@ -44,12 +44,16 @@ public:
     static std::vector<unsigned char> read_input_to_memory(std::istream & input);
 
     Image scale(std::size_t new_width, std::size_t new_height) const;
-    std::vector<Color> generate_palette(std::size_t num_colors, bool onebit_alpha = false) const;
+
+    struct Pallete_ret{std::vector<Color> palette; bool reduced_colors {false};} ;
+    Pallete_ret generate_palette(std::size_t num_colors, bool gif_transparency = false) const;
+
     void convert(const Args & args) const;
 
     template <typename Iter>
     void dither(Iter palette_start, Iter palette_end)
     {
+        // TODO: move into cpp file, overload somehow to use quantitization octree
         if(height_ < 2 || width_ < 2)
             return;
 
