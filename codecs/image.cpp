@@ -153,16 +153,68 @@ Image Image::scale(std::size_t new_width, std::size_t new_height) const
 
 struct Octree_node // technically this would be a sedectree
 {
+    const static std::size_t max_depth {8};
+
     std::uint64_t r{0}, g{0}, b{0}, a{0};
     std::size_t pixel_count {0};
     std::array<std::unique_ptr<Octree_node>, 16> children {};
-    // Octree_node * parent {nullptr};
 
-    std::size_t reduce()
+    Color to_color() const
     {
-        assert(pixel_count == 0); // Can't reduce leaf nodes
+        return Color {static_cast<unsigned char>(r / pixel_count), static_cast<unsigned char>(g / pixel_count), static_cast<unsigned char>(b / pixel_count), static_cast<unsigned char>(a / pixel_count)};
+    }
 
-        Sum s = sum();
+    static auto get_index(const Color & c, std::size_t depth)
+    {
+        return
+            (((c.r >> (7 - depth)) & 0x01) << 3) |
+            (((c.g >> (7 - depth)) & 0x01) << 2) |
+            (((c.b >> (7 - depth)) & 0x01) << 1) |
+             ((c.a >> (7 - depth)) & 0x01);
+    }
+
+    struct Sum
+    {
+        std::uint64_t r{0}, g{0}, b{0}, a{0};
+        std::size_t pixel_count {0};
+        std::size_t leaves_counted {0};
+        std::vector<Octree_node *> reducible_descendants;
+
+        Sum & operator+=(const Sum & other)
+        {
+            r += other.r;
+            g += other.g;
+            b += other.b;
+            a += other.a;
+            pixel_count += other.pixel_count;
+            leaves_counted += other.leaves_counted;
+            reducible_descendants.insert(std::end(reducible_descendants), std::begin(other.reducible_descendants), std::end(other.reducible_descendants));
+
+            return *this;
+        }
+    };
+    Sum sum()
+    {
+        if(pixel_count > 0)
+            return Sum{r, g, b, a, pixel_count, 1, {}};
+
+        Sum totals;
+
+        totals.reducible_descendants.push_back(this);
+        for(auto && i: children)
+        {
+            if(i)
+            {
+                totals += i->sum();
+            }
+        }
+
+        return totals;
+    }
+    std::size_t reduce(const Sum & s)
+    {
+        assert(pixel_count == 0);     // Can't reduce leaf nodes
+        assert(s.leaves_counted > 1); // Can't reduce nodes with fewer than 1 leaf
 
         r = s.r;
         g = s.g;
@@ -179,12 +231,33 @@ struct Octree_node // technically this would be a sedectree
         return s.leaves_counted;
     }
 
+    Octree_node * split(const Color & c, std::size_t depth)
+    {
+        assert(pixel_count > 0); // can only split leaves
+        assert(depth < max_depth);
+
+        auto avg = to_color();
+        auto c_index = get_index(c, depth + 1);
+        auto avg_index = get_index(avg, depth + 1);
+
+        children[c_index]   = std::make_unique<Octree_node>();
+        children[avg_index] = std::make_unique<Octree_node>();
+
+        children[avg_index]->r = r;
+        children[avg_index]->g = g;
+        children[avg_index]->b = b;
+        children[avg_index]->a = a;
+        children[avg_index]->pixel_count = pixel_count;
+        r = g = b = a = pixel_count = 0;
+
+        return children[c_index].get();
+    }
+
     void collect_colors(std::vector<Color> & palette) const
     {
-
         if(pixel_count > 0)
         {
-            palette.emplace_back(r / pixel_count, g / pixel_count, b / pixel_count, a / pixel_count);
+            palette.emplace_back(to_color());
         }
         else
         {
@@ -197,49 +270,12 @@ struct Octree_node // technically this would be a sedectree
             }
         }
     }
-
-private:
-    struct Sum
-    {
-        std::uint64_t r{0}, g{0}, b{0}, a{0};
-        std::size_t pixel_count {0};
-        std::size_t leaves_counted {0};
-
-        Sum & operator+=(const Sum & other)
-        {
-            r += other.r;
-            g += other.g;
-            b += other.b;
-            a += other.a;
-            pixel_count += other.pixel_count;
-            leaves_counted += other.leaves_counted;
-            return *this;
-        }
-    };
-    Sum sum() const
-    {
-        if(pixel_count > 0)
-            return Sum{r, g, b, a, pixel_count, 1};
-
-        Sum totals;
-
-        for(auto && i: children)
-        {
-            if(i)
-            {
-                totals += i->sum();
-            }
-        }
-
-        return totals;
-    }
-
 };
 
+// TODO: reduce after storing all? time to beat is 14.098s laptop, 13.040 desktop (IMG_....avif -> gif, release, most of which is dithering)
 Image::Pallete_ret Image::generate_palette(std::size_t num_colors, bool gif_transparency) const
 {
     // TODO: handle transparency
-    // TODO: occasionally unable to find a reducable node on low color counts
     if(num_colors == 0)
         throw std::domain_error {"empty palette requested"};
 
@@ -247,17 +283,16 @@ Image::Pallete_ret Image::generate_palette(std::size_t num_colors, bool gif_tran
     palette.reserve(num_colors);
 
     // reserve an entry for the transparent color
-    if(gif_transparency)
-        --num_colors;
+    // if(gif_transparency)
+    //     --num_colors;
 
     std::size_t num_leaves{0};
-    std::size_t total_colors{0};
-    const std::size_t max_depth {8};
     bool reduced_colors {false};
 
     Octree_node root;
 
-    std::array<std::vector<Octree_node *>, max_depth> reducible_nodes;
+    std::array<std::set<Octree_node *>, Octree_node::max_depth> reducible_nodes;
+    reducible_nodes[0].insert(&root);
 
     for(std::size_t row = 0; row < height_; ++row)
     {
@@ -267,23 +302,30 @@ Image::Pallete_ret Image::generate_palette(std::size_t num_colors, bool gif_tran
 
             Octree_node * node = &root;
 
-            for(std::size_t i = 0; i < max_depth; ++i)
+            for(std::size_t i = 0; i < Octree_node::max_depth; ++i)
             {
                 if(node->pixel_count) // is this a leaf node?
-                    break;
+                {
+                    // if room for more than 1 node, split a leaf
+                    if(i < Octree_node::max_depth - 1 && num_leaves < num_colors)
+                    {
+                        reducible_nodes[i].insert(node);
+                        node = node->split(c, i);
+                        continue;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
 
-                auto index =
-                    (((c.r >> (7 - i)) & 0x01) << 3) |
-                    (((c.g >> (7 - i)) & 0x01) << 2) |
-                    (((c.b >> (7 - i)) & 0x01) << 1) |
-                     ((c.a >> (7 - i)) & 0x01);
+                auto index = Octree_node::get_index(c, i);
 
                 if(!node->children[index])
                 {
                     node->children[index] = std::make_unique<Octree_node>();
-                    // node->children[index]->parent = node;
-                    if(i < max_depth - 1)
-                        reducible_nodes[i].push_back(node->children[index].get());
+                    if(i < Octree_node::max_depth - 1)
+                        reducible_nodes[i + 1].insert(node->children[index].get());
                 }
 
                 node = node->children[index].get();
@@ -300,29 +342,57 @@ Image::Pallete_ret Image::generate_palette(std::size_t num_colors, bool gif_tran
             node->a += c.a;
 
             ++node->pixel_count;
-            ++total_colors;
 
             while(num_leaves > num_colors)
             {
+                // std::cout<<"reducing"<<std::endl;
                 reduced_colors = true;
 
                 // reduce a node to get back under the limit
-                Octree_node * reduce_node {nullptr};
-                for(std::size_t i = max_depth; i-- > 0;)
+                // try to find a reducible node (non leaf w/ # of leaf descendants > 1)
+                // * At the lowest level possible
+                // * Representing the lowest # of pixels possible
+                Octree_node * min_reduce_node {nullptr};
+                Octree_node::Sum min_reduce_node_sum;
+                min_reduce_node_sum.pixel_count = std::numeric_limits<std::size_t>::max();
+                for(std::size_t i = std::size(reducible_nodes); i-- > 0;)
                 {
                     if(!std::empty(reducible_nodes[i]))
                     {
-                        // TODO: find lowest children count
-                        reduce_node = reducible_nodes[i].back();
-                        reducible_nodes[i].pop_back();
-                        break;
+                        decltype(std::begin(reducible_nodes[i])) min_reduce_node_it;
+
+                        for(auto n = std::begin(reducible_nodes[i]); n != std::end(reducible_nodes[i]); ++n)
+                        {
+                            auto sum = (*n)->sum();
+                            if(sum.leaves_counted > 1 && sum.pixel_count < min_reduce_node_sum.pixel_count)
+                            {
+                                min_reduce_node = *n;
+                                min_reduce_node_sum = sum;
+                                min_reduce_node_it = n;
+                            }
+                        }
+
+                        if(min_reduce_node)
+                        {
+                            reducible_nodes[i].erase(min_reduce_node_it);
+
+                            // remove all children nodes from reducible_nodes
+                            for(std::size_t j = i + 1; j < std::size(reducible_nodes); ++j)
+                            {
+                                for(auto && n: min_reduce_node_sum.reducible_descendants)
+                                    reducible_nodes[j].erase(n);
+                            }
+                            break;
+                        }
+                        // else
+                        //     std::cerr<<"can't reduce lowest level"<<std::endl;
                     }
                 }
 
-                if(!reduce_node)
+                if(!min_reduce_node)
                     throw std::logic_error{"Could not find a node to reduce"};
 
-                num_leaves -= reduce_node->reduce() - 1;
+                num_leaves -= min_reduce_node->reduce(min_reduce_node_sum) - 1;
             }
         }
     }
@@ -332,9 +402,6 @@ Image::Pallete_ret Image::generate_palette(std::size_t num_colors, bool gif_tran
     root.collect_colors(palette);
 
     assert(std::size(palette) <= num_colors);
-
-    std::sort(std::begin(palette), std::end(palette));
-
 
     return {palette, reduced_colors};
 }
