@@ -308,10 +308,4 @@ inline float color_dist(const FColor & a, const FColor & b)
     return std::sqrt(color_dist2(a, b));
 }
 
-template <typename Iter>
-Iter find_closest_palette_color(Iter palette_start, Iter palette_end, const Color & color)
-{
-    return std::min_element(palette_start, palette_end, [color = FColor{color}](const Color & a, const Color & b) { return color_dist2(a, color) < color_dist2(b, color); });
-}
-
 #endif // COLOR_HPP

@@ -8,6 +8,7 @@
 #include <memory>
 #include <set>
 #include <stdexcept>
+#include <tuple>
 
 #include <cassert>
 #include <cmath>
@@ -264,18 +265,81 @@ struct Octree_node // technically this would be a sedectree
             for(auto && i: children)
             {
                 if(i)
-                {
                     i->collect_colors(palette);
-                }
             }
         }
     }
+
+    Color lookup_color(const Color & c) const
+    {
+        auto build_color = [](Color & color, std::size_t index, std::size_t depth)
+        {
+            color.r |= ((index >> 3) & 0x01) << (7 - depth);
+            color.g |= ((index >> 2) & 0x01) << (7 - depth);
+            color.b |= ((index >> 1) & 0x01) << (7 - depth);
+            color.a |= ( index       & 0x01) << (7 - depth);
+        };
+
+        Color path_color {0, 0, 0, 0};
+        bool exact_match = true;
+
+        auto node = this;
+        for(std::size_t depth = 0; depth < max_depth; ++depth)
+        {
+            if(node->pixel_count)
+                return node->to_color();
+
+            if(exact_match)
+            {
+                if(auto index = get_index(c, depth); node->children[index])
+                {
+                    build_color(path_color, index, depth);
+                    node = node->children[index].get();
+                    continue;
+                }
+                else
+                    exact_match = false;
+            }
+
+            // if we're not at a leaf, and the exact leaf is missing, find the child that represents the closest color
+            auto closest_index = std::numeric_limits<std::size_t>::max();
+            auto closest_dist = std::numeric_limits<float>::max();
+            Color closest_node_color;
+
+            for(int i = 0; i < static_cast<int>(std::size(node->children)); ++i)
+            {
+                if(node->children[i])
+                {
+                    auto node_color = path_color;
+
+                    build_color(node_color, i, depth);
+
+                    // append this depth's color information
+                    auto dist = color_dist2(node_color, c);
+                    if(dist < closest_dist)
+                    {
+                        closest_index = i;
+                        closest_dist = dist;
+                        closest_node_color = node_color;
+                    }
+                }
+            }
+            if(closest_index > std::size(node->children))
+                break;
+
+            node = node->children[closest_index].get();
+            path_color = closest_node_color;
+        }
+
+        if(node->pixel_count)
+            return node->to_color();
+        else
+            throw std::logic_error{"Color not found"};
+    }
 };
 
-// TODO: reduce after storing all? time to beat is 14.098s laptop, 13.040 desktop (IMG_....avif -> gif, release, most of which is dithering)
-Image::Pallete_ret Image::generate_palette(std::size_t num_colors, bool gif_transparency) const
+std::tuple<Octree_node, std::vector<Color>, bool> octree_quantitize(const Image & image, std::size_t num_colors, bool gif_transparency)
 {
-    // TODO: handle transparency
     if(num_colors == 0)
         throw std::domain_error {"empty palette requested"};
 
@@ -292,11 +356,11 @@ Image::Pallete_ret Image::generate_palette(std::size_t num_colors, bool gif_tran
     std::array<std::set<Octree_node *>, Octree_node::max_depth> reducible_nodes;
     reducible_nodes[0].insert(&root);
 
-    for(std::size_t row = 0; row < height_; ++row)
+    for(std::size_t row = 0; row < image.get_height(); ++row)
     {
-        for(std::size_t col = 0; col < width_; ++col)
+        for(std::size_t col = 0; col < image.get_width(); ++col)
         {
-            auto c = image_data_[row][col];
+            auto c = image[row][col];
 
             if(gif_transparency)
             {
@@ -351,7 +415,6 @@ Image::Pallete_ret Image::generate_palette(std::size_t num_colors, bool gif_tran
 
             while(num_leaves > num_colors)
             {
-                // std::cout<<"reducing"<<std::endl;
                 reduced_colors = true;
 
                 // reduce a node to get back under the limit
@@ -390,8 +453,6 @@ Image::Pallete_ret Image::generate_palette(std::size_t num_colors, bool gif_tran
                             }
                             break;
                         }
-                        // else
-                        //     std::cerr<<"can't reduce lowest level"<<std::endl;
                     }
                 }
 
@@ -403,13 +464,89 @@ Image::Pallete_ret Image::generate_palette(std::size_t num_colors, bool gif_tran
         }
     }
 
-    // TODO: lookups for dithering can be done faster if we keep the tree
-
     root.collect_colors(palette);
 
     assert(std::size(palette) <= num_colors);
 
-    return {palette, reduced_colors};
+    return {std::move(root), std::move(palette), reduced_colors};
+}
+
+std::vector<Color> Image::generate_palette(std::size_t num_colors, bool gif_transparency) const
+{
+    return std::move(std::get<1>(octree_quantitize(*this, num_colors, gif_transparency)));
+}
+
+std::vector<Color> Image::generate_and_apply_palette(std::size_t num_colors, bool gif_transparency)
+{
+    auto octree = octree_quantitize(*this, num_colors, gif_transparency);
+
+    auto & root         = std::get<0>(octree);
+    auto & palette      = std::get<1>(octree);
+    auto reduced_colors = std::get<2>(octree);
+
+    if(reduced_colors)
+        dither([&root](const Color & c){ return root.lookup_color(c); });
+
+    return std::move(palette);
+}
+
+void Image::dither(const std::function<Color(const Color &)> & palette_fun)
+{
+    if(height_ < 2 || width_ < 2)
+        return;
+
+    // Floyd-Steinberg dithering
+
+    // keep a copy of the current and next row converted to floats for running calculations
+    std::vector<FColor> current_row(width_), next_row(width_);
+    for(std::size_t col = 0; col < width_; ++col)
+    {
+        next_row[col] = image_data_[0][col];
+        if(next_row[col].a > 0.5f)
+            next_row[col].a = 1.0f;
+        else
+            next_row[col] = {0.0f, 0.0f, 0.0f, 0.0f};
+    }
+
+    for(std::size_t row = 0; row < height_; ++row)
+    {
+        std::swap(next_row, current_row);
+        if(row < height_ - 1)
+        {
+            for(std::size_t col = 0; col < width_; ++col)
+            {
+                next_row[col] = image_data_[row + 1][col];
+                if(next_row[col].a > 0.5f)
+                    next_row[col].a = 1.0f;
+                else
+                    next_row[col] = {0.0f, 0.0f, 0.0f, 0.0f};
+            }
+        }
+
+        for(std::size_t col = 0; col < width_; ++col)
+        {
+            auto old_pix = current_row[col];
+            Color new_pix = palette_fun(old_pix.clamp());
+
+            // convert back to int and store to actual pixel data
+            image_data_[row][col] = new_pix;
+
+            auto quant_error = old_pix - new_pix;
+
+            if(col < width_ - 1)
+                current_row[col + 1] += quant_error * 7.0f / 16.0f;
+            if(row < height_ - 1)
+            {
+                if(col > 0)
+                    next_row[col - 1] += quant_error * 3.0f / 16.0f;
+
+                next_row[col    ] += quant_error * 5.0f / 16.0f;
+
+                if(col < width_ - 1)
+                    next_row[col + 1] += quant_error * 1.0f / 16.0f;
+            }
+        }
+    }
 }
 
 void Image::convert(const Args & args) const
