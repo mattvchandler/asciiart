@@ -279,12 +279,10 @@ Image::Pallete_ret Image::generate_palette(std::size_t num_colors, bool gif_tran
     if(num_colors == 0)
         throw std::domain_error {"empty palette requested"};
 
+    unsigned char alpha_threshold = 127;
+
     std::vector<Color> palette;
     palette.reserve(num_colors);
-
-    // reserve an entry for the transparent color
-    // if(gif_transparency)
-    //     --num_colors;
 
     std::size_t num_leaves{0};
     bool reduced_colors {false};
@@ -298,7 +296,15 @@ Image::Pallete_ret Image::generate_palette(std::size_t num_colors, bool gif_tran
     {
         for(std::size_t col = 0; col < width_; ++col)
         {
-            auto & c = image_data_[row][col];
+            auto c = image_data_[row][col];
+
+            if(gif_transparency)
+            {
+                if(c.a > alpha_threshold)
+                    c.a = 255;
+                else
+                    c = {0, 0, 0, 0};
+            }
 
             Octree_node * node = &root;
 

@@ -62,7 +62,13 @@ public:
         // keep a copy of the current and next row converted to floats for running calculations
         std::vector<FColor> current_row(width_), next_row(width_);
         for(std::size_t col = 0; col < width_; ++col)
+        {
             next_row[col] = image_data_[0][col];
+            if(next_row[col].a > 0.5f)
+                next_row[col].a = 1.0f;
+            else
+                next_row[col] = {0.0f, 0.0f, 0.0f, 0.0f};
+        }
 
         for(std::size_t row = 0; row < height_; ++row)
         {
@@ -70,7 +76,13 @@ public:
             if(row < height_ - 1)
             {
                 for(std::size_t col = 0; col < width_; ++col)
+                {
                     next_row[col] = image_data_[row + 1][col];
+                    if(next_row[col].a > 0.5f)
+                        next_row[col].a = 1.0f;
+                    else
+                        next_row[col] = {0.0f, 0.0f, 0.0f, 0.0f};
+                }
             }
 
             for(std::size_t col = 0; col < width_; ++col)
