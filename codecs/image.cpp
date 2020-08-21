@@ -301,10 +301,15 @@ struct Octree_node // technically this would be a sedectree
                     exact_match = false;
             }
 
-            // if we're not at a leaf, and the exact leaf is missing, find the child that represents the closest color
+            // if we're not at a leaf, and the exact leaf is missing, find the child that represents the closest color without exceeding the value of any channel
             auto closest_index = std::numeric_limits<std::size_t>::max();
+            auto closest_not_exceeding_index = std::numeric_limits<std::size_t>::max();
+
             auto closest_dist = std::numeric_limits<float>::max();
+            auto closest_not_exceeding_dist = std::numeric_limits<float>::max();
+
             Color closest_node_color;
+            Color closest_not_exceeding_node_color;
 
             for(int i = 0; i < static_cast<int>(std::size(node->children)); ++i)
             {
@@ -312,9 +317,12 @@ struct Octree_node // technically this would be a sedectree
                 {
                     auto node_color = path_color;
 
+                    // append this depth's color information
                     build_color(node_color, i, depth);
 
-                    // append this depth's color information
+                    // don't exceed the value on any channel (unless there's no other choice). The next layer down will only increase the value of each channel
+                    auto not_exceeding = (node_color.r <= c.r || node_color.g <= c.g || node_color.b <= c.b || node_color.a <= c.a);
+
                     auto dist = color_dist2(node_color, c);
                     if(dist < closest_dist)
                     {
@@ -322,13 +330,27 @@ struct Octree_node // technically this would be a sedectree
                         closest_dist = dist;
                         closest_node_color = node_color;
                     }
+                    if(not_exceeding && dist < closest_not_exceeding_dist)
+                    {
+                        closest_not_exceeding_index = i;
+                        closest_not_exceeding_dist = dist;
+                        closest_not_exceeding_node_color = node_color;
+                    }
                 }
             }
-            if(closest_index > std::size(node->children))
+            if(closest_index >= std::size(node->children))
                 break;
 
-            node = node->children[closest_index].get();
-            path_color = closest_node_color;
+            if(closest_not_exceeding_index < std::size(node->children))
+            {
+                node = node->children[closest_not_exceeding_index].get();
+                path_color = closest_not_exceeding_node_color;
+            }
+            else
+            {
+                node = node->children[closest_index].get();
+                path_color = closest_node_color;
+            }
         }
 
         if(node->pixel_count)
