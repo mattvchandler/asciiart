@@ -203,7 +203,7 @@ static const std::vector<std::string> output_formats =
 
 [[nodiscard]] std::optional<Args> parse_args(int argc, char * argv[])
 {
-    Optional_pos options{argv[0], "Convert an image to ASCII art"};
+    Optional_pos options{argv[0], "Display an image in the terminal, with ANSI colors and/or ASCII art"};
 
     std::string input_format_list;
     for(std::size_t i = 0; i < std::size(input_formats); ++i)
