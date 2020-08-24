@@ -50,3 +50,4 @@ Add support for
 
 * JPEG XL (R/W?)
 * OpenEXR (R/W)
+* JPEG XR? XS? XT? LS? HDR?

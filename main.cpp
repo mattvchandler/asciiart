@@ -1,7 +1,7 @@
 // Convert an image input to ascii art
 #include <iostream>
 
-#include "asciiart.hpp"
+#include "display.hpp"
 #include "font.hpp"
 #include "codecs/image.hpp"
 
@@ -13,11 +13,8 @@ int main(int argc, char * argv[])
 
     try
     {
-        auto font_path = get_font_path(args->font_name);
-        auto values = get_char_values(font_path, args->font_size);
-
         auto img = get_image_data(*args);
-        write_ascii(*img, values, *args);
+        display_image(*img, *args);
         img->convert(*args);
     }
     catch(const std::runtime_error & e)

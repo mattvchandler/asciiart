@@ -1,4 +1,4 @@
-#include "asciiart.hpp"
+#include "display.hpp"
 
 #include <algorithm>
 #include <fstream>
@@ -12,6 +12,7 @@
 #include <cstring>
 
 #include "color.hpp"
+#include "font.hpp"
 
 constexpr auto build_color_table()
 {
@@ -178,10 +179,17 @@ std::ostream & clear_color(std::ostream & os)
     return os<<"\x1B[0m";
 }
 
-void write_ascii(const Image & img, const Char_vals & char_vals, const Args & args)
+void display_image(const Image & img, const Args & args)
 {
     if(img.get_width() == 0 || img.get_height() == 0)
         return;
+
+    Char_vals char_vals;
+    if(args.disp_char == Args::Disp_char::ASCII)
+    {
+        auto font_path = get_font_path(args.font_name);
+        char_vals = get_char_values(font_path, args.font_size);
+    }
 
     std::ofstream output_file;
     if(args.output_filename != "-")

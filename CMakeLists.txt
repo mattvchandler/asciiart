@@ -62,7 +62,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DI
 
 add_executable(asciiart
     args.cpp
-    asciiart.cpp
+    display.cpp
     font.cpp
     main.cpp
     codecs/image.cpp
