@@ -13,6 +13,7 @@ Supports a variety of image formats:
 * HEIF / HEIC (requires libheif)
 * JPEG (requires libjpeg)
 * JPEG 2000 (requires OpenJPEG)
+* OpenEXR (requires libopenexr)
 * PCX
 * PNG (requires libpng)
 * PPM / PGM / PBM / PAM / PFM
@@ -36,6 +37,7 @@ formats:
 * HEIF / HEIC (requires libheif)
 * JPEG (requires libjpeg)
 * JPEG 2000 (requires OpenJPEG)
+* OpenEXR (requires libopenexr)
 * PCX
 * PNG (requires libpng)
 * PPM / PGM / PBM / PAM / PFM
@@ -49,5 +51,4 @@ formats:
 Add support for
 
 * JPEG XL (R/W?)
-* OpenEXR (R/W)
 * JPEG XR? XS? XT? LS? HDR?

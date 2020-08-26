@@ -30,6 +30,7 @@
 #include "ico.hpp"
 #include "jp2.hpp"
 #include "jpeg.hpp"
+#include "openexr.hpp"
 #include "pcx.hpp"
 #include "png.hpp"
 #include "pnm.hpp"
@@ -613,6 +614,10 @@ void Image::convert(const Args & args) const
     else if(ext == ".jp2")
         Jp2::write(out, *this, args.invert);
     #endif
+    #ifdef OpenEXR_FOUND
+    else if(ext == ".exr")
+        OpenEXR::write(out, *this, args.invert);
+    #endif
     else if(ext == ".pcx")
         Pcx::write(out, *this, args.bg, args.invert);
     #ifdef PNG_FOUND
@@ -744,6 +749,14 @@ void Image::convert(const Args & args) const
             return std::make_unique<Jp2>(input, Jp2::Type::JPX);
             #else
             throw std::runtime_error{"Not compiled with JPEG 2000 support"};
+            #endif
+        }
+        else if(is_openexr(header))
+        {
+            #ifdef OpenEXR_FOUND
+            return std::make_unique<OpenEXR>(input);
+            #else
+            throw std::runtime_error{"Not compiled with OpenExr support"};
             #endif
         }
         else if(is_jpeg(header))

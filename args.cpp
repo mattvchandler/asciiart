@@ -144,6 +144,9 @@ static const std::vector<std::string> input_formats =
     #ifdef JP2_FOUND
     "JPEG 2000",
     #endif
+    #ifdef OpenEXR_FOUND
+    "OpenEXR",
+    #endif
     "PCX",
     #ifdef PNG_FOUND
     "PNG",
@@ -169,6 +172,9 @@ static const std::vector<std::string> output_formats =
     #endif
     ".bmp",
     ".cur",".ico",
+    #ifdef OpenEXR_FOUND
+    ".exr",
+    #endif
     #ifdef FLIF_ENC_FOUND
     ".flif",
     #endif

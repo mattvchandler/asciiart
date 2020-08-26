@@ -2,7 +2,6 @@
 #include <iostream>
 
 #include "display.hpp"
-#include "font.hpp"
 #include "codecs/image.hpp"
 
 int main(int argc, char * argv[])
