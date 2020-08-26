@@ -132,7 +132,7 @@ if(JPEG_FOUND)
 endif()
 if(OpenEXR_FOUND)
     target_sources(asciiart PRIVATE codecs/openexr.cpp)
-    target_include_directories(asciiart PRIVATE ${OpenEXR_INCLUDE_DIRS})
+    target_include_directories(asciiart SYSTEM PRIVATE ${OpenEXR_INCLUDE_DIRS}) # SYSTEM to suppress a bunch of warnings
     target_link_libraries(asciiart ${OpenEXR_LIBRARIES})
 endif()
 if(PNG_FOUND)
