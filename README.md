@@ -24,7 +24,7 @@ Supports a variety of image formats:
 * WebP (requires libwebp)
 * XPM (requires libxpm)
 
-Basic conversion is also supported for some formats with the `--convert` flag.
+Basic conversion is also supported for most formats with the `--convert` flag.
 Converted images are always as close to 32bit RGBA as supported by the format.
 Conversion can be done from any of the above formats to one of the following
 formats:

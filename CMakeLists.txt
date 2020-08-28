@@ -33,7 +33,7 @@ pkg_check_modules(XPM xpm)
 
 find_package(Freetype)
 if(FREETYPE_FOUND)
-    pkg_check_modules(FONTCONFIG fontconfig REQUIRED)
+    pkg_check_modules(FONTCONFIG fontconfig)
 endif()
 
 include(CheckIncludeFiles)
