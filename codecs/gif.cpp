@@ -77,7 +77,7 @@ Gif::Gif(std::istream & input)
 
             if(index == transparency_ind)
             {
-                image_data_[row][col] = Color{};
+                image_data_[row][col] = Color{0,0,0,0};
             }
             else
             {
