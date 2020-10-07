@@ -24,7 +24,7 @@ public:
     {
         add_options(POS_GROUP_NAME, options);
     }
-    cxxopts::ParseResult parse(int& argc, const char**& argv)
+    cxxopts::ParseResult parse(int& argc, char**& argv)
     {
         std::string usage;
 
@@ -272,7 +272,7 @@ static const std::vector<std::string> output_formats =
         options.add_positionals()
             ("input", "Input image path. Read from stdin if -. Supported formats: " + input_format_list, cxxopts::value<std::string>()->default_value("-"));
 
-        auto args = options.parse(argc, const_cast<const char **&>(argv));
+        auto args = options.parse(argc, argv);
 
         if(args.count("help"))
         {
