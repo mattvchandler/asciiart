@@ -140,7 +140,7 @@
     for(char ch = ' '; ch <= '~'; ++ch)
     {
         if(FT_Load_Char(face, ch, FT_LOAD_RENDER) != FT_Err_Ok)
-            throw std::runtime_error{"Error loading char: A"};
+            throw std::runtime_error{"Error loading char: " + std::string{ch}};
 
         auto & bmp = face->glyph->bitmap;
 
