@@ -30,6 +30,7 @@
 #include "ico.hpp"
 #include "jp2.hpp"
 #include "jpeg.hpp"
+#include "jpegxl.hpp"
 #include "openexr.hpp"
 #include "pcx.hpp"
 #include "png.hpp"
@@ -765,6 +766,14 @@ void Image::convert(const Args & args) const
             return std::make_unique<Jpeg>(input);
             #else
             throw std::runtime_error{"Not compiled with JPEG support"};
+            #endif
+        }
+        else if(is_jpegxl(header))
+        {
+            #ifdef JPEGXL_FOUND
+            return std::make_unique<JpegXL>(input);
+            #else
+            throw std::runtime_error{"Not compiled with JPEG XL support"};
             #endif
         }
         else if(is_png(header))

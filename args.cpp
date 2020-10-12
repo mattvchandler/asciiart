@@ -144,6 +144,9 @@ static const std::vector<std::string> input_formats =
     #ifdef JP2_FOUND
     "JPEG 2000",
     #endif
+    #ifdef JPEGXL_FOUND
+    "JPEG XL",
+    #endif
     #ifdef OpenEXR_FOUND
     "OpenEXR",
     #endif
