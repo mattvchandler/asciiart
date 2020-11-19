@@ -19,6 +19,7 @@ Supports a variety of image formats:
 * PNG (requires libpng)
 * PPM / PGM / PBM / PAM / PFM
 * [SIF](https://adventofcode.com/2019/day/8)
+* SRF (Garmin GPS vehicle icon file)
 * SVG (requires librsvg)
 * TGA
 * TIFF (requires libtiff)

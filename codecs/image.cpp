@@ -36,6 +36,7 @@
 #include "png.hpp"
 #include "pnm.hpp"
 #include "sif.hpp"
+#include "srf.hpp"
 #include "svg.hpp"
 #include "tga.hpp"
 #include "tiff.hpp"
@@ -787,6 +788,10 @@ void Image::convert(const Args & args) const
         else if(is_pnm(header))
         {
             return std::make_unique<Pnm>(input);
+        }
+        else if(is_srf(header))
+        {
+            return std::make_unique<Srf>(input);
         }
         else if(is_tiff(header))
         {

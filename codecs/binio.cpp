@@ -218,6 +218,14 @@ void readb(std::istream & i, double & t, binio_endian endian)
     t = *reinterpret_cast<double *>(buf);
 }
 
+std::string readstr(std::istream & i, std::size_t size)
+{
+    std::string s(size, ' ');
+    i.read(std::data(s), size);
+
+    return s;
+}
+
 void writeb(std::ostream & o, std::uint64_t t, binio_endian endian)
 {
     if(host_endian != endian)
@@ -304,4 +312,9 @@ void writeb(std::ostream & o, double t, binio_endian endian)
     }
 
     o.write(buf, sizeof(buf));
+}
+
+void writestr(std::ostream & o, std::string_view s)
+{
+    o.write(std::data(s), std::size(s));
 }

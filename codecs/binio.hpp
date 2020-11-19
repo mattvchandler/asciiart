@@ -2,6 +2,7 @@
 #define BINIO_HPP
 
 #include <istream>
+#include <string>
 
 #include <cstdint>
 
@@ -24,6 +25,8 @@ void readb(std::istream & i, E & t, binio_endian endian = binio_endian::LE)
     readb(i, reinterpret_cast<std::underlying_type_t<E>&>(t), endian);
 }
 
+std::string readstr(std::istream & i, std::size_t size);
+
 void writeb(std::ostream & o, std::uint64_t t, binio_endian endian = binio_endian::LE);
 void writeb(std::ostream & o,  std::int64_t t, binio_endian endian = binio_endian::LE);
 void writeb(std::ostream & o, std::uint32_t t, binio_endian endian = binio_endian::LE);
@@ -40,5 +43,7 @@ void writeb(std::ostream & i, E t, binio_endian endian = binio_endian::LE)
 {
     writeb(i, static_cast<std::underlying_type_t<E>>(t), endian);
 }
+
+void writestr(std::ostream & o, std::string_view s);
 
 #endif // BINIO_HPP

@@ -75,6 +75,7 @@ add_executable(asciiart
     codecs/pcx.cpp
     codecs/pnm.cpp
     codecs/sif.cpp
+    codecs/srf.cpp
     codecs/tga.cpp
     )
 
