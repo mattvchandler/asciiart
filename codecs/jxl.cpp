@@ -1,40 +1,29 @@
-#include "jpegxl.hpp"
+#include "jxl.hpp"
 
 #include <iostream>
 #include <stdexcept>
 #include <cstdint>
 
-#include <jpegxl/decode.h>
+#include <jxl/decode_cxx.h>
 
 #ifdef EXIF_FOUND
 #include "exif.hpp"
 #endif
 
-struct Decoder_wrapper
-{
-    Decoder_wrapper(): decoder { JpegxlDecoderCreate(nullptr) }
-    {
-        if(!decoder)
-            throw std::runtime_error {"Could not created JPEG XL decoder"};
-    }
-    ~Decoder_wrapper() { JpegxlDecoderDestroy(decoder); }
-    operator JpegxlDecoder*() { return decoder; };
-    operator const JpegxlDecoder*() const { return decoder; };
-
-    JpegxlDecoder * decoder = nullptr;
-};
-
-JpegXL::JpegXL(std::istream & input)
+Jxl::Jxl(std::istream & input)
 {
     std::cerr<<"Warning: JPEG XL support is experimental. Success will vary depending on the image and jpeg xl library version\n";
 
-    Decoder_wrapper decoder;
+    auto decoder = JxlDecoderMake(nullptr);
+    if(!decoder)
+        throw std::runtime_error {"Could not created JPEG XL decoder"};
 
-    JpegxlPixelFormat format
+    JxlPixelFormat format
     {
-        4,                    // num_channels
-        JPEGXL_LITTLE_ENDIAN, // endianness
-        JPEGXL_TYPE_UINT8     // data_type
+        4,                 // num_channels
+        JXL_TYPE_UINT8,    // data_type
+        JXL_LITTLE_ENDIAN, // endianness
+        0                  // align
     };
 
     auto data = Image::read_input_to_memory(input);
@@ -42,26 +31,26 @@ JpegXL::JpegXL(std::istream & input)
     const uint8_t * next_data = std::data(data);
     std::size_t avail_data = std::size(data);
 
-    if(JpegxlDecoderSubscribeEvents(decoder, JPEGXL_DEC_BASIC_INFO | JPEGXL_DEC_FULL_IMAGE) != JPEGXL_DEC_SUCCESS)
+    if(JxlDecoderSubscribeEvents(decoder.get(), JXL_DEC_BASIC_INFO | JXL_DEC_FULL_IMAGE) != JXL_DEC_SUCCESS)
         throw std::runtime_error {"Error subscibing to JPEG XL events"};
 
-    if(JpegxlDecoderProcessInput(decoder, &next_data, &avail_data) != JPEGXL_DEC_BASIC_INFO)
+    if(JxlDecoderProcessInput(decoder.get(), &next_data, &avail_data) != JXL_DEC_BASIC_INFO)
         throw std::runtime_error {"Error decoding JPEG XL header. Invalid data"};
 
     std::size_t buffer_size {0};
-    if(JpegxlDecoderImageOutBufferSize(decoder, &format, &buffer_size) != JPEGXL_DEC_SUCCESS)
+    if(JxlDecoderImageOutBufferSize(decoder.get(), &format, &buffer_size) != JXL_DEC_SUCCESS)
         throw std::runtime_error {"Error getting JPEG XL decompressed size"};
 
-    JpegxlBasicInfo info;
-    if(JpegxlDecoderGetBasicInfo(decoder, &info) != JPEGXL_DEC_SUCCESS)
+    JxlBasicInfo info;
+    if(JxlDecoderGetBasicInfo(decoder.get(), &info) != JXL_DEC_SUCCESS)
         throw std::runtime_error {"Error decoding JPEG XL data. Unable to read JPEG XL basic info"};
 
     std::vector<std::uint8_t> buffer(buffer_size);
 
-    if(JpegxlDecoderSetImageOutBuffer(decoder, &format, std::data(buffer), std::size(buffer)) != JPEGXL_DEC_SUCCESS)
+    if(JxlDecoderSetImageOutBuffer(decoder.get(), &format, std::data(buffer), std::size(buffer)) != JXL_DEC_SUCCESS)
         throw std::runtime_error {"Error setting JPEG XL buffer"};
 
-    if(JpegxlDecoderProcessInput(decoder, &next_data, &avail_data) != JPEGXL_DEC_FULL_IMAGE)
+    if(JxlDecoderProcessInput(decoder.get(), &next_data, &avail_data) != JXL_DEC_FULL_IMAGE)
         throw std::runtime_error {"Error decoding JPEG XL image data. Invalid data"};
 
     set_size(info.xsize, info.ysize);
