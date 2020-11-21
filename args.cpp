@@ -194,6 +194,9 @@ static const std::vector<std::string> output_formats =
     #ifdef JP2_FOUND
     ".jp2",
     #endif
+    #ifdef JXL_FOUND
+    ".jxl",
+    #endif
     ".pcx",
     #ifdef PNG_FOUND
     ".png",

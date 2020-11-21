@@ -13,7 +13,7 @@ Supports a variety of image formats:
 * HEIF / HEIC (requires libheif)
 * JPEG (requires libjpeg)
 * JPEG 2000 (requires OpenJPEG)
-* JPEG XL (requires libjpegxl)
+* JPEG XL (requires libjxl)
 * OpenEXR (requires libopenexr)
 * PCX
 * PNG (requires libpng)
@@ -39,6 +39,7 @@ formats:
 * HEIF / HEIC (requires libheif)
 * JPEG (requires libjpeg)
 * JPEG 2000 (requires OpenJPEG)
+* JPEG XL (requires libjxl)
 * OpenEXR (requires libopenexr)
 * PCX
 * PNG (requires libpng)

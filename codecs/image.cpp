@@ -616,6 +616,10 @@ void Image::convert(const Args & args) const
     else if(ext == ".jp2")
         Jp2::write(out, *this, args.invert);
     #endif
+    #ifdef JXL_FOUND
+    else if(ext == ".jxl")
+        Jxl::write(out, *this, args.invert);
+    #endif
     #ifdef OpenEXR_FOUND
     else if(ext == ".exr")
         OpenEXR::write(out, *this, args.invert);
