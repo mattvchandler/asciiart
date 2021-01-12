@@ -132,6 +132,72 @@ std::uint64_t be64toh(std::uint64_t a)
 }
 #endif
 
+#ifndef HAS_HTOLE16
+std::uint16_t htole16(std::uint16_t a)
+{
+#ifdef ASCIIART_BIG_ENDIAN
+    return bswap_16(a);
+#else
+    return a;
+#endif
+}
+#endif
+
+#ifndef HAS_HTOBE16
+std::uint16_t htobe16(std::uint16_t a)
+{
+#ifdef ASCIIART_BIG_ENDIAN
+    return a;
+#else
+    return bswap_16(a);
+#endif
+}
+#endif
+
+#ifndef HAS_HTOLE32
+std::uint32_t htole32(std::uint32_t a)
+{
+#ifdef ASCIIART_BIG_ENDIAN
+    return bswap_32(a);
+#else
+    return a;
+#endif
+}
+#endif
+
+#ifndef HAS_HTOBE32
+std::uint32_t htobe32(std::uint32_t a)
+{
+#ifdef ASCIIART_BIG_ENDIAN
+    return a;
+#else
+    return bswap_32(a);
+#endif
+}
+#endif
+
+#ifndef HAS_HTOLE64
+std::uint64_t htole64(std::uint64_t a)
+{
+#ifdef ASCIIART_BIG_ENDIAN
+    return bswap_64(a);
+#else
+    return a;
+#endif
+}
+#endif
+
+#ifndef HAS_HTOBE64
+std::uint64_t htobe64(std::uint64_t a)
+{
+#ifdef ASCIIART_BIG_ENDIAN
+    return a;
+#else
+    return bswap_64(a);
+#endif
+}
+#endif
+
 void readb(std::istream & i, std::uint64_t & t, binio_endian endian)
 {
     i.read(reinterpret_cast<char*>(&t), sizeof(t));
@@ -231,9 +297,9 @@ void writeb(std::ostream & o, std::uint64_t t, binio_endian endian)
     if(host_endian != endian)
     {
         if(endian == binio_endian::LE)
-            t = le64toh(t);
+            t = htole64(t);
         else
-            t = be64toh(t);
+            t = htobe64(t);
     }
     o.write(reinterpret_cast<char*>(&t), sizeof(t));
 }
@@ -246,9 +312,9 @@ void writeb(std::ostream & o, std::uint32_t t, binio_endian endian)
     if(host_endian != endian)
     {
         if(endian == binio_endian::LE)
-            t = le32toh(t);
+            t = htole32(t);
         else
-            t = be32toh(t);
+            t = htobe32(t);
     }
     o.write(reinterpret_cast<char*>(&t), sizeof(t));
 }
@@ -261,9 +327,9 @@ void writeb(std::ostream & o, std::uint16_t t, binio_endian endian)
     if(host_endian != endian)
     {
         if(endian == binio_endian::LE)
-            t = le16toh(t);
+            t = htole16(t);
         else
-            t = be16toh(t);
+            t = htobe16(t);
     }
     o.write(reinterpret_cast<char*>(&t), sizeof(t));
 }

@@ -27,6 +27,12 @@
 #cmakedefine HAS_BE64TOH  1
 #cmakedefine HAS_BE32TOH  1
 #cmakedefine HAS_BE16TOH  1
+#cmakedefine HAS_HTOLE64  1
+#cmakedefine HAS_HTOLE32  1
+#cmakedefine HAS_HTOLE16  1
+#cmakedefine HAS_HTOBE64  1
+#cmakedefine HAS_HTOBE32  1
+#cmakedefine HAS_HTOBE16  1
 #cmakedefine HAS_BSWAP16  1
 #cmakedefine HAS_BSWAP32  1
 #cmakedefine HAS_BSWAP64  1
