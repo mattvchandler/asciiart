@@ -13,7 +13,7 @@
 // Garmin GPS Vehicle icon
 // Format documented at http://www.techmods.net/nuvi/
 
-struct SFR_image
+struct SRF_image
 {
     std::uint16_t height {0};
     std::uint16_t width {0};
@@ -21,12 +21,12 @@ struct SFR_image
     std::vector<std::uint16_t> image;
 };
 
-SFR_image read_image_data(std::istream & input)
+SRF_image read_image_data(std::istream & input)
 {
     // header
     input.ignore(12); // unknown
 
-    SFR_image im;
+    SRF_image im;
 
     readb(input, im.height);
     readb(input, im.width);
@@ -69,7 +69,7 @@ SFR_image read_image_data(std::istream & input)
 
 Color get_image_color(std::size_t row,
                       std::size_t col,
-                      const SFR_image & im)
+                      const SRF_image & im)
 {
     auto alpha = static_cast<uint8_t>(std::lround((static_cast<float>(128 - im.alpha_mask[row * im.width + col])) * 255.0f / 128.0f)); // 0-128, awkward range
 
@@ -108,7 +108,7 @@ Srf::Srf(std::istream & input)
         readb(input, garmin_strlen);
         input.ignore(garmin_strlen); // product code?
 
-        std::vector<SFR_image> images;
+        std::vector<SRF_image> images;
 
         std::uint16_t max_width = 0;
         std::uint16_t total_height = 0;
