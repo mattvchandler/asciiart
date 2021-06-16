@@ -1,6 +1,7 @@
 #include "tiff.hpp"
 
 #include <stdexcept>
+#include <cstdint>
 #include <cstring>
 
 #include <tiff.h>
@@ -83,11 +84,11 @@ Tiff::Tiff(std::istream & input)
     if(!tiff)
         throw std::runtime_error{"Error reading TIFF data"};
 
-    uint32 w, h;
+    std::uint32_t w, h;
     TIFFGetField(tiff, TIFFTAG_IMAGEWIDTH, &w);
     TIFFGetField(tiff, TIFFTAG_IMAGELENGTH, &h);
 
-    std::vector<uint32> raster(w * h);
+    std::vector<std::uint32_t> raster(w * h);
 
     if(!TIFFReadRGBAImageOriented(tiff, w, h, std::data(raster), ORIENTATION_TOPLEFT, 0))
     {
