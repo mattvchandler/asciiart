@@ -30,6 +30,9 @@ struct Args
     #ifdef XPM_FOUND
         xpm,
     #endif
+    #ifdef ZLIB_FOUND
+        mcmap,
+    #endif
         aoc_2019_sif,
     } force_file { Force_file::detect };
     std::optional<std::pair<std::string, std::string>> convert_filename;

@@ -147,6 +147,9 @@ static const std::vector<std::string> input_formats =
     #ifdef JXL_FOUND
     "JPEG XL",
     #endif
+    #ifdef ZLIB_FOUND
+    "Minecraft Map Item (.dat)",
+    #endif
     #ifdef OpenEXR_FOUND
     "OpenEXR",
     #endif
@@ -176,6 +179,9 @@ static const std::vector<std::string> output_formats =
     #endif
     ".bmp",
     ".cur",".ico",
+    #ifdef ZLIB_FOUND
+    ".dat (Minecraft Map Item)",
+    #endif
     #ifdef OpenEXR_FOUND
     ".exr",
     #endif
@@ -273,6 +279,9 @@ static const std::vector<std::string> output_formats =
     #ifdef XPM_FOUND
         options.add_options(filetype_group)("xpm", "Interpret input as an XPM file");
     #endif
+    #ifdef ZLIB_FOUND
+        options.add_options(filetype_group)("mcmap", "Interpret input as an Minecraft Map Item .dat file");
+    #endif
 
         options.add_options(filetype_group)("sif", "Interpret input as a Space Image Format file (from Advent of Code 2019)");
 
@@ -358,6 +367,9 @@ static const std::vector<std::string> output_formats =
     #ifdef XPM_FOUND
                 + args.count("xpm")
     #endif
+    #ifdef ZLIB_FOUND
+                + args.count("mcmap")
+    #endif
                 + args.count("sif")
                 > 1)
         {
@@ -376,6 +388,10 @@ static const std::vector<std::string> output_formats =
     #ifdef XPM_FOUND
         else if(args.count("xpm"))
             filetype = Args::Force_file::xpm;
+    #endif
+    #ifdef ZLIB_FOUND
+        else if(args.count("mcmap"))
+            filetype = Args::Force_file::mcmap;
     #endif
         else if(args.count("sif"))
             filetype = Args::Force_file::aoc_2019_sif;

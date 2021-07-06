@@ -31,6 +31,7 @@
 #include "jp2.hpp"
 #include "jpeg.hpp"
 #include "jxl.hpp"
+#include "mcmap.hpp"
 #include "openexr.hpp"
 #include "pcx.hpp"
 #include "png.hpp"
@@ -596,6 +597,10 @@ void Image::convert(const Args & args) const
         Ico::write_cur(out, *this, args.invert);
     else if(ext == ".ico")
         Ico::write_ico(out, *this, args.invert);
+    #ifdef ZLIB_FOUND
+    else if(ext == ".dat")
+        MCMap::write(out, *this, args.bg, args.invert);
+    #endif
     #ifdef FLIF_ENC_FOUND
     else if(ext == ".flif")
         Flif::write(out, *this, args.invert);
@@ -813,6 +818,14 @@ void Image::convert(const Args & args) const
             throw std::runtime_error{"Not compiled with WEBP support"};
             #endif
         }
+        else if(extension == ".dat")
+        {
+            #ifdef ZLIB_FOUND
+            return std::make_unique<MCMap>(input);
+            #else
+            throw std::runtime_error{"Not compiled with Minecraft map item / .dat support"};
+            #endif
+        }
         else if(extension == ".pcx")
         {
             return std::make_unique<Pcx>(input);
@@ -850,6 +863,11 @@ void Image::convert(const Args & args) const
             throw std::runtime_error{"Unknown input file format"};
         }
         break;
+    #ifdef ZLIB_FOUND
+    case Args::Force_file::mcmap:
+        return std::make_unique<MCMap>(input);
+        break;
+    #endif
     case Args::Force_file::pcx:
         return std::make_unique<Pcx>(input);
         break;

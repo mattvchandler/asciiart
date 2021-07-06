@@ -14,6 +14,7 @@ Supports a variety of image formats:
 * JPEG (requires libjpeg)
 * JPEG 2000 (requires OpenJPEG)
 * JPEG XL (requires libjxl)
+* Minecraft map items (requires zlib)
 * OpenEXR (requires libopenexr)
 * PCX
 * PNG (requires libpng)
@@ -40,6 +41,7 @@ formats:
 * JPEG (requires libjpeg)
 * JPEG 2000 (requires OpenJPEG)
 * JPEG XL (requires libjxl)
+* Minecraft map items (requires zlib)
 * OpenEXR (requires libopenexr)
 * PCX
 * PNG (requires libpng)
