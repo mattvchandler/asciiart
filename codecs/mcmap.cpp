@@ -12,11 +12,12 @@
 
 #include "binio.hpp"
 
+// using strings as output/input for ease of use with sstream, which we want for use with readb/writeb functuons
 std::string zlib_decompress(std::istream & input)
 {
     z_stream strm{};
-    if(auto ret = inflateInit2(&strm, 16 | MAX_WBITS); ret != Z_OK)
-        throw std::runtime_error("Could not initialize ZLIB");
+    if(auto ret = inflateInit2(&strm, 16 + MAX_WBITS); ret != Z_OK)
+        throw std::runtime_error(std::string{"Could not initialize ZLIB inflater: "} + strm.msg);
 
     std::string data;
     try
@@ -72,7 +73,35 @@ std::string zlib_decompress(std::istream & input)
     return data;
 }
 
-// TODO: zlib_compress()
+void zlib_compress(std::ostream & out, const std::string & data)
+{
+    z_stream strm{};
+    if(auto ret = deflateInit2(&strm, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 16 + MAX_WBITS, 8, Z_DEFAULT_STRATEGY); ret != Z_OK)
+        throw std::runtime_error(std::string{"Could not initialize ZLIB deflater: "} + strm.msg);
+
+    try
+    {
+        std::vector<char> compressed_buffer(deflateBound(&strm, std::size(data)));
+
+        strm.avail_in = std::size(data);
+        strm.next_in = const_cast<unsigned char *>(reinterpret_cast<const unsigned char *>(std::data(data)));
+
+        strm.avail_out = std::size(compressed_buffer);
+        strm.next_out = reinterpret_cast<unsigned char *>(std::data(compressed_buffer));
+
+        if(auto ret = deflate(&strm, Z_FINISH); ret != Z_STREAM_END)
+            throw std::runtime_error{std::string{"Error compressing MCMap file: "} + strm.msg};
+
+        out.write(std::data(compressed_buffer), std::size(compressed_buffer) - strm.avail_out);
+    }
+    catch(...)
+    {
+        deflateEnd(&strm);
+        throw;
+    }
+
+    deflateEnd(&strm);
+}
 
 const std::array mc_palette
 {
@@ -556,6 +585,7 @@ void MCMap::write(std::ostream & out, const Image & img, unsigned char bg, bool 
 
     std::ostringstream uncompressed_out;
 
+    // slap together a minimal, unmarked, and locked map
     nbt_write_tag(uncompressed_out, nbt_tag::compound, "");
     nbt_write_tag(uncompressed_out, nbt_tag::compound, "data");
 
@@ -593,10 +623,9 @@ void MCMap::write(std::ostream & out, const Image & img, unsigned char bg, bool 
     nbt_write_tag(uncompressed_out, nbt_tag::end, "");
 
     nbt_write_tag(uncompressed_out, nbt_tag::int32, "DataVersion");
-    writeb(uncompressed_out, std::int32_t{2586}, binio_endian::BE);
+    writeb(uncompressed_out, std::int32_t{2586}, binio_endian::BE); // 2586 is 1.16.5
 
     nbt_write_tag(uncompressed_out, nbt_tag::end, "");
 
-    auto nbt = uncompressed_out.str();
-    out.write(std::data(nbt), std::size(nbt));
+    zlib_compress(out, uncompressed_out.str());
 }
