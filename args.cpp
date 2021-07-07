@@ -180,7 +180,7 @@ static const std::vector<std::string> output_formats =
     ".bmp",
     ".cur",".ico",
     #ifdef ZLIB_FOUND
-    ".dat (Minecraft Map Item)",
+    ".dat",
     #endif
     #ifdef OpenEXR_FOUND
     ".exr",

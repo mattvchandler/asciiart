@@ -4,6 +4,7 @@
 #include <istream>
 #include <sstream>
 #include <stdexcept>
+#include <unordered_map>
 
 #include <cstring>
 
@@ -353,6 +354,18 @@ auto nbt_read_tag(std::istream & input)
     return std::pair{tag_type, name};
 }
 
+void nbt_write_string(std::ostream & out, const std::string_view & str)
+{
+    writeb(out, static_cast<std::uint16_t>(std::size(str)), binio_endian::BE);
+    writestr(out, str);
+}
+void nbt_write_tag(std::ostream & out, nbt_tag tag_type, const std::string_view & name)
+{
+    writeb(out, tag_type);
+    if(tag_type != nbt_tag::end)
+        nbt_write_string(out, name);
+}
+
 void nbt_skip_payload(std::istream & input, nbt_tag tag_type);
 
 void nbt_skip_array(std::istream & input, unsigned int size)
@@ -400,6 +413,12 @@ void nbt_skip_list(std::istream & input)
 
     for(unsigned int i = 0; i < len; ++i)
         nbt_skip_payload(input, tag_type);
+}
+
+void nbt_write_empty_list(std::ostream & out)
+{
+    writeb(out, nbt_tag::end);
+    writeb(out, std::int32_t{0});
 }
 
 void nbt_skip_payload(std::istream & input, nbt_tag tag_type)
@@ -451,7 +470,6 @@ struct Map_img
 {
     std::vector<std::uint8_t> colors;
     std::int16_t width{128}, height{128};
-    std::int32_t version{1343};
 };
 
 auto nbt_read_map(std::istream & input)
@@ -474,12 +492,8 @@ auto nbt_read_map(std::istream & input)
             readb(input, img.height, binio_endian::BE);
         else if(name == "colors" && tag_type == nbt_tag::byte_array)
             img.colors = nbt_read_byte_array(input);
-        else if(name == "DataVersion" && tag_type == nbt_tag::int32)
-            readb(input, img.version, binio_endian::BE);
         else
-        {
             nbt_skip_payload(input, tag_type);
-        }
     }
 
     if(std::empty(img.colors))
@@ -508,4 +522,81 @@ MCMap::MCMap(std::istream & input)
 
 void MCMap::write(std::ostream & out, const Image & img, unsigned char bg, bool invert)
 {
+    auto scaled = img.scale(128, 128);
+
+    std::unordered_map<Color, std::uint8_t> reverse_palette;
+    for(std::size_t i = 0; i < std::size(mc_palette); ++i)
+        reverse_palette[mc_palette[i]] = i;
+
+    for(std::size_t row = 0; row < scaled.get_height(); ++row)
+    {
+        for(std::size_t col = 0; col < scaled.get_width(); ++col)
+        {
+            FColor fcolor {scaled[row][col]};
+
+            if(invert)
+                fcolor.invert();
+
+            fcolor.alpha_blend(bg / 255.0f);
+
+            scaled[row][col] = fcolor;
+        }
+    }
+
+    scaled.dither(std::begin(mc_palette), std::end(mc_palette));
+
+    std::vector<std::uint8_t> colors(scaled.get_width() * scaled.get_height());
+    for(std::size_t row = 0; row < scaled.get_height(); ++row)
+    {
+        for(std::size_t col = 0; col < scaled.get_width(); ++col)
+        {
+            colors[row * scaled.get_width() + col] = reverse_palette[scaled[row][col]];
+        }
+    }
+
+    std::ostringstream uncompressed_out;
+
+    nbt_write_tag(uncompressed_out, nbt_tag::compound, "");
+    nbt_write_tag(uncompressed_out, nbt_tag::compound, "data");
+
+    nbt_write_tag(uncompressed_out, nbt_tag::int32, "zCenter");
+    writeb(uncompressed_out, std::int32_t{0}, binio_endian::BE);
+
+    nbt_write_tag(uncompressed_out, nbt_tag::byte, "unlimitedTracking");
+    writeb(uncompressed_out, std::uint8_t{0});
+
+    nbt_write_tag(uncompressed_out, nbt_tag::byte, "trackingPosition");
+    writeb(uncompressed_out, std::uint8_t{0});
+
+    nbt_write_tag(uncompressed_out, nbt_tag::list, "frames");
+    nbt_write_empty_list(uncompressed_out);
+
+    nbt_write_tag(uncompressed_out, nbt_tag::byte, "scale");
+    writeb(uncompressed_out, std::uint8_t{0});
+
+    nbt_write_tag(uncompressed_out, nbt_tag::byte, "locked");
+    writeb(uncompressed_out, std::uint8_t{1});
+
+    nbt_write_tag(uncompressed_out, nbt_tag::string, "dimension");
+    nbt_write_string(uncompressed_out, "minecraft:overworld");
+
+    nbt_write_tag(uncompressed_out, nbt_tag::list, "banners");
+    nbt_write_empty_list(uncompressed_out);
+
+    nbt_write_tag(uncompressed_out, nbt_tag::int32, "xCenter");
+    writeb(uncompressed_out, std::int32_t{0}, binio_endian::BE);
+
+    nbt_write_tag(uncompressed_out, nbt_tag::byte_array, "colors");
+    writeb(uncompressed_out, static_cast<std::int32_t>(std::size(colors)), binio_endian::BE);
+    uncompressed_out.write(reinterpret_cast<char*>(std::data(colors)), std::size(colors));
+
+    nbt_write_tag(uncompressed_out, nbt_tag::end, "");
+
+    nbt_write_tag(uncompressed_out, nbt_tag::int32, "DataVersion");
+    writeb(uncompressed_out, std::int32_t{2586}, binio_endian::BE);
+
+    nbt_write_tag(uncompressed_out, nbt_tag::end, "");
+
+    auto nbt = uncompressed_out.str();
+    out.write(std::data(nbt), std::size(nbt));
 }
