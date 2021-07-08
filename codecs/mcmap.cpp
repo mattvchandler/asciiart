@@ -249,6 +249,7 @@ const std::array mc_palette
     Color{ 96,   1,   0, 255},
     Color{112,   2,   0, 255},
     Color{ 59,   1,   0, 255},
+    // added in 1.12
     Color{147, 124, 113, 255},
     Color{180, 152, 138, 255},
     Color{209, 177, 161, 255},
@@ -313,6 +314,7 @@ const std::array mc_palette
     Color{ 31,  18,  13, 255},
     Color{ 37,  22,  16, 255},
     Color{ 19,  11,   8, 255},
+    // added in 1.16
     Color{133,  33,  34, 255},
     Color{163,  41,  42, 255},
     Color{189,  48,  49, 255},
@@ -341,6 +343,19 @@ const std::array mc_palette
     Color{ 17, 155, 114, 255},
     Color{ 20, 180, 133, 255},
     Color{ 10,  95,  70, 255},
+    // added in 1.17 // TODO; appoximate values, update when mc wiki updates
+    Color{ 69,  69,  69, 255},
+    Color{ 85,  85,  85, 255},
+    Color{ 99,  99,  99, 255},
+    Color{ 51,  51,  51, 255},
+    Color{150, 122, 102, 255},
+    Color{184, 148, 125, 255},
+    Color{213, 173, 145, 255},
+    Color{113,  91,  76, 255},
+    Color{ 88, 116, 104, 255},
+    Color{108, 142, 127, 255},
+    Color{125, 165, 148, 255},
+    Color{ 66,  87,  78, 255},
 };
 
 // Note:
@@ -623,7 +638,7 @@ void MCMap::write(std::ostream & out, const Image & img, unsigned char bg, bool 
     nbt_write_tag(uncompressed_out, nbt_tag::end, "");
 
     nbt_write_tag(uncompressed_out, nbt_tag::int32, "DataVersion");
-    writeb(uncompressed_out, std::int32_t{2586}, binio_endian::BE); // 2586 is 1.16.5
+    writeb(uncompressed_out, std::int32_t{2730}, binio_endian::BE); // 2730 is 1.17.1
 
     nbt_write_tag(uncompressed_out, nbt_tag::end, "");
 
