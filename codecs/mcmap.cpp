@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <istream>
+#include <iostream>
 #include <sstream>
 #include <stdexcept>
 #include <unordered_map>
@@ -559,7 +560,15 @@ MCMap::MCMap(std::istream & input)
     {
         for(std::size_t col = 0; col < width_; ++col)
         {
-            image_data_[row][col] = mc_palette[map_img.colors.at(row * width_ + col)];
+            if(auto index = map_img.colors[row * width_ + col]; index < std::size(mc_palette))
+            {
+                image_data_[row][col] = mc_palette[index];
+            }
+            else
+            {
+                image_data_[row][col] = mc_palette[0];
+                std::cerr<<"Warning: MCMap index "<<static_cast<int>(index)<<" is out of range (0 - "<<std::size(mc_palette)<<")\n";
+            }
         }
     }
 }
