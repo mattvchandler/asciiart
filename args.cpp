@@ -99,7 +99,7 @@ public:
                     space = '\n' + space;
 
                 txt += POS_HELP_INDENT + name + space
-                    + cxxopts::format_description(opt, longest + cxxopts::OPTION_DESC_GAP, allowed)
+                    + cxxopts::format_description(opt, longest + cxxopts::OPTION_DESC_GAP, allowed, false)
                     + '\n';
             }
         }
