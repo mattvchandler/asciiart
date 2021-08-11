@@ -4,6 +4,8 @@
 #include <iostream>
 #include <vector>
 
+#include <cstdlib>
+
 #include <cxxopts.hpp>
 
 #ifdef HAS_UNISTD
@@ -222,7 +224,11 @@ static const std::vector<std::string> output_formats =
 
 [[nodiscard]] std::optional<Args> parse_args(int argc, char * argv[])
 {
-    Optional_pos options{argv[0], "Display an image in the terminal, with ANSI colors and/or ASCII art"};
+    auto prog_name = std::string{argv[0]};
+    if(auto sep_pos = prog_name.find_last_of("\\/"); sep_pos != std::string::npos)
+        prog_name = prog_name.substr(sep_pos + 1);
+
+    Optional_pos options{prog_name, "Display an image in the terminal, with ANSI colors and/or ASCII art"};
 
     std::string input_format_list;
     for(std::size_t i = 0; i < std::size(input_formats); ++i)
@@ -301,7 +307,14 @@ static const std::vector<std::string> output_formats =
             std::cerr<<options.help("Value for --rows cannot be 0")<<'\n';
             return {};
         }
-        if(args["cols"].as<int>() <= 0)
+
+        int cols = args["cols"].as<int>();
+        if(args["cols"].has_default())
+        {
+            if(auto columns_env = std::getenv("COLUMNS"); columns_env != nullptr)
+                cols = std::min(cols, std::stoi(std::string{columns_env}));
+        }
+        if(cols <= 0)
         {
             std::cerr<<options.help("Value for --cols must be positive")<<'\n';
             return {};
@@ -442,7 +455,7 @@ static const std::vector<std::string> output_formats =
             {},{},
         #endif
             args["rows"].as<int>(),
-            args["cols"].as<int>(),
+            cols,
             static_cast<unsigned char>(args["bg"].as<int>()),
             static_cast<bool>(args.count("invert")),
             color,
