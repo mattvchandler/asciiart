@@ -11,6 +11,16 @@
 #ifdef HAS_UNISTD
 #include <unistd.h>
 #endif
+#ifdef HAS_IOCTL
+#include <sys/ioctl.h>
+#ifndef STDOUT_FILENO
+#define STDOUT_FILENO 1
+#endif
+#endif
+#ifdef HAS_WINDOWS
+#include <windows.h>
+#endif
+
 
 class Optional_pos: public cxxopts::Options
 {
@@ -308,11 +318,19 @@ static const std::vector<std::string> output_formats =
             return {};
         }
 
-        int cols = args["cols"].as<int>();
+        auto cols = args["cols"].as<int>();
         if(args["cols"].has_default())
         {
             if(auto columns_env = std::getenv("COLUMNS"); columns_env != nullptr)
                 cols = std::min(cols, std::stoi(std::string{columns_env}));
+            #ifdef HAS_IOCTL
+            else if(winsize ws; ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) >= 0)
+                cols = std::min(cols, static_cast<int>(ws.ws_col));
+            #endif
+            #ifdef HAS_WINDOWS
+            else if(CONSOLE_SCREEN_BUFFER_INFO csbi; GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi))
+                cols = std::min(cols, static_cast<int>(csbi.srWindow.Right - csbi.srWindow.Left + 1));
+            #endif
         }
         if(cols <= 0)
         {
