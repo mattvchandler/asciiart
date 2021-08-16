@@ -18,9 +18,9 @@
 #endif
 #endif
 #ifdef HAS_WINDOWS
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #endif
-
 
 class Optional_pos: public cxxopts::Options
 {
@@ -31,10 +31,6 @@ public:
     cxxopts::OptionAdder add_positionals()
     {
         return {*this, POS_GROUP_NAME};
-    }
-    void add_positionals(std::initializer_list<cxxopts::Option> options)
-    {
-        add_options(POS_GROUP_NAME, options);
     }
     cxxopts::ParseResult parse(int& argc, char**& argv)
     {
@@ -111,7 +107,11 @@ public:
                     space = '\n' + space;
 
                 txt += POS_HELP_INDENT + name + space
+                    #if CXXOPTS__VERSION_MAJOR >= 3
                     + cxxopts::format_description(opt, longest + cxxopts::OPTION_DESC_GAP, allowed, false)
+                    #else
+                    + cxxopts::format_description(opt, longest + cxxopts::OPTION_DESC_GAP, allowed)
+                    #endif
                     + '\n';
             }
         }
