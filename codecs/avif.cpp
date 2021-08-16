@@ -10,17 +10,16 @@ Avif::Avif(std::istream & input)
 {
     auto data = Image::read_input_to_memory(input);
 
-    avifROData raw;
-    raw.data = std::data(data);
-    raw.size = std::size(data);
-
     avifDecoder * decoder = avifDecoderCreate();
     if(!decoder)
         throw std::runtime_error{"Error creating AVIF decoder"};
 
     try
     {
-        if(auto result = avifDecoderParse(decoder, &raw); result != AVIF_RESULT_OK)
+        if(auto result = avifDecoderSetIOMemory(decoder, std::data(data), std::size(data)); result != AVIF_RESULT_OK)
+            throw std::runtime_error{"Error setting AVIF IO: " + std::string{avifResultToString(result)}};
+
+        if(auto result = avifDecoderParse(decoder); result != AVIF_RESULT_OK)
             throw std::runtime_error{"Error reading AVIF file: " + std::string{avifResultToString(result)}};
 
         if(decoder->imageCount < 1)
