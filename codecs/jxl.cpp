@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <stdexcept>
+
 #include <cstdint>
 
 #include <jxl/decode_cxx.h>
@@ -29,20 +30,20 @@ Jxl::Jxl(std::istream & input)
 
     auto data = Image::read_input_to_memory(input);
 
-    const std::uint8_t * next_data = std::data(data);
-    std::size_t avail_data = std::size(data);
-
     if(JxlDecoderSubscribeEvents(decoder.get(), JXL_DEC_BASIC_INFO | JXL_DEC_FULL_IMAGE) != JXL_DEC_SUCCESS)
         throw std::runtime_error {"Error subscibing to JPEG XL events"};
 
-    if(JxlDecoderProcessInput(decoder.get(), &next_data, &avail_data) != JXL_DEC_BASIC_INFO)
+    if(JxlDecoderSetInput(decoder.get(), std::data(data), std::size(data)) != JXL_DEC_SUCCESS)
+        throw std::runtime_error {"Error supplying JPEG XL input data"};
+
+    if(JxlDecoderProcessInput(decoder.get()) != JXL_DEC_BASIC_INFO)
         throw std::runtime_error {"Error decoding JPEG XL header. Invalid data"};
 
     std::size_t buffer_size {0};
     if(JxlDecoderImageOutBufferSize(decoder.get(), &format, &buffer_size) != JXL_DEC_SUCCESS)
         throw std::runtime_error {"Error getting JPEG XL decompressed size"};
 
-    JxlBasicInfo info;
+    JxlBasicInfo info{};
     if(JxlDecoderGetBasicInfo(decoder.get(), &info) != JXL_DEC_SUCCESS)
         throw std::runtime_error {"Error decoding JPEG XL data. Unable to read JPEG XL basic info"};
 
@@ -51,7 +52,7 @@ Jxl::Jxl(std::istream & input)
     if(JxlDecoderSetImageOutBuffer(decoder.get(), &format, std::data(buffer), std::size(buffer)) != JXL_DEC_SUCCESS)
         throw std::runtime_error {"Error setting JPEG XL buffer"};
 
-    if(JxlDecoderProcessInput(decoder.get(), &next_data, &avail_data) != JXL_DEC_FULL_IMAGE)
+    if(JxlDecoderProcessInput(decoder.get()) != JXL_DEC_FULL_IMAGE)
         throw std::runtime_error {"Error decoding JPEG XL image data. Invalid data"};
 
     set_size(info.xsize, info.ysize);
@@ -74,20 +75,22 @@ void Jxl::write(std::ostream & out, const Image & img, bool invert)
     if(!encoder)
         throw std::runtime_error {"Could not create JPEG XL encoder"};
 
-    JxlFrameFormat frame_format
+    JxlPixelFormat format
     {
-        JxlPixelFormat
-        {
-            4,                 // num_channels
-            JXL_TYPE_UINT16,   // data_type - NOTE: 8-bit doesn't seem to work correctly ATM TODO: try on a later library version
-            JXL_LITTLE_ENDIAN, // endianness
-            0                  // align
-        }, // pixel_format
-        static_cast<std::uint32_t>(img.get_width()),
-        static_cast<std::uint32_t>(img.get_height())
+        4,                 // num_channels
+        JXL_TYPE_UINT8,    // data_type
+        JXL_LITTLE_ENDIAN, // endianness
+        0                  // align
     };
+    JxlBasicInfo info {};
+    info.xsize = static_cast<std::uint32_t>(img.get_width());
+    info.ysize = static_cast<std::uint32_t>(img.get_height());
+    info.num_color_channels = 3;
+    info.num_extra_channels = 1;
+    info.bits_per_sample = 8;
+    info.alpha_bits = 8;
 
-    std::vector<uint16_t> data(img.get_width() * img.get_height() * 4);
+    std::vector<std::uint8_t> data(img.get_width() * img.get_height() * 4);
 
     for(std::size_t row = 0; row < img.get_height(); ++row)
     {
@@ -103,7 +106,19 @@ void Jxl::write(std::ostream & out, const Image & img, bool invert)
         }
     }
 
-    if(JxlEncoderAddImageFrame(encoder.get(), &frame_format, std::data(data), std::size(data) * sizeof(decltype(data)::value_type)) != JXL_ENC_SUCCESS)
+    auto encoder_opts = JxlEncoderOptionsCreate(encoder.get(), nullptr);
+    if(!encoder_opts)
+        throw std::runtime_error {"Could not create JPEG XL encoder options"};
+
+    if(JxlEncoderSetBasicInfo(encoder.get(), &info) != JXL_ENC_SUCCESS)
+        throw std::runtime_error {"Could not set JPEG XL basic info"};
+
+    JxlColorEncoding color;
+    JxlColorEncodingSetToSRGB(&color, false);
+    if(JxlEncoderSetColorEncoding(encoder.get(), &color) != JXL_ENC_SUCCESS)
+        throw std::runtime_error {"Could not set JPEG XL color encoding"};
+
+    if(JxlEncoderAddImageFrame(encoder_opts, &format, std::data(data), std::size(data) * sizeof(decltype(data)::value_type)) != JXL_ENC_SUCCESS)
         throw std::runtime_error {"Could not add JPEG XL image data"};
 
     JxlEncoderCloseInput(encoder.get());
