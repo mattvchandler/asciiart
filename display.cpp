@@ -153,7 +153,7 @@ public:
                     os << "\x1B[" << index[0] << 'm';
                     break;
                 case Color_mode::bg_only:
-                    os << "\x1B[" << index[0] << 'm';
+                    os << "\x1B[" << index[1] << 'm';
                     break;
                 case Color_mode::both:
                     os << "\x1B[" << index[0]
