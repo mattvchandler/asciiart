@@ -43,7 +43,7 @@ check_include_files(endian.h HAS_ENDIAN)
 check_include_files(byteswap.h HAS_BYTESWAP)
 check_include_files(sys/ioctl.h HAS_IOCTL)
 if(WIN32)
-    check_include_files(sys/ioctl.h HAS_WINDOWS)
+    check_include_files(windows.h HAS_WINDOWS)
 endif()
 
 check_include_files(libbpg.h BPG_FOUND)
