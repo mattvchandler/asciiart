@@ -35,6 +35,17 @@ pkg_check_modules(XPM xpm)
 find_package(Freetype QUIET)
 if(FREETYPE_FOUND)
     pkg_check_modules(FONTCONFIG fontconfig)
+    if(FONTCONFIG_FOUND)
+        target_include_directories(asciiart PRIVATE
+            ${FREETYPE_INCLUDE_DIRS}
+            ${FONTCONFIG_INCLUDE_DIRS}
+            )
+
+        target_link_libraries(asciiart
+            ${FREETYPE_LIBRARIES}
+            ${FONTCONFIG_LIBRARIES}
+            )
+    endif()
 endif()
 
 include(CheckIncludeFiles)
@@ -90,16 +101,6 @@ add_executable(asciiart
     )
 
 target_include_directories(asciiart PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-
-target_include_directories(asciiart PRIVATE
-    ${FREETYPE_INCLUDE_DIRS}
-    ${FONTCONFIG_INCLUDE_DIRS}
-    )
-
-target_link_libraries(asciiart
-    ${FREETYPE_LIBRARIES}
-    ${FONTCONFIG_LIBRARIES}
-    )
 
 if(AVIF_FOUND)
     target_sources(asciiart PRIVATE codecs/avif.cpp)
