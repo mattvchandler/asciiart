@@ -71,12 +71,12 @@ Color get_image_color(std::size_t row,
                       std::size_t col,
                       const SRF_image & im)
 {
-    auto alpha = static_cast<uint8_t>(std::lround((static_cast<float>(128 - im.alpha_mask[row * im.width + col])) * 255.0f / 128.0f)); // 0-128, awkward range
+    auto alpha = static_cast<std::uint8_t>(std::lround((static_cast<float>(128 - im.alpha_mask[row * im.width + col])) * 255.0f / 128.0f)); // 0-128, awkward range
 
     auto raw_color = im.image[row * im.width + col];
-    auto r = static_cast<uint8_t>((raw_color & 0xF800) >> 11) << 3;
-    auto g = static_cast<uint8_t>((raw_color & 0x07C0) >>  6) << 3;
-    auto b = static_cast<uint8_t>((raw_color & 0x003F) >>  0) << 3;
+    auto r = static_cast<std::uint8_t>((raw_color & 0xF800) >> 11) << 3;
+    auto g = static_cast<std::uint8_t>((raw_color & 0x07C0) >>  6) << 3;
+    auto b = static_cast<std::uint8_t>((raw_color & 0x003F) >>  0) << 3;
     return Color(r, g, b, alpha);
 }
 
@@ -89,7 +89,7 @@ Srf::Srf(std::istream & input)
         input.ignore(16); // magic
         input.ignore(8); // unknown
 
-        uint32_t num_images;
+        std::uint32_t num_images;
         readb(input, num_images);
 
         input.ignore(4);
@@ -97,7 +97,7 @@ Srf::Srf(std::istream & input)
         readb(input, garmin_strlen);
         input.ignore(garmin_strlen); // 578 string
 
-        uint32_t unknown_switch;
+        std::uint32_t unknown_switch;
         readb(input, unknown_switch);
         if(unknown_switch != 6)
             throw std::runtime_error{"Unsupported SRF image format"};

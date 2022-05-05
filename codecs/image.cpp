@@ -32,6 +32,7 @@
 #include "jpeg.hpp"
 #include "jxl.hpp"
 #include "mcmap.hpp"
+#include "motologo.hpp"
 #include "openexr.hpp"
 #include "pcx.hpp"
 #include "png.hpp"
@@ -785,6 +786,10 @@ void Image::convert(const Args & args) const
             #else
             throw std::runtime_error{"Not compiled with JPEG XL support"};
             #endif
+        }
+        else if(is_motologo(header))
+        {
+            return std::make_unique<MotoLogo>(input);
         }
         else if(is_png(header))
         {

@@ -26,7 +26,7 @@ Color read_pixel(const unsigned char * byte, Tga_data::Color_type color, std::ui
         {
         case 15:
         case 16:
-            // arrrrrgg gggbbbbb
+            // arrrrrgg gggbbbbb - He must have died while carving it.
             if(bpp == 16)
                 c.a = ((byte[1] >> 7) & 0x01) * 255;
 

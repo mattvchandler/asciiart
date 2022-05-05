@@ -159,6 +159,7 @@ static const std::vector<std::string> input_formats =
     #ifdef JXL_FOUND
     "JPEG XL",
     #endif
+    "Moto image.bin",
     #ifdef ZLIB_FOUND
     "Minecraft Map Item (.dat)",
     #endif
