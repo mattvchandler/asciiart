@@ -55,11 +55,11 @@ Svg::Svg(std::istream & input, const std::string & filename)
     RsvgHandle * svg_handle = get_svg_handle(input, filename);
     rs.push(svg_handle, g_object_unref);
 
-    RsvgDimensionData dims;
     rsvg_handle_set_dpi(svg_handle, 75.0);
-    rsvg_handle_get_dimensions(svg_handle, &dims);
+    gdouble width{0.0}, height{0.0};
+    rsvg_handle_get_intrinsic_size_in_pixels(svg_handle, &width, &height);
 
-    cairo_surface_t * bmp = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, dims.width, dims.height);
+    cairo_surface_t * bmp = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width, height);
     rs.push(bmp, cairo_surface_destroy);
     if(cairo_surface_status(bmp) != CAIRO_STATUS_SUCCESS)
         throw std::runtime_error { "Error creating SVG cairo surface" };
@@ -69,12 +69,16 @@ Svg::Svg(std::istream & input, const std::string & filename)
     if(cairo_status(cr) != CAIRO_STATUS_SUCCESS)
         throw std::runtime_error {"Error creating SVG cairo object"};
 
-    if(!rsvg_handle_render_cairo(svg_handle, cr))
+    // if(!rsvg_handle_render_cairo(svg_handle, cr))
+    auto viewport = RsvgRectangle {.x=0.0, .y=0.0, .width=width, .height=height};
+    if(GError * err = nullptr; !rsvg_handle_render_document(svg_handle, cr, &viewport, &err))
     {
-        throw std::runtime_error{"Error rendering SVG"};
+        std::string message {err->message};
+        g_error_free(err);
+        throw std::runtime_error{"Error rendering SVG: " + message};
     }
 
-    set_size(dims.width, dims.height);
+    set_size(width, height);
     if(static_cast<std::size_t>(cairo_image_surface_get_stride(bmp)) < width_ * 4)
         throw std::runtime_error {"Invalid SVG stride"};
 
@@ -84,9 +88,9 @@ Svg::Svg(std::istream & input, const std::string & filename)
         {
             std::size_t pix_i = cairo_image_surface_get_stride(bmp) * row + 4 * col;
 
-            image_data_[row][col].r = cairo_image_surface_get_data(bmp)[pix_i];
+            image_data_[row][col].b = cairo_image_surface_get_data(bmp)[pix_i];
             image_data_[row][col].g = cairo_image_surface_get_data(bmp)[pix_i + 1];
-            image_data_[row][col].b = cairo_image_surface_get_data(bmp)[pix_i + 2];
+            image_data_[row][col].r = cairo_image_surface_get_data(bmp)[pix_i + 2];
             image_data_[row][col].a = cairo_image_surface_get_data(bmp)[pix_i + 3];
         }
     }
