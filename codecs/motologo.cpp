@@ -1,11 +1,13 @@
 #include "motologo.hpp"
 
+#include <iostream>
 #include <stdexcept>
 #include <string>
 
 #include <cstdint>
 
 #include "binio.hpp"
+#include "../sub_args.hpp"
 
 /* File format notes
 *
@@ -39,11 +41,6 @@
 *
 *     repeat count seems to be limited to current line
 */
-
-// TODO: right now we are only reading the logo_boot image, if it exists, else
-// the first image in the file. In the future, we could allow passing arguments
-// to be interepreted by individual codecs, and use this to specify a different
-// image
 
 constexpr auto magic_size = 9u;
 constexpr auto dir_entry_size = 32u;
@@ -81,18 +78,28 @@ MotoLogo::MotoLogo(std::istream & input, const Args & args)
 
             name.resize(name.find_first_of('\0'));
 
-            if(name == "logo_boot")
+            if(list_)
             {
-                target_offset = offset;
-                target_size = size;
-                break;
+                std::cout<<"  "<<name<<'\n';
             }
-            else if(!target_size)
+            else
             {
-                target_offset = offset;
-                target_size = size;
+                if(name == image_name_)
+                {
+                    target_offset = offset;
+                    target_size = size;
+                    break;
+                }
+                else if(!target_size)
+                {
+                    target_offset = offset;
+                    target_size = size;
+                }
             }
         }
+
+        if(list_)
+            throw Early_exit{};
 
         input.ignore(target_offset - pos);
 
@@ -171,5 +178,27 @@ MotoLogo::MotoLogo(std::istream & input, const Args & args)
             throw std::runtime_error{"Error reading MotoLogo: could not read file"};
         else
             throw std::runtime_error{"Error reading MotoLogo: unexpected end of file"};
+    }
+}
+void MotoLogo::handle_extra_args(const Args & args)
+{
+    if(!std::empty(args.extra_args))
+    {
+        auto options = Sub_args{"MotoLogo"};
+        try
+        {
+            options.add_options()
+                ("list-images", "list all image names contained in input file")
+                ("image", "image name to extract", cxxopts::value<std::string>(), "IMAGE_NAME");
+
+            auto sub_args = options.parse(args.extra_args);
+            if(sub_args.count("image"))
+                image_name_ = sub_args["image"].as<std::string>();
+            list_ = sub_args.count("list-images");
+        }
+        catch(const cxxopts::OptionException & e)
+        {
+            throw std::runtime_error{options.help(args.help_text) + '\n' + e.what()};
+        }
     }
 }

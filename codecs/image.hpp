@@ -11,6 +11,12 @@
 #include "../color.hpp"
 #include "exif.hpp"
 
+struct Early_exit: public std::exception
+{
+    const char * what() const noexcept { return "Success"; }
+};
+
+
 // set to the size of the longest magic number
 constexpr std::size_t max_header_len = 12; // 12 bytes needed to identify JPEGs
 

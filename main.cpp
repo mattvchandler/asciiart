@@ -16,6 +16,10 @@ int main(int argc, char * argv[])
         display_image(*img, *args);
         img->convert(*args);
     }
+    catch(Early_exit & e)
+    {
+        return EXIT_SUCCESS;
+    }
     catch(const std::runtime_error & e)
     {
         std::cerr<<e.what()<<'\n';
