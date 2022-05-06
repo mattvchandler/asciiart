@@ -6,8 +6,9 @@
 
 #include "bmp_common.hpp"
 
-Bmp::Bmp(std::istream & input)
+Bmp::Bmp(std::istream & input, const Args & args)
 {
+    handle_extra_args(args);
     input.exceptions(std::ios_base::badbit | std::ios_base::failbit);
     try
     {

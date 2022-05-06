@@ -16,7 +16,7 @@ class Flif final: public Image
 {
 public:
     #ifdef FLIF_DEC_FOUND
-    explicit Flif(std::istream & input);
+    Flif(std::istream & input, const Args & args);
     #endif
 
     #ifdef FLIF_ENC_FOUND

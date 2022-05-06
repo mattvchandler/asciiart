@@ -6,8 +6,9 @@
 #include "exif.hpp"
 #endif
 
-Heif::Heif(std::istream & input)
+Heif::Heif(std::istream & input, const Args & args)
 {
+    handle_extra_args(args);
     auto data = Image::read_input_to_memory(input);
 
     heif::Context context;

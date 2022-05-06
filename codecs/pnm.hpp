@@ -29,7 +29,7 @@ inline bool is_pnm(const Image::Header & header)
 class Pnm final: public Image
 {
 public:
-    explicit Pnm(std::istream & input);
+    Pnm(std::istream & input, const Args & args);
 
     static void write_pbm(std::ostream & path, const Image & image, unsigned char bg, bool invert);
     static void write_pgm(std::ostream & path, const Image & image, unsigned char bg, bool invert);

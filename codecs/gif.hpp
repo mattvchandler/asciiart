@@ -16,7 +16,7 @@ inline bool is_gif(const Image::Header & header)
 class Gif final: public Image
 {
 public:
-    explicit Gif(std::istream & input);
+    Gif(std::istream & input, const Args & args);
 
     static void write(std::ostream & out, const Image & img, bool invert);
 };

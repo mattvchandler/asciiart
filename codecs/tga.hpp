@@ -6,7 +6,7 @@
 class Tga final: public Image
 {
 public:
-    explicit Tga(std::istream & input);
+    Tga(std::istream & input, const Args & args);
 
     static void write(std::ostream & out, const Image & img, bool invert);
 };

@@ -14,7 +14,7 @@ inline bool is_ico(const Image::Header & header)
 class Ico final: public Image
 {
 public:
-    explicit Ico(std::istream & input);
+    Ico(std::istream & input, const Args & args);
 
     static void write_cur(std::ostream & out, const Image & img, bool invert);
     static void write_ico(std::ostream & out, const Image & img, bool invert);

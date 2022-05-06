@@ -56,6 +56,7 @@ public:
 protected:
     void set_size(std::size_t w, std::size_t h);
     void transpose_image(exif::Orientation orientation);
+    virtual void handle_extra_args(const Args & args);
 
     std::size_t width_{0};
     std::size_t height_{0};

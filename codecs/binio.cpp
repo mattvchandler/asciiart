@@ -8,6 +8,7 @@ static const binio_endian host_endian = binio_endian::BE;
 #else
 static const binio_endian host_endian = binio_endian::LE;
 #endif
+// TODO: mixed endian systems apparently do exist, so do a static_assert to make sure we're one or the other
 
 #ifdef HAS_ENDIAN
 #include <endian.h>

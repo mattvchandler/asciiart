@@ -72,8 +72,9 @@ toff_t tiff_size(thandle_t hnd)
     return std::size(io->data);
 }
 
-Tiff::Tiff(std::istream & input)
+Tiff::Tiff(std::istream & input, const Args & args)
 {
+    handle_extra_args(args);
     // libtiff does kind of a stupid thing and will seek backwards, which Header_stream doesn't support (because we can read from a pipe)
     // read the whole, huge file into memory instead
     Tiff_io tiff_reader(input);

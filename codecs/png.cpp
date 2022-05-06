@@ -21,8 +21,9 @@ void read_fn(png_structp png_ptr, png_bytep data, png_size_t length) noexcept
     if(in->bad())
         std::longjmp(png_jmpbuf(png_ptr), 1);
 }
-Png::Png(std::istream & input)
+Png::Png(std::istream & input, const Args & args)
 {
+    handle_extra_args(args);
     auto png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
     if(!png_ptr)
         throw std::runtime_error{"Error initializing libpng"};

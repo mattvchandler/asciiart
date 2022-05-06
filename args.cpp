@@ -305,6 +305,8 @@ static const std::vector<std::string> output_formats =
         options.add_positionals()
             ("input", "Input image path. Read from stdin if -. Supported formats: " + input_format_list, cxxopts::value<std::string>()->default_value("-"));
 
+        options.allow_unrecognised_options();
+
         auto args = options.parse(argc, argv);
 
         if(args.count("help"))
@@ -480,7 +482,9 @@ static const std::vector<std::string> output_formats =
             color,
             disp_char,
             filetype,
-            convert_path
+            convert_path,
+            args.unmatched(),
+            options.help()
         };
     }
     catch(const cxxopts::OptionException & e)

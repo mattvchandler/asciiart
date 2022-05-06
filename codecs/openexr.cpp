@@ -100,8 +100,9 @@ private:
     std::size_t pos_ {0};
 };
 
-OpenEXR::OpenEXR(std::istream & input)
+OpenEXR::OpenEXR(std::istream & input, const Args & args)
 {
+    handle_extra_args(args);
     try
     {
         OpenExr_reader reader{input};

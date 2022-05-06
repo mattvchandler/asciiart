@@ -13,6 +13,6 @@ inline bool is_motologo(const Image::Header & header)
 class MotoLogo final: public Image
 {
 public:
-    explicit MotoLogo(std::istream & input);
+    MotoLogo(std::istream & input, const Args & args);
 };
 #endif // MOTOLOGO_HPP

@@ -4,6 +4,7 @@
 #include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "config.h"
 
@@ -36,6 +37,8 @@ struct Args
         aoc_2019_sif,
     } force_file { Force_file::detect };
     std::optional<std::pair<std::string, std::string>> convert_filename;
+    std::vector<std::string> extra_args;
+    std::string help_text;
 };
 
 [[nodiscard]] std::optional<Args> parse_args(int argc, char * argv[]);

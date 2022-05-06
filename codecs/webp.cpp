@@ -5,8 +5,9 @@
 #include <webp/decode.h>
 #include <webp/encode.h>
 
-Webp::Webp(std::istream & input)
+Webp::Webp(std::istream & input, const Args & args)
 {
+    handle_extra_args(args);
     auto data = Image::read_input_to_memory(input);
 
     int width, height;

@@ -17,7 +17,7 @@ inline bool is_webp(const Image::Header & header)
 class Webp final: public Image
 {
 public:
-    explicit Webp(std::istream & input);
+    Webp(std::istream & input, const Args & args);
 
     static void write(std::ostream & out, const Image & img, bool invert);
 };

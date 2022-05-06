@@ -48,7 +48,8 @@ RsvgHandle * get_svg_handle(std::istream & input, const std::string & filename)
     return svg_handle;
 }
 
-Svg::Svg(std::istream & input, const std::string & filename)
+Svg::Svg(std::istream & input, const std::string & filename, const Args & args):
+    Image(args)
 {
     RAII_stack rs;
 

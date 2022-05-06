@@ -7,7 +7,7 @@
 class Xpm final: public Image
 {
 public:
-    explicit Xpm(std::istream & input);
+    Xpm(std::istream & input, const Args & args);
 
     static void write(std::ostream & out, const Image & img, bool invert);
 };

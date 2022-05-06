@@ -13,7 +13,7 @@ inline bool is_png(const Image::Header & header)
 class Png final: public Image
 {
 public:
-    explicit Png(std::istream & input);
+    Png(std::istream & input, const Args & args);
 
     static void write(std::ostream & out, const Image & img, bool invert);
 };

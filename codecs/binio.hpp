@@ -6,6 +6,8 @@
 
 #include <cstdint>
 
+// TODO: replace with structure_block_view/motologo readb/writeb
+
 enum class binio_endian {BE, LE};
 
 void readb(std::istream & i, std::uint64_t & t, binio_endian endian = binio_endian::LE);

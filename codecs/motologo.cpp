@@ -50,8 +50,9 @@ constexpr auto dir_entry_size = 32u;
 constexpr auto name_size = 24u;
 constexpr auto image_magic_size = 8u;
 
-MotoLogo::MotoLogo(std::istream & input)
+MotoLogo::MotoLogo(std::istream & input, const Args & args)
 {
+    handle_extra_args(args);
     input.exceptions(std::ios_base::badbit | std::ios_base::failbit);
     try
     {

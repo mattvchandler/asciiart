@@ -6,8 +6,9 @@
 #include "exif.hpp"
 #endif
 
-Avif::Avif(std::istream & input)
+Avif::Avif(std::istream & input, const Args & args)
 {
+    handle_extra_args(args);
     auto data = Image::read_input_to_memory(input);
 
     avifDecoder * decoder = avifDecoderCreate();

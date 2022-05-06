@@ -13,6 +13,6 @@ inline bool is_srf(const Image::Header & header)
 class Srf final: public Image
 {
 public:
-    explicit Srf(std::istream & input);
+    Srf(std::istream & input, const Args & args);
 };
 #endif // SRF_HPP

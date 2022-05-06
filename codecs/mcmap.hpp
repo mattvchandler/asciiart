@@ -7,7 +7,7 @@
 class MCMap final: public Image
 {
 public:
-    explicit MCMap(std::istream & input);
+    MCMap(std::istream & input, const Args & args);
     static void write(std::ostream & out, const Image & img, unsigned char bg, bool invert);
 };
 #endif
