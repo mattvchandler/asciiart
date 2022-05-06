@@ -7,7 +7,7 @@
 #include <cstdint>
 
 #include "binio.hpp"
-#include "../sub_args.hpp"
+#include "sub_args.hpp"
 
 /* File format notes
 *

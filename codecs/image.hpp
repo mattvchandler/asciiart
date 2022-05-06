@@ -13,7 +13,7 @@
 
 struct Early_exit: public std::exception
 {
-    const char * what() const noexcept { return "Success"; }
+    const char * what() const noexcept;
 };
 
 

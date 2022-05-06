@@ -45,6 +45,8 @@
 #include "webp.hpp"
 #include "xpm.hpp"
 
+const char * Early_exit::what() const noexcept { return "Success"; }
+
 bool Image::header_cmp(unsigned char a, char b){ return a == static_cast<unsigned char>(b); };
 
 std::vector<unsigned char> Image::read_input_to_memory(std::istream & input)
