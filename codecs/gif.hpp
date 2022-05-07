@@ -17,8 +17,13 @@ class Gif final: public Image
 {
 public:
     Gif(std::istream & input, const Args & args);
+    void handle_extra_args(const Args & args) override;
 
     static void write(std::ostream & out, const Image & img, bool invert);
+private:
+    bool count_ {false};
+    unsigned int frame_{0};
+    bool composed_ {true};
 };
 #endif
 #endif // GIF_HPP

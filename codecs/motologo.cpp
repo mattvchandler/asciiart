@@ -65,6 +65,7 @@ MotoLogo::MotoLogo(std::istream & input, const Args & args)
         const auto num_images = (directory_size - magic_size - sizeof(directory_size)) / dir_entry_size;
 
         std::uint32_t target_offset{0}, target_size{0};
+        bool target_found = false;
 
         // find the 'logo_boot' image, or failing that use the first image found
         for(auto i = 0u; i < num_images; ++i)
@@ -82,24 +83,20 @@ MotoLogo::MotoLogo(std::istream & input, const Args & args)
             {
                 std::cout<<"  "<<name<<'\n';
             }
-            else
+            else if(name == image_name_)
             {
-                if(name == image_name_)
-                {
-                    target_offset = offset;
-                    target_size = size;
-                    break;
-                }
-                else if(!target_size)
-                {
-                    target_offset = offset;
-                    target_size = size;
-                }
+                target_offset = offset;
+                target_size = size;
+                target_found = true;
+                break;
             }
         }
 
         if(list_)
             throw Early_exit{};
+
+        if(!target_found)
+            throw std::runtime_error{"Requested image '" + image_name_ + "' not found in MotoLogo file"};
 
         input.ignore(target_offset - pos);
 
@@ -180,6 +177,7 @@ MotoLogo::MotoLogo(std::istream & input, const Args & args)
             throw std::runtime_error{"Error reading MotoLogo: unexpected end of file"};
     }
 }
+
 void MotoLogo::handle_extra_args(const Args & args)
 {
     if(!std::empty(args.extra_args))
@@ -189,12 +187,14 @@ void MotoLogo::handle_extra_args(const Args & args)
         {
             options.add_options()
                 ("list-images", "list all image names contained in input file")
-                ("image", "image name to extract", cxxopts::value<std::string>(), "IMAGE_NAME");
+                ("image", "image name to extract", cxxopts::value<std::string>()->default_value("logo_boot"), "IMAGE_NAME");
 
             auto sub_args = options.parse(args.extra_args);
+
+            list_ = sub_args.count("list-images");
+
             if(sub_args.count("image"))
                 image_name_ = sub_args["image"].as<std::string>();
-            list_ = sub_args.count("list-images");
         }
         catch(const cxxopts::OptionException & e)
         {

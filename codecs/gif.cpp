@@ -9,6 +9,8 @@
 
 #include <gif_lib.h>
 
+#include "sub_args.hpp"
+
 // giflib is a very poorly designed library. Its documentation is even worse
 
 int read_fn(GifFileType* gif_file, GifByteType * data, int length) noexcept
@@ -43,52 +45,99 @@ Gif::Gif(std::istream & input, const Args & args)
         throw std::runtime_error{"Error reading GIF: " + std::string{GifErrorString(gif->Error)}};
     }
 
-    auto pal = gif->SavedImages[0].ImageDesc.ColorMap;
-    if(!pal)
+    if(count_)
     {
-        pal = gif->SColorMap;
-        if(!pal)
-        {
-            DGifCloseFile(gif, NULL);
-            throw std::runtime_error{"Could not find color map"};
-        }
+        std::cout<<gif->ImageCount;
+        throw Early_exit{};
     }
 
-    int transparency_ind = -1;
-    GraphicsControlBlock gcb;
-    if(DGifSavedExtensionToGCB(gif, 0, &gcb) == GIF_OK)
-        transparency_ind = gcb.TransparentColor;
+    if(frame_ >= static_cast<decltype(frame_)>(gif->ImageCount))
+        throw std::runtime_error{"Error reading GIF: frame " + std::to_string(frame_) + " is out of range (0-" + std::to_string(gif->ImageCount - 1) + ")"};
 
     set_size(gif->SWidth, gif->SHeight);
 
-    if(gif->SavedImages[0].ImageDesc.Left != 0 || gif->SavedImages[0].ImageDesc.Top != 0
-            || static_cast<std::size_t>(gif->SavedImages[0].ImageDesc.Width) != width_
-            || static_cast<std::size_t>(gif->SavedImages[0].ImageDesc.Height) != height_)
-    {
-        throw std::runtime_error{"GIF has wrong size or offset"};
-    }
-
-    const auto & im = gif->SavedImages[0].RasterBits;
-
+    // default all pixels to transparent
     for(std::size_t row = 0; row < height_; ++row)
     {
         for(std::size_t col = 0; col < width_; ++col)
         {
-            auto index = im[row * width_ + col];
+            image_data_[row][col] = Color{0, 0, 0, 0};
+        }
+    }
 
-            if(index == transparency_ind)
+    for(auto f = composed_ ? 0u : frame_; f <= frame_; ++f)
+    {
+        auto pal = gif->SavedImages[f].ImageDesc.ColorMap;
+        if(!pal)
+        {
+            pal = gif->SColorMap;
+            if(!pal)
             {
-                image_data_[row][col] = Color{0,0,0,0};
+                DGifCloseFile(gif, NULL);
+                throw std::runtime_error{"Could not find color map"};
             }
-            else
+        }
+
+        int transparency_ind = -1;
+        GraphicsControlBlock gcb;
+        if(DGifSavedExtensionToGCB(gif, f, &gcb) == GIF_OK)
+            transparency_ind = gcb.TransparentColor;
+
+        auto left = gif->SavedImages[f].ImageDesc.Left;
+        auto top = gif->SavedImages[f].ImageDesc.Top;
+        auto sub_width = static_cast<std::size_t>(gif->SavedImages[f].ImageDesc.Width);
+        auto sub_height = static_cast<std::size_t>(gif->SavedImages[f].ImageDesc.Height);
+
+        if(left + sub_width > width_ || top + sub_height > height_)
+        {
+            throw std::runtime_error{"GIF has wrong size or offset"};
+        }
+
+        const auto & im = gif->SavedImages[f].RasterBits;
+
+        for(std::size_t row = 0; row < sub_height; ++row)
+        {
+            for(std::size_t col = 0; col < sub_width; ++col)
             {
-                auto & pal_color = pal->Colors[index];
-                image_data_[row][col] = Color{pal_color.Red, pal_color.Green, pal_color.Blue};
+                auto index = im[row * sub_width + col];
+
+                if(index != transparency_ind)
+                {
+                    auto & pal_color = pal->Colors[index];
+                    image_data_[row + top][col + left] = Color{pal_color.Red, pal_color.Green, pal_color.Blue};
+                }
             }
         }
     }
 
     DGifCloseFile(gif, NULL);
+}
+
+void Gif::handle_extra_args(const Args & args)
+{
+    if(!std::empty(args.extra_args))
+    {
+        auto options = Sub_args{"GIF"};
+        try
+        {
+            options.add_options()
+                ("framecount", "get a count of GIF frames")
+                ("frame", "frame to extract (0-based count)", cxxopts::value<unsigned int>()->default_value("0"), "FRAME_NO")
+                ("not-composed", "Show only information for the given frame, not those leading up to it");
+
+            auto sub_args = options.parse(args.extra_args);
+
+            count_ = sub_args.count("framecount");
+            composed_ = !sub_args.count("not-composed");
+
+            if(sub_args.count("frame"))
+                frame_ = sub_args["frame"].as<unsigned int>();
+        }
+        catch(const cxxopts::OptionException & e)
+        {
+            throw std::runtime_error{options.help(args.help_text) + '\n' + e.what()};
+        }
+    }
 }
 
 int write_fn(GifFileType * gif_file, const GifByteType * data, int length)
