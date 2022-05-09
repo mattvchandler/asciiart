@@ -18,6 +18,7 @@ struct Args
     int cols;                    // output cols
     unsigned char bg;            // BG color value
     bool invert;                 // invert colors
+    bool display;                // display the image
     enum class Color {NONE, ANSI4, ANSI8, ANSI24} color;
     enum class Disp_char {HALF_BLOCK, SPACE, ASCII} disp_char;
     enum class Force_file

@@ -260,13 +260,14 @@ static const std::vector<std::string> output_formats =
     try
     {
         options.add_options()
-            ("h,help",    "Show this message and quit")
-            ("r,rows",    "# of output rows. Enter a negative value to preserve aspect ratio with --cols", cxxopts::value<int>()->default_value("-1"),        "ROWS")
-            ("c,cols",    "# of output cols",                                                              cxxopts::value<int>()->default_value("80"),        "COLS")
-            ("b,bg",      "Background color value for transparent images (0-255)",                         cxxopts::value<int>()->default_value("0"),         "BG")
-            ("i,invert",  "Invert colors")
-            ("o,output",  "Output text file path. Output to stdout if '-'",                                cxxopts::value<std::string>()->default_value("-"), "OUTPUT_FILE")
-            ("v,convert", "Convert input to output file. Supported formats: " + output_format_list,        cxxopts::value<std::string>(),                     "OUTPUT_IMAGE_FILE");
+            ("h,help",     "Show this message and quit")
+            ("r,rows",     "# of output rows. Enter a negative value to preserve aspect ratio with --cols", cxxopts::value<int>()->default_value("-1"),        "ROWS")
+            ("c,cols",     "# of output cols",                                                              cxxopts::value<int>()->default_value("80"),        "COLS")
+            ("b,bg",       "Background color value for transparent images (0-255)",                         cxxopts::value<int>()->default_value("0"),         "BG")
+            ("i,invert",   "Invert colors")
+            ("o,output",   "Output text file path. Output to stdout if '-'",                                cxxopts::value<std::string>()->default_value("-"), "OUTPUT_FILE")
+            ("v,convert",  "Convert input to output file. Supported formats: " + output_format_list,        cxxopts::value<std::string>(),                     "OUTPUT_IMAGE_FILE")
+            ("no-display", "Disable display of image");
 
         #if defined(FONTCONFIG_FOUND) && defined(FREETYPE_FOUND)
         const std::string font_group = "Text display options";
@@ -479,6 +480,7 @@ static const std::vector<std::string> output_formats =
             cols,
             static_cast<unsigned char>(args["bg"].as<int>()),
             static_cast<bool>(args.count("invert")),
+            !static_cast<bool>(args.count("no-display")),
             color,
             disp_char,
             filetype,

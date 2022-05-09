@@ -13,7 +13,8 @@ int main(int argc, char * argv[])
     try
     {
         auto img = get_image_data(*args);
-        display_image(*img, *args);
+        if(args->display)
+            display_image(*img, *args);
         img->convert(*args);
     }
     catch(Early_exit & e)
