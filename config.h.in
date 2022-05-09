@@ -18,3 +18,6 @@
 #cmakedefine WEBP_FOUND       1
 #cmakedefine XPM_FOUND        1
 #cmakedefine ZLIB_FOUND       1
+
+#cmakedefine HAS_UNISTD   1
+#cmakedefine HAS_IOCTL    1

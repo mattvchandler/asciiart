@@ -33,6 +33,8 @@ pkg_check_modules(WEBP libwebp)
 pkg_check_modules(XPM xpm)
 
 include(CheckIncludeFiles)
+check_include_files(unistd.h HAS_UNISTD)
+check_include_files(sys/ioctl.h HAS_IOCTL)
 if(WIN32)
     check_include_files(windows.h HAS_WINDOWS)
 endif()
