@@ -33,10 +33,6 @@ pkg_check_modules(WEBP libwebp)
 pkg_check_modules(XPM xpm)
 
 include(CheckIncludeFiles)
-check_include_files(unistd.h HAS_UNISTD)
-check_include_files(endian.h HAS_ENDIAN)
-check_include_files(byteswap.h HAS_BYTESWAP)
-check_include_files(sys/ioctl.h HAS_IOCTL)
 if(WIN32)
     check_include_files(windows.h HAS_WINDOWS)
 endif()
@@ -44,26 +40,6 @@ endif()
 check_include_files(libbpg.h BPG_FOUND)
 check_include_files(flif.h FLIF_ENC_FOUND)
 check_include_files(flif_dec.h FLIF_DEC_FOUND)
-
-include(CheckSymbolExists)
-check_symbol_exists(le64toh "endian.h" HAS_LE64TOH)
-check_symbol_exists(le32toh "endian.h" HAS_LE32TOH)
-check_symbol_exists(le16toh "endian.h" HAS_LE16TOH)
-check_symbol_exists(be64toh "endian.h" HAS_BE64TOH)
-check_symbol_exists(be32toh "endian.h" HAS_BE32TOH)
-check_symbol_exists(be16toh "endian.h" HAS_BE16TOH)
-check_symbol_exists(htole64 "endian.h" HAS_HTOLE64)
-check_symbol_exists(htole32 "endian.h" HAS_HTOLE32)
-check_symbol_exists(htole16 "endian.h" HAS_HTOLE16)
-check_symbol_exists(htobe64 "endian.h" HAS_HTOBE64)
-check_symbol_exists(htobe32 "endian.h" HAS_HTOBE32)
-check_symbol_exists(htobe16 "endian.h" HAS_HTOBE16)
-check_symbol_exists(bswap_64 "byteswap.h" HAS_BSWAP64)
-check_symbol_exists(bswap_32 "byteswap.h" HAS_BSWAP32)
-check_symbol_exists(bswap_16 "byteswap.h" HAS_BSWAP16)
-
-include(TestBigEndian)
-test_big_endian(ASCIIART_BIG_ENDIAN)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
@@ -73,7 +49,6 @@ add_executable(asciiart
     font.cpp
     main.cpp
     codecs/image.cpp
-    codecs/binio.cpp
     codecs/sub_args.cpp
     codecs/bmp.cpp
     codecs/bmp_common.cpp

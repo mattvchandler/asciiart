@@ -233,7 +233,7 @@ void Pnm::read_P5(std::istream & input)
             for(std::size_t col = 0; col < width_; ++col)
             {
                 std::uint16_t val;
-                readb(input, val, binio_endian::BE);
+                readb(input, val, std::endian::big);
                 image_data_[row][col] = Color{static_cast<unsigned char>(val / max_val * 255.0f)};
             }
         }
@@ -265,9 +265,9 @@ void Pnm::read_P6(std::istream & input)
             for(std::size_t col = 0; col < width_; ++col)
             {
                 std::uint16_t r, g, b;
-                readb(input, r, binio_endian::BE);
-                readb(input, g, binio_endian::BE);
-                readb(input, b, binio_endian::BE);
+                readb(input, r, std::endian::big);
+                readb(input, g, std::endian::big);
+                readb(input, b, std::endian::big);
                 image_data_[row][col] = Color{static_cast<unsigned char>(r / max_val * 255.0f),
                                               static_cast<unsigned char>(g / max_val * 255.0f),
                                               static_cast<unsigned char>(b / max_val * 255.0f)};
@@ -433,7 +433,7 @@ void Pnm::read_P7(std::istream & input)
 auto read_pf_header(std::istream & input)
 {
     auto max_val = std::stof(read_skip_comments(input));
-    auto endian = max_val >= 0.0f ? binio_endian::BE : binio_endian::LE;
+    auto endian = max_val >= 0.0f ? std::endian::big : std::endian::little;
     max_val = std::abs(max_val);
 
     // ignore trailing space after header

@@ -391,7 +391,7 @@ auto nbt_read_tag(std::istream & input)
     if(tag_type != nbt_tag::end)
     {
         std::uint16_t name_length{};
-        readb(input, name_length, binio_endian::BE);
+        readb(input, name_length, std::endian::big);
 
         name = readstr(input, name_length);
     }
@@ -401,7 +401,7 @@ auto nbt_read_tag(std::istream & input)
 
 void nbt_write_string(std::ostream & out, const std::string_view & str)
 {
-    writeb(out, static_cast<std::uint16_t>(std::size(str)), binio_endian::BE);
+    writeb(out, static_cast<std::uint16_t>(std::size(str)), std::endian::big);
     writestr(out, str);
 }
 void nbt_write_tag(std::ostream & out, nbt_tag tag_type, const std::string_view & name)
@@ -416,14 +416,14 @@ void nbt_skip_payload(std::istream & input, nbt_tag tag_type);
 void nbt_skip_array(std::istream & input, unsigned int size)
 {
     std::uint32_t len{};
-    readb(input, len, binio_endian::BE);
+    readb(input, len, std::endian::big);
     input.ignore(len * size);
 }
 
 std::vector<std::uint8_t> nbt_read_byte_array(std::istream & input)
 {
     std::uint32_t len{};
-    readb(input, len, binio_endian::BE);
+    readb(input, len, std::endian::big);
     std::vector<std::uint8_t> data(len);
     input.read(reinterpret_cast<char *>(std::data(data)), std::size(data));
     return data;
@@ -432,7 +432,7 @@ std::vector<std::uint8_t> nbt_read_byte_array(std::istream & input)
 void nbt_skip_string(std::istream & input)
 {
     std::uint16_t len{};
-    readb(input, len, binio_endian::BE);
+    readb(input, len, std::endian::big);
     input.ignore(len);
 }
 
@@ -454,7 +454,7 @@ void nbt_skip_list(std::istream & input)
     nbt_tag tag_type{};
     uint32_t len{};
     readb(input, tag_type);
-    readb(input, len, binio_endian::BE);
+    readb(input, len, std::endian::big);
 
     for(unsigned int i = 0; i < len; ++i)
         nbt_skip_payload(input, tag_type);
@@ -532,9 +532,9 @@ auto nbt_read_map(std::istream & input)
 
         // the spec guarantees that our interesting tags will not be in a list, so we only look for them in our walk
         if(name == "width" && tag_type == nbt_tag::int16)
-            readb(input, img.width, binio_endian::BE);
+            readb(input, img.width, std::endian::big);
         else if(name == "height" && tag_type == nbt_tag::int16)
-            readb(input, img.height, binio_endian::BE);
+            readb(input, img.height, std::endian::big);
         else if(name == "colors" && tag_type == nbt_tag::byte_array)
             img.colors = nbt_read_byte_array(input);
         else
@@ -615,7 +615,7 @@ void MCMap::write(std::ostream & out, const Image & img, unsigned char bg, bool 
     nbt_write_tag(uncompressed_out, nbt_tag::compound, "data");
 
     nbt_write_tag(uncompressed_out, nbt_tag::int32, "zCenter");
-    writeb(uncompressed_out, std::int32_t{0}, binio_endian::BE);
+    writeb(uncompressed_out, std::int32_t{0}, std::endian::big);
 
     nbt_write_tag(uncompressed_out, nbt_tag::byte, "unlimitedTracking");
     writeb(uncompressed_out, std::uint8_t{0});
@@ -639,16 +639,16 @@ void MCMap::write(std::ostream & out, const Image & img, unsigned char bg, bool 
     nbt_write_empty_list(uncompressed_out);
 
     nbt_write_tag(uncompressed_out, nbt_tag::int32, "xCenter");
-    writeb(uncompressed_out, std::int32_t{0}, binio_endian::BE);
+    writeb(uncompressed_out, std::int32_t{0}, std::endian::big);
 
     nbt_write_tag(uncompressed_out, nbt_tag::byte_array, "colors");
-    writeb(uncompressed_out, static_cast<std::int32_t>(std::size(colors)), binio_endian::BE);
+    writeb(uncompressed_out, static_cast<std::int32_t>(std::size(colors)), std::endian::big);
     uncompressed_out.write(reinterpret_cast<char*>(std::data(colors)), std::size(colors));
 
     nbt_write_tag(uncompressed_out, nbt_tag::end, "");
 
     nbt_write_tag(uncompressed_out, nbt_tag::int32, "DataVersion");
-    writeb(uncompressed_out, std::int32_t{2730}, binio_endian::BE); // 2730 is 1.17.1
+    writeb(uncompressed_out, std::int32_t{2730}, std::endian::big); // 2730 is 1.17.1
 
     nbt_write_tag(uncompressed_out, nbt_tag::end, "");
 

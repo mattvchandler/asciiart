@@ -58,7 +58,7 @@ MotoLogo::MotoLogo(std::istream & input, const Args & args)
         // header
         input.ignore(magic_size); // Magic
         std::uint32_t directory_size;
-        readb(input, directory_size, binio_endian::LE);
+        readb(input, directory_size, std::endian::little);
 
         pos += magic_size + sizeof(directory_size);
 
@@ -72,8 +72,8 @@ MotoLogo::MotoLogo(std::istream & input, const Args & args)
         {
             std::uint32_t offset, size;
             auto name = readstr(input, name_size);
-            readb(input, offset, binio_endian::LE);
-            readb(input, size, binio_endian::LE);
+            readb(input, offset, std::endian::little);
+            readb(input, size, std::endian::little);
 
             pos += dir_entry_size;
 
@@ -111,8 +111,8 @@ MotoLogo::MotoLogo(std::istream & input, const Args & args)
         }
 
         std::uint16_t width, height;
-        readb(input, width, binio_endian::BE);
-        readb(input, height, binio_endian::BE);
+        readb(input, width, std::endian::big);
+        readb(input, height, std::endian::big);
 
         set_size(width, height);
 
@@ -140,7 +140,7 @@ MotoLogo::MotoLogo(std::istream & input, const Args & args)
         while(row < height_)
         {
             std::uint16_t count;
-            readb(input, count, binio_endian::BE);
+            readb(input, count, std::endian::big);
             if(count & 0x7000u)
                 throw std::runtime_error{"Error reading MotoLogo: bad RLE count"};
 
