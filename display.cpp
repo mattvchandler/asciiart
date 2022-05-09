@@ -233,7 +233,7 @@ void display_image(const Image & img, const Args & args)
             switch(args.disp_char)
             {
                 case Args::Disp_char::HALF_BLOCK:
-                    out<<set_color(scaled_img[row * 2][col], scaled_img[row * 2 + 1][col], args.color) << u8"▀";
+                    out<<set_color(scaled_img[row * 2][col], scaled_img[row * 2 + 1][col], args.color) << "▀";
                     break;
 
                 case Args::Disp_char::SPACE:
