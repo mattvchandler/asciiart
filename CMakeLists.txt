@@ -41,8 +41,6 @@ check_include_files(libbpg.h BPG_FOUND)
 check_include_files(flif.h FLIF_ENC_FOUND)
 check_include_files(flif_dec.h FLIF_DEC_FOUND)
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
-
 add_executable(asciiart
     args.cpp
     display.cpp
@@ -78,6 +76,8 @@ if(FREETYPE_FOUND)
             )
     endif()
 endif()
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
 if(AVIF_FOUND)
     target_sources(asciiart PRIVATE codecs/avif.cpp)
