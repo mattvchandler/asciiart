@@ -19,5 +19,8 @@
 #cmakedefine XPM_FOUND        1
 #cmakedefine ZLIB_FOUND       1
 
-#cmakedefine HAS_UNISTD   1
-#cmakedefine HAS_IOCTL    1
+#cmakedefine HAS_SIGNAL  1
+#cmakedefine HAS_IOCTL   1
+#cmakedefine HAS_SELECT  1
+#cmakedefine HAS_TERMIOS 1
+#cmakedefine HAS_UNISTD  1

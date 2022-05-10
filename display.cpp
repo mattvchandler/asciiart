@@ -9,10 +9,39 @@
 #include <stdexcept>
 
 #include <cmath>
+#include <cstdio>
 #include <cstring>
+
+#ifdef HAS_SELECT
+#include <sys/select.h>
+#endif
+#ifdef HAS_TERMIOS
+#include <termios.h>
+#endif
+#ifdef HAS_UNISTD
+#include <unistd.h>
+#endif
 
 #include "color.hpp"
 #include "font.hpp"
+
+#define ESC "\x1B"
+#define CSI ESC "["
+#define ENABLED "h"
+#define DISABLED "l"
+#define ALT_BUFF CSI "?1049"
+#define CURSOR CSI "?25"
+#define CLS CSI "2J"
+#define SEP ";"
+#define SGR "m"
+#define CUP "H"
+#define RESET_CHAR CSI "0" SGR
+#define DISABLE_ECHO CSI "8" SGR
+#define FG24 "38;2;"
+#define BG24 "48;2;"
+#define FG8 "38;5;"
+#define BG8 "48;5;"
+#define UPPER_HALF_BLOCK "▀";
 
 constexpr auto build_color_table()
 {
@@ -96,14 +125,14 @@ public:
                 case Color_mode::none:
                     break;
                 case Color_mode::fg_only:
-                    os << "\x1B[38;2;" << static_cast<int>(fg_color->r) << ';' << static_cast<int>(fg_color->g) << ';' << static_cast<int>(fg_color->b) << 'm';
+                    os << CSI FG24 << static_cast<int>(fg_color->r) << SEP << static_cast<int>(fg_color->g) << SEP << static_cast<int>(fg_color->b) <<SGR;
                     break;
                 case Color_mode::bg_only:
-                    os << "\x1B[48;2;" << static_cast<int>(bg_color->r) << ';' << static_cast<int>(bg_color->g) << ';' << static_cast<int>(bg_color->b) << 'm';
+                    os << CSI BG24 << static_cast<int>(bg_color->r) << SEP << static_cast<int>(bg_color->g) << SEP << static_cast<int>(bg_color->b) << SGR;
                     break;
                 case Color_mode::both:
-                    os << "\x1B[38;2;" << static_cast<int>(fg_color->r) << ';' << static_cast<int>(fg_color->g) << ';' << static_cast<int>(fg_color->b)
-                       <<     ";48;2;" << static_cast<int>(bg_color->r) << ';' << static_cast<int>(bg_color->g) << ';' << static_cast<int>(bg_color->b) << 'm';
+                    os << CSI FG24 << static_cast<int>(fg_color->r) << SEP << static_cast<int>(fg_color->g) << SEP << static_cast<int>(fg_color->b)
+                       << SEP BG24 << static_cast<int>(bg_color->r) << SEP << static_cast<int>(bg_color->g) << SEP << static_cast<int>(bg_color->b) << SGR;
                     break;
             }
         }
@@ -114,14 +143,14 @@ public:
                 case Color_mode::none:
                     break;
                 case Color_mode::fg_only:
-                    os << "\x1B[38;5;" << std::distance(std::begin(color_table), std::find(std::begin(color_table), std::end(color_table), *fg_color)) << 'm';
+                    os << CSI FG8 << std::distance(std::begin(color_table), std::find(std::begin(color_table), std::end(color_table), *fg_color)) << SGR;
                     break;
                 case Color_mode::bg_only:
-                    os << "\x1B[48;5;" << std::distance(std::begin(color_table), std::find(std::begin(color_table), std::end(color_table), *bg_color)) << 'm';
+                    os << CSI BG8<< std::distance(std::begin(color_table), std::find(std::begin(color_table), std::end(color_table), *bg_color)) << SGR;
                     break;
                 case Color_mode::both:
-                    os << "\x1B[38;5;" << std::distance(std::begin(color_table), std::find(std::begin(color_table), std::end(color_table), *fg_color))
-                       <<     ";48;5;" << std::distance(std::begin(color_table), std::find(std::begin(color_table), std::end(color_table), *bg_color)) << 'm';
+                    os << CSI FG8 << std::distance(std::begin(color_table), std::find(std::begin(color_table), std::end(color_table), *fg_color))
+                       << SEP BG8 << std::distance(std::begin(color_table), std::find(std::begin(color_table), std::end(color_table), *bg_color)) << SGR;
                     break;
             }
         }
@@ -150,14 +179,14 @@ public:
                 case Color_mode::none:
                     break;
                 case Color_mode::fg_only:
-                    os << "\x1B[" << index[0] << 'm';
+                    os << CSI << index[0] << SGR;
                     break;
                 case Color_mode::bg_only:
-                    os << "\x1B[" << index[1] << 'm';
+                    os << CSI << index[1] << SGR;
                     break;
                 case Color_mode::both:
-                    os << "\x1B[" << index[0]
-                    <<     ";" << index[1] << 'm';
+                    os << CSI << index[0]
+                       << SEP << index[1] << SGR;
                     break;
             }
         }
@@ -176,7 +205,7 @@ private:
 
 std::ostream & clear_color(std::ostream & os)
 {
-    return os<<"\x1B[0m";
+    return os << RESET_CHAR;
 }
 
 void display_image(const Image & img, const Args & args)
@@ -233,7 +262,7 @@ void display_image(const Image & img, const Args & args)
             switch(args.disp_char)
             {
                 case Args::Disp_char::HALF_BLOCK:
-                    out<<set_color(scaled_img[row * 2][col], scaled_img[row * 2 + 1][col], args.color) << "▀";
+                    out<<set_color(scaled_img[row * 2][col], scaled_img[row * 2 + 1][col], args.color) << UPPER_HALF_BLOCK;
                     break;
 
                 case Args::Disp_char::SPACE:
@@ -254,4 +283,76 @@ void display_image(const Image & img, const Args & args)
             out<<clear_color;
         out<<'\n';
     }
+}
+
+void set_signal(int sig, void(*handler)(int))
+{
+#if defined(HAS_SELECT) && defined(HAS_SIGNAL)
+    std::string sigstr;
+    #define CASESTR(x) case x: sigstr = #x; break;
+    switch(sig)
+    {
+        CASESTR(SIGINT)
+        CASESTR(SIGTERM)
+        CASESTR(SIGTSTP)
+        default: sigstr = std::to_string(sig); break;
+    }
+    #undef CASESTR
+
+    struct sigaction action{};
+
+    if(sigaction(sig, nullptr, &action) == -1)
+        throw std::runtime_error{std::string{"Could not get signal "} + sigstr  + ": " + std::strerror(errno)};
+
+    if(!(action.sa_flags & SA_SIGINFO) && action.sa_handler == SIG_IGN)
+        throw std::runtime_error{std::string{"Signal "} + sigstr  + " is ignored"};
+
+    if(!(action.sa_flags & SA_SIGINFO) && action.sa_handler != SIG_DFL)
+        throw std::runtime_error{std::string{"Signal "} + sigstr  + " is already handled"};
+
+    sigemptyset(&action.sa_mask);
+    action.sa_flags &= ~SA_SIGINFO;
+    action.sa_handler = handler;
+
+    if(sigaction(sig, &action, nullptr) == -1)
+        throw std::runtime_error{std::string{"Could not set signal "} + sigstr + ": " + std::strerror(errno)};
+#endif
+}
+
+void reset_signal(int sig)
+{
+    signal(sig, SIG_DFL);
+}
+
+termios original_terminal;
+void open_alternate_buffer()
+{
+#ifdef HAS_UNISTD
+    if(!isatty(fileno(stdout)))
+        throw std::runtime_error{"Can't animate - not a TTY"};
+#endif
+
+    std::cout <<ALT_BUFF ENABLED CLS CURSOR DISABLED DISABLE_ECHO << std::flush;
+    tcgetattr(STDIN_FILENO, &original_terminal); // save old term attrs
+    setvbuf(stdin, nullptr, _IONBF, 0);
+    auto newt = original_terminal;
+    newt.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+}
+
+void close_alternate_buffer()
+{
+    std::cout<<ALT_BUFF ENABLED<<std::flush;
+    std::cout<<CLS ALT_BUFF DISABLED CURSOR ENABLED RESET_CHAR<<std::flush;
+    tcsetattr(STDIN_FILENO, TCSANOW, &original_terminal);
+}
+
+void clear_buffer()
+{
+    std::cout << CLS;
+}
+
+void reset_cursor_pos()
+{
+    std::cout << CSI CUP;
 }

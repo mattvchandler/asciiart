@@ -1,16 +1,20 @@
 #include "gif.hpp"
 
+#include <chrono>
 #include <iostream>
 #include <map>
 #include <stdexcept>
+#include <thread>
 
 #include <cstdlib>
 #include <cstring>
 
 #include <gif_lib.h>
 
+#include "../display.hpp"
 #include "sub_args.hpp"
 
+// TODO: animation support?
 // giflib is a very poorly designed library. Its documentation is even worse
 
 int read_fn(GifFileType* gif_file, GifByteType * data, int length) noexcept
@@ -31,6 +35,15 @@ int read_fn(GifFileType* gif_file, GifByteType * data, int length) noexcept
 
     return in->gcount();
 }
+
+#if defined(HAS_SELECT) && defined(HAS_SIGNAL)
+volatile sig_atomic_t stop_flag = 0;
+volatile sig_atomic_t suspend_flag = 0;
+
+void handle_stop(int)    { stop_flag    = 1; }
+void handle_suspend(int) { suspend_flag = 1; }
+#endif
+
 Gif::Gif(std::istream & input, const Args & args)
 {
     handle_extra_args(args);
@@ -47,7 +60,7 @@ Gif::Gif(std::istream & input, const Args & args)
 
     if(count_)
     {
-        std::cout<<gif->ImageCount;
+        std::cout<<gif->ImageCount<<'\n';
         throw Early_exit{};
     }
 
@@ -65,49 +78,143 @@ Gif::Gif(std::istream & input, const Args & args)
         }
     }
 
-    for(auto f = composed_ ? 0u : frame_; f <= frame_; ++f)
+    bool do_loop = animate_ && loop_;
+    if(animate_)
     {
-        auto pal = gif->SavedImages[f].ImageDesc.ColorMap;
-        if(!pal)
+        frame_ = gif->ImageCount;
+    #if defined(HAS_SELECT) && defined(HAS_SIGNAL)
+        set_signal(SIGINT,   handle_stop);
+        set_signal(SIGTERM,  handle_stop);
+        set_signal(SIGTSTP,  handle_suspend);
+    #endif
+        open_alternate_buffer();
+    }
+
+    auto start_time = std::chrono::high_resolution_clock::now();
+
+    do
+    {
+        if(animate_)
+            clear_buffer();
+
+        for(auto f = composed_ ? 0u : frame_; f < frame_; ++f)
         {
-            pal = gif->SColorMap;
+            // if(animate_)
+            // {
+                auto frame_start = std::chrono::high_resolution_clock::now();
+            // }
+
+            auto pal = gif->SavedImages[f].ImageDesc.ColorMap;
             if(!pal)
             {
-                DGifCloseFile(gif, NULL);
-                throw std::runtime_error{"Could not find color map"};
-            }
-        }
-
-        int transparency_ind = -1;
-        GraphicsControlBlock gcb;
-        if(DGifSavedExtensionToGCB(gif, f, &gcb) == GIF_OK)
-            transparency_ind = gcb.TransparentColor;
-
-        auto left = gif->SavedImages[f].ImageDesc.Left;
-        auto top = gif->SavedImages[f].ImageDesc.Top;
-        auto sub_width = static_cast<std::size_t>(gif->SavedImages[f].ImageDesc.Width);
-        auto sub_height = static_cast<std::size_t>(gif->SavedImages[f].ImageDesc.Height);
-
-        if(left + sub_width > width_ || top + sub_height > height_)
-        {
-            throw std::runtime_error{"GIF has wrong size or offset"};
-        }
-
-        const auto & im = gif->SavedImages[f].RasterBits;
-
-        for(std::size_t row = 0; row < sub_height; ++row)
-        {
-            for(std::size_t col = 0; col < sub_width; ++col)
-            {
-                auto index = im[row * sub_width + col];
-
-                if(index != transparency_ind)
+                pal = gif->SColorMap;
+                if(!pal)
                 {
-                    auto & pal_color = pal->Colors[index];
-                    image_data_[row + top][col + left] = Color{pal_color.Red, pal_color.Green, pal_color.Blue};
+                    DGifCloseFile(gif, NULL);
+                    if(animate_)
+                    {
+                        close_alternate_buffer();
+                    #if defined(HAS_SELECT) && defined(HAS_SIGNAL)
+                        reset_signal(SIGINT);
+                        reset_signal(SIGTERM);
+                        reset_signal(SIGTSTP);
+                    #endif
+                    }
+                    throw std::runtime_error{"Could not find color map"};
                 }
             }
+
+            int transparency_ind = -1;
+            float framerate = 0.0f;
+            GraphicsControlBlock gcb;
+            if(DGifSavedExtensionToGCB(gif, f, &gcb) == GIF_OK)
+            {
+                transparency_ind = gcb.TransparentColor;
+                framerate = 1.0f / (0.01f * gcb.DelayTime);
+            }
+
+            auto left = gif->SavedImages[f].ImageDesc.Left;
+            auto top = gif->SavedImages[f].ImageDesc.Top;
+            auto sub_width = static_cast<std::size_t>(gif->SavedImages[f].ImageDesc.Width);
+            auto sub_height = static_cast<std::size_t>(gif->SavedImages[f].ImageDesc.Height);
+
+            if(left + sub_width > width_ || top + sub_height > height_)
+            {
+                if(animate_)
+                {
+                    DGifCloseFile(gif, NULL);
+                    close_alternate_buffer();
+                #if defined(HAS_SELECT) && defined(HAS_SIGNAL)
+                    reset_signal(SIGINT);
+                    reset_signal(SIGTERM);
+                    reset_signal(SIGTSTP);
+                #endif
+                }
+                throw std::runtime_error{"GIF has wrong size or offset"};
+            }
+
+            const auto & im = gif->SavedImages[f].RasterBits;
+
+            for(std::size_t row = 0; row < sub_height; ++row)
+            {
+                for(std::size_t col = 0; col < sub_width; ++col)
+                {
+                    auto index = im[row * sub_width + col];
+
+                    if(index != transparency_ind)
+                    {
+                        auto & pal_color = pal->Colors[index];
+                        image_data_[row + top][col + left] = Color{pal_color.Red, pal_color.Green, pal_color.Blue};
+                    }
+                }
+            }
+
+            if(animate_)
+            {
+                reset_cursor_pos();
+                display_image(*this, args);
+                std::cout.flush();
+
+                std::cout<<"suspend_flag: "<<suspend_flag<<" stop: "<<stop_flag<<'\n';
+
+            #if defined(HAS_SELECT) && defined(HAS_SIGNAL)
+                if(suspend_flag)
+                {
+                    close_alternate_buffer();
+                    reset_signal(SIGTSTP);
+                    raise(SIGTSTP);
+
+                    set_signal(SIGTSTP,  handle_suspend);
+                    open_alternate_buffer();
+                    suspend_flag = 0;
+                }
+
+                if(stop_flag)
+                {
+                    do_loop = false;
+                    break;
+                }
+            #endif
+
+                std::cout<<"F: "<<framerate<<' '<<framerate_<<'\n';
+                auto frame_end = std::chrono::high_resolution_clock::now();
+                auto frame_time = frame_end-frame_start;
+                auto framerate_inv = std::chrono::duration_cast<decltype(frame_time)>(std::chrono::duration<float>{1.0f / (framerate_ == 0.0f ? framerate : framerate_)});
+                auto sleep_time = std::max(decltype(frame_time)::zero(), framerate_inv - (frame_time));
+
+                std::this_thread::sleep_for(sleep_time);
+            }
         }
+    } while(do_loop);
+
+    if(animate_)
+    {
+        close_alternate_buffer();
+    #if defined(HAS_SELECT) && defined(HAS_SIGNAL)
+        reset_signal(SIGINT);
+        reset_signal(SIGTERM);
+        reset_signal(SIGTSTP);
+    #endif
     }
 
     DGifCloseFile(gif, NULL);
@@ -121,17 +228,31 @@ void Gif::handle_extra_args(const Args & args)
         try
         {
             options.add_options()
+                ("animate", "display animated view of image", cxxopts::value<float>()->implicit_value("0"), "FRAMERATE")
+                ("loop", "loop if animating")
                 ("framecount", "get a count of GIF frames")
                 ("frame", "frame to extract (0-based count)", cxxopts::value<unsigned int>()->default_value("0"), "FRAME_NO")
                 ("not-composed", "Show only information for the given frame, not those leading up to it");
 
             auto sub_args = options.parse(args.extra_args);
 
+            animate_ = sub_args.count("animate");
+
+            if(animate_)
+                framerate_ = sub_args["animate"].as<float>();
+
+            loop_ = sub_args.count("loop");
+
             count_ = sub_args.count("framecount");
             composed_ = !sub_args.count("not-composed");
 
             if(sub_args.count("frame"))
                 frame_ = sub_args["frame"].as<unsigned int>();
+
+            if(animate_ && (!composed_ || frame_ != 0))
+            {
+                throw std::runtime_error{options.help(args.help_text) + "\nCan't specify --frame or --not-composed with --animate"};
+            }
         }
         catch(const cxxopts::OptionException & e)
         {
