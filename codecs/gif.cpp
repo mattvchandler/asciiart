@@ -1,17 +1,15 @@
 #include "gif.hpp"
 
-#include <chrono>
 #include <iostream>
 #include <map>
 #include <stdexcept>
-#include <thread>
 
 #include <cstdlib>
 #include <cstring>
 
 #include <gif_lib.h>
 
-#include "../display.hpp"
+#include "../animate.hpp"
 #include "sub_args.hpp"
 
 // TODO: animation support?
@@ -35,14 +33,6 @@ int read_fn(GifFileType* gif_file, GifByteType * data, int length) noexcept
 
     return in->gcount();
 }
-
-#if defined(HAS_SELECT) && defined(HAS_SIGNAL)
-volatile sig_atomic_t stop_flag = 0;
-volatile sig_atomic_t suspend_flag = 0;
-
-void handle_stop(int)    { stop_flag    = 1; }
-void handle_suspend(int) { suspend_flag = 1; }
-#endif
 
 Gif::Gif(std::istream & input, const Args & args)
 {
@@ -79,31 +69,17 @@ Gif::Gif(std::istream & input, const Args & args)
     }
 
     bool do_loop = animate_ && loop_;
+    auto animator = std::unique_ptr<Animate>{};
     if(animate_)
     {
         frame_ = gif->ImageCount;
-    #if defined(HAS_SELECT) && defined(HAS_SIGNAL)
-        set_signal(SIGINT,   handle_stop);
-        set_signal(SIGTERM,  handle_stop);
-        set_signal(SIGTSTP,  handle_suspend);
-    #endif
-        open_alternate_buffer();
+        animator = std::make_unique<Animate>(args);
     }
-
-    auto start_time = std::chrono::high_resolution_clock::now();
 
     do
     {
-        if(animate_)
-            clear_buffer();
-
         for(auto f = composed_ ? 0u : frame_; f < frame_; ++f)
         {
-            // if(animate_)
-            // {
-                auto frame_start = std::chrono::high_resolution_clock::now();
-            // }
-
             auto pal = gif->SavedImages[f].ImageDesc.ColorMap;
             if(!pal)
             {
@@ -111,26 +87,18 @@ Gif::Gif(std::istream & input, const Args & args)
                 if(!pal)
                 {
                     DGifCloseFile(gif, NULL);
-                    if(animate_)
-                    {
-                        close_alternate_buffer();
-                    #if defined(HAS_SELECT) && defined(HAS_SIGNAL)
-                        reset_signal(SIGINT);
-                        reset_signal(SIGTERM);
-                        reset_signal(SIGTSTP);
-                    #endif
-                    }
                     throw std::runtime_error{"Could not find color map"};
                 }
             }
 
             int transparency_ind = -1;
-            float framerate = 0.0f;
+            float frame_delay = 0.0f;
+
             GraphicsControlBlock gcb;
             if(DGifSavedExtensionToGCB(gif, f, &gcb) == GIF_OK)
             {
                 transparency_ind = gcb.TransparentColor;
-                framerate = 1.0f / (0.01f * gcb.DelayTime);
+                frame_delay = 0.01f * gcb.DelayTime;
             }
 
             auto left = gif->SavedImages[f].ImageDesc.Left;
@@ -143,12 +111,6 @@ Gif::Gif(std::istream & input, const Args & args)
                 if(animate_)
                 {
                     DGifCloseFile(gif, NULL);
-                    close_alternate_buffer();
-                #if defined(HAS_SELECT) && defined(HAS_SIGNAL)
-                    reset_signal(SIGINT);
-                    reset_signal(SIGTERM);
-                    reset_signal(SIGTSTP);
-                #endif
                 }
                 throw std::runtime_error{"GIF has wrong size or offset"};
             }
@@ -171,51 +133,13 @@ Gif::Gif(std::istream & input, const Args & args)
 
             if(animate_)
             {
-                reset_cursor_pos();
-                display_image(*this, args);
-                std::cout.flush();
-
-                std::cout<<"suspend_flag: "<<suspend_flag<<" stop: "<<stop_flag<<'\n';
-
-            #if defined(HAS_SELECT) && defined(HAS_SIGNAL)
-                if(suspend_flag)
-                {
-                    close_alternate_buffer();
-                    reset_signal(SIGTSTP);
-                    raise(SIGTSTP);
-
-                    set_signal(SIGTSTP,  handle_suspend);
-                    open_alternate_buffer();
-                    suspend_flag = 0;
-                }
-
-                if(stop_flag)
-                {
-                    do_loop = false;
+                animator->set_frame_delay(frame_delay);
+                animator->display(*this);
+                if(!animator->running())
                     break;
-                }
-            #endif
-
-                std::cout<<"F: "<<framerate<<' '<<framerate_<<'\n';
-                auto frame_end = std::chrono::high_resolution_clock::now();
-                auto frame_time = frame_end-frame_start;
-                auto framerate_inv = std::chrono::duration_cast<decltype(frame_time)>(std::chrono::duration<float>{1.0f / (framerate_ == 0.0f ? framerate : framerate_)});
-                auto sleep_time = std::max(decltype(frame_time)::zero(), framerate_inv - (frame_time));
-
-                std::this_thread::sleep_for(sleep_time);
             }
         }
-    } while(do_loop);
-
-    if(animate_)
-    {
-        close_alternate_buffer();
-    #if defined(HAS_SELECT) && defined(HAS_SIGNAL)
-        reset_signal(SIGINT);
-        reset_signal(SIGTERM);
-        reset_signal(SIGTSTP);
-    #endif
-    }
+    } while(do_loop && animator && animator->running());
 
     DGifCloseFile(gif, NULL);
 }

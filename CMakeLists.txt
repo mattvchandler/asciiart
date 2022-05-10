@@ -48,6 +48,7 @@ check_include_files(flif.h FLIF_ENC_FOUND)
 check_include_files(flif_dec.h FLIF_DEC_FOUND)
 
 add_executable(asciiart
+    animate.cpp
     args.cpp
     display.cpp
     font.cpp
