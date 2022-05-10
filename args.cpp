@@ -272,20 +272,29 @@ static const std::vector<std::string> output_formats =
         #if defined(FONTCONFIG_FOUND) && defined(FREETYPE_FOUND)
         const std::string font_group = "Text display options";
         options.add_options(font_group)
-            ("f,font",    "Font name to render. Uses fontconfig to find",cxxopts::value<std::string>()->default_value("monospace"), "FONT_PATTERN")
-            ("s,size",    "Font size, in points",                        cxxopts::value<float>()->default_value("12.0"),            "");
+            ("f,font",    "Font name to render. Uses fontconfig to find", cxxopts::value<std::string>()->default_value("monospace"), "FONT_PATTERN")
+            ("s,size",    "Font size, in points",                         cxxopts::value<float>()->default_value("12.0"),            "");
         #endif
 
         const std::string color_group = "Color";
         options.add_options(color_group)
-            ("ansi4",     "use 4-bit ANSI colors")
-            ("ansi8",     "use 8-bit ANSI colors")
-            ("ansi24",    "use 24-bit ANSI colors. Default when output is stdout to terminal")
-            ("nocolor",   "disable colors. Default when output is not stdout to terminal")
+            ("ansi4",     "Use 4-bit ANSI colors")
+            ("ansi8",     "Use 8-bit ANSI colors")
+            ("ansi24",    "Use 24-bit ANSI colors. Default when output is stdout to terminal")
+            ("nocolor",   "Disable colors. Default when output is not stdout to terminal")
 
-            ("halfblock", "use unicode half-block to display 2 colors per character. Enabled automatically unless overridden by --ascii or --space. Use --space instead if your terminal has problems with unicode output")
-            ("ascii",     "use ascii chars for display. More dense chars will be used for higher luminosity colors. Enabled automatically when --nocolor set")
-            ("space",     "use spaces for display. Not allowed when --ascii set");
+            ("halfblock", "Use unicode half-block to display 2 colors per character. Enabled automatically unless overridden by --ascii or --space. Use --space instead if your terminal has problems with unicode output")
+            ("ascii",     "Use ascii chars for display. More dense chars will be used for higher luminosity colors. Enabled automatically when --nocolor set")
+            ("space",     "Use spaces for display. Not allowed when --ascii set");
+
+        const std::string multi_group = "Multiple image / animation (where input format support exists)";
+        options.add_options(multi_group)
+            ("image-no",    "Get specified image or frame number",      cxxopts::value<unsigned int>()->default_value("0"), "IMAGE_NO")
+            ("image-count", "Print number of images / frames and exit")
+            ("animate",     "Animate image (implies --no-display)")
+            ("loop",        "Loop animation (implies --animation")
+            ("frame-delay", "Animation delay between frames (in seconds). If not specified, get from image", cxxopts::value<float>(), "FRAME_DELAY")
+            ("framerate",   "Animation framerate (in fps). If not specified, get from image", cxxopts::value<float>(), "FPS");
 
         const std::string filetype_group = "Input file detection override (for formats that can't reliably be identified by file signature)";
         options.add_options(filetype_group)("tga", "Interpret input as a TGA file");
@@ -392,6 +401,40 @@ static const std::vector<std::string> output_formats =
         else if(args.count("space"))
             disp_char = Args::Disp_char::SPACE;
 
+        bool animate = args.count("animate");
+        if(args.count("loop"))
+            animate = true;
+
+        if(animate && args.count("image-no"))
+        {
+            std::cerr<<options.help("Can't specify --image-no with --animate")<<'\n';
+            return {};
+        }
+        if(animate && args.count("image-count"))
+        {
+            std::cerr<<options.help("Can't specify --image-count with --animate")<<'\n';
+            return {};
+        }
+
+        if(animate && args.count("convert"))
+        {
+            std::cerr<<options.help("Can't specify --convert with --animate")<<'\n';
+            return {};
+        }
+
+        auto frame_delay = args.count("frame-delay") ? args["frame-delay"].as<float>() : 0.0f;
+        if(args.count("framerate"))
+        {
+            auto framerate = args["framerate"].as<float>();
+            if(framerate > 0.0f)
+                frame_delay = 1.0f / framerate;
+            else
+            {
+                std::cerr<<options.help("--framerate must be > 0")<<'\n';
+                return {};
+            }
+        }
+
         auto filetype {Args::Force_file::detect};
 
         if(args.count("tga")
@@ -480,11 +523,16 @@ static const std::vector<std::string> output_formats =
             cols,
             static_cast<unsigned char>(args["bg"].as<int>()),
             static_cast<bool>(args.count("invert")),
-            !static_cast<bool>(args.count("no-display")),
+            animate ? false : !static_cast<bool>(args.count("no-display")),
             color,
             disp_char,
             filetype,
             convert_path,
+            args["image-no"].as<unsigned int>(),
+            static_cast<bool>(args.count("image-count")),
+            animate,
+            static_cast<bool>(args.count("loop")),
+            frame_delay,
             args.unmatched(),
             options.help()
         };

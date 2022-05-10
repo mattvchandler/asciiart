@@ -22,11 +22,6 @@ public:
     static void write(std::ostream & out, const Image & img, bool invert);
 
 private:
-    bool animate_ {false};
-    float framerate_ {0.0f};
-    bool loop_ {false};
-    bool count_ {false};
-    unsigned int frame_{0};
     bool composed_ {true};
 };
 #endif

@@ -38,6 +38,11 @@ struct Args
         aoc_2019_sif,
     } force_file { Force_file::detect };
     std::optional<std::pair<std::string, std::string>> convert_filename;
+    unsigned int image_no;
+    bool get_image_count;
+    bool animate;
+    bool loop_animation;
+    float animation_frame_delay;
     std::vector<std::string> extra_args;
     std::string help_text;
 };

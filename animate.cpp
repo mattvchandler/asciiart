@@ -126,7 +126,8 @@ Animate::Animate(const Args & args):
     pimpl{std::make_unique<Animate::Animate_impl>(args)}
 {}
 Animate::Animate_impl::Animate_impl(const Args & args):
-    args_{args}
+    args_{args},
+    frame_delay_{args.animation_frame_delay > 0.0f ? args.animation_frame_delay : 1.0f / 30.0f}
 {
 #ifdef HAS_UNISTD
     if(!isatty(fileno(stdout)))

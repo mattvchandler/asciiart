@@ -12,7 +12,6 @@
 #include "../animate.hpp"
 #include "sub_args.hpp"
 
-// TODO: animation support?
 // giflib is a very poorly designed library. Its documentation is even worse
 
 int read_fn(GifFileType* gif_file, GifByteType * data, int length) noexcept
@@ -48,14 +47,14 @@ Gif::Gif(std::istream & input, const Args & args)
         throw std::runtime_error{"Error reading GIF: " + std::string{GifErrorString(gif->Error)}};
     }
 
-    if(count_)
+    if(args.get_image_count)
     {
         std::cout<<gif->ImageCount<<'\n';
         throw Early_exit{};
     }
 
-    if(frame_ >= static_cast<decltype(frame_)>(gif->ImageCount))
-        throw std::runtime_error{"Error reading GIF: frame " + std::to_string(frame_) + " is out of range (0-" + std::to_string(gif->ImageCount - 1) + ")"};
+    if(args.image_no >= static_cast<decltype(args.image_no)>(gif->ImageCount))
+        throw std::runtime_error{"Error reading GIF: frame " + std::to_string(args.image_no) + " is out of range (0-" + std::to_string(gif->ImageCount - 1) + ")"};
 
     set_size(gif->SWidth, gif->SHeight);
 
@@ -68,17 +67,19 @@ Gif::Gif(std::istream & input, const Args & args)
         }
     }
 
-    bool do_loop = animate_ && loop_;
+    bool do_loop = args.animate && args.loop_animation;
     auto animator = std::unique_ptr<Animate>{};
-    if(animate_)
+    auto start_frame = composed_ ? 0u : args.image_no;
+    auto frame_count = args.image_no + 1;
+    if(args.animate)
     {
-        frame_ = gif->ImageCount;
+        frame_count = gif->ImageCount;
         animator = std::make_unique<Animate>(args);
     }
 
     do
     {
-        for(auto f = composed_ ? 0u : frame_; f < frame_; ++f)
+        for(auto f = start_frame; f < frame_count; ++f)
         {
             auto pal = gif->SavedImages[f].ImageDesc.ColorMap;
             if(!pal)
@@ -108,7 +109,7 @@ Gif::Gif(std::istream & input, const Args & args)
 
             if(left + sub_width > width_ || top + sub_height > height_)
             {
-                if(animate_)
+                if(args.animate)
                 {
                     DGifCloseFile(gif, NULL);
                 }
@@ -131,7 +132,7 @@ Gif::Gif(std::istream & input, const Args & args)
                 }
             }
 
-            if(animate_)
+            if(args.animate)
             {
                 animator->set_frame_delay(frame_delay);
                 animator->display(*this);
@@ -152,30 +153,15 @@ void Gif::handle_extra_args(const Args & args)
         try
         {
             options.add_options()
-                ("animate", "display animated view of image", cxxopts::value<float>()->implicit_value("0"), "FRAMERATE")
-                ("loop", "loop if animating")
-                ("framecount", "get a count of GIF frames")
-                ("frame", "frame to extract (0-based count)", cxxopts::value<unsigned int>()->default_value("0"), "FRAME_NO")
                 ("not-composed", "Show only information for the given frame, not those leading up to it");
 
             auto sub_args = options.parse(args.extra_args);
 
-            animate_ = sub_args.count("animate");
-
-            if(animate_)
-                framerate_ = sub_args["animate"].as<float>();
-
-            loop_ = sub_args.count("loop");
-
-            count_ = sub_args.count("framecount");
             composed_ = !sub_args.count("not-composed");
 
-            if(sub_args.count("frame"))
-                frame_ = sub_args["frame"].as<unsigned int>();
-
-            if(animate_ && (!composed_ || frame_ != 0))
+            if(args.animate && !composed_)
             {
-                throw std::runtime_error{options.help(args.help_text) + "\nCan't specify --frame or --not-composed with --animate"};
+                throw std::runtime_error{options.help(args.help_text) + "\nCan't specify --not-composed with --animate"};
             }
         }
         catch(const cxxopts::OptionException & e)
