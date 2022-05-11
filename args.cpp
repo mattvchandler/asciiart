@@ -511,30 +511,31 @@ static const std::vector<std::string> output_formats =
         }
 
         return Args{
-            args["input"].as<std::string>(),
-            args["output"].as<std::string>(),
+            .input_filename        = args["input"].as<std::string>(),
+            .output_filename       = args["output"].as<std::string>(),
         #if defined(FONTCONFIG_FOUND) && defined(FREETYPE_FOUND)
-            args["font"].as<std::string>(),
-            args["size"].as<float>(),
+            .font_name             = args["font"].as<std::string>(),
+            .font_size             = args["size"].as<float>(),
         #else
-            {},{},
+            .font_name             = {},
+            .font_size             = {},
         #endif
-            args["rows"].as<int>(),
-            cols,
-            static_cast<unsigned char>(args["bg"].as<int>()),
-            static_cast<bool>(args.count("invert")),
-            animate ? false : !static_cast<bool>(args.count("no-display")),
-            color,
-            disp_char,
-            filetype,
-            convert_path,
-            args.count("image-no") ? std::optional(args["image-no"].as<unsigned int>()) : std::nullopt,
-            static_cast<bool>(args.count("image-count")),
-            animate,
-            static_cast<bool>(args.count("loop")),
-            frame_delay,
-            args.unmatched(),
-            options.help()
+            .rows                  = args["rows"].as<int>(),
+            .cols                  = cols,
+            .bg                    = static_cast<unsigned char>(args["bg"].as<int>()),
+            .invert                = static_cast<bool>(args.count("invert")),
+            .display               = animate ? false : !static_cast<bool>(args.count("no-display")),
+            .color                 = color,
+            .disp_char             = disp_char,
+            .force_file            = filetype,
+            .convert_filename      = convert_path,
+            .image_no              = args.count("image-no") ? std::optional(args["image-no"].as<unsigned int>()) : std::nullopt,
+            .get_image_count       = static_cast<bool>(args.count("image-count")),
+            .animate               = animate,
+            .loop_animation        = static_cast<bool>(args.count("loop")),
+            .animation_frame_delay = frame_delay,
+            .extra_args            = args.unmatched(),
+            .help_text             = options.help()
         };
     }
     catch(const cxxopts::OptionException & e)
