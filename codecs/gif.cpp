@@ -160,9 +160,10 @@ void Gif::handle_extra_args(const Args & args)
             composed_ = !sub_args.count("not-composed");
 
             if(args.animate && !composed_)
-            {
                 throw std::runtime_error{options.help(args.help_text) + "\nCan't specify --not-composed with --animate"};
-            }
+
+            if(args.animate && args.image_no)
+                throw std::runtime_error{options.help(args.help_text) + "\nCan't specify --image-no with --animate"};
         }
         catch(const cxxopts::OptionException & e)
         {

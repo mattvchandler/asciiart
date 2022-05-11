@@ -405,11 +405,6 @@ static const std::vector<std::string> output_formats =
         if(args.count("loop"))
             animate = true;
 
-        if(animate && args.count("image-no"))
-        {
-            std::cerr<<options.help("Can't specify --image-no with --animate")<<'\n';
-            return {};
-        }
         if(animate && args.count("image-count"))
         {
             std::cerr<<options.help("Can't specify --image-count with --animate")<<'\n';
