@@ -12,7 +12,7 @@
 #include "exif.hpp"
 #endif
 
-Jxl::Jxl(std::istream & input)
+void Jxl::open(std::istream & input, const Args &)
 {
     std::cerr<<"Warning: JPEG XL input support is experimental. Success will vary depending on the image and jpeg xl library version\n";
 

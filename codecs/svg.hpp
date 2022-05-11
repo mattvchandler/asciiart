@@ -7,7 +7,8 @@
 class Svg final: public Image
 {
 public:
-    Svg(std::istream & input, const std::string & filename);
+    Svg() = default;
+    void open(std::istream & input, const Args & args) override;
 };
 #endif
 #endif // SVG_HPP

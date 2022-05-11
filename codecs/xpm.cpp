@@ -680,7 +680,7 @@ struct My_XpmImage: public XpmImage
     ~My_XpmImage() { XpmFreeXpmImage(this); }
 };
 
-Xpm::Xpm(std::istream & input)
+void Xpm::open(std::istream & input, const Args &)
 {
     My_XpmImage img;
 

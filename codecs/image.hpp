@@ -16,7 +16,6 @@ struct Early_exit: public std::exception
     const char * what() const noexcept;
 };
 
-
 // set to the size of the longest magic number
 constexpr std::size_t max_header_len = 12; // 12 bytes needed to identify JPEGs
 
@@ -57,6 +56,7 @@ public:
     void dither(const std::function<Color(const Color &)> & palette_fun);
     template <typename Iter> void dither(Iter palette_start, Iter palette_end);
 
+    virtual void open(std::istream & input, const Args & args);
     void convert(const Args & args) const;
 
     virtual void handle_extra_args(const Args & args);

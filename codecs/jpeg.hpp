@@ -22,7 +22,8 @@ inline bool is_jpeg(const Image::Header & header)
 class Jpeg final: public Image
 {
 public:
-    Jpeg(std::istream & input);
+    Jpeg() = default;
+    void open(std::istream & input, const Args & args) override;
 
     static void write(std::ostream & out, const Image & img, unsigned char bg, bool invert);
 };

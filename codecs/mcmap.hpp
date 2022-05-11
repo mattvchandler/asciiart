@@ -7,7 +7,9 @@
 class MCMap final: public Image
 {
 public:
-    MCMap(std::istream & input);
+    MCMap() = default;
+    void open(std::istream & input, const Args & args) override;
+
     static void write(std::ostream & out, const Image & img, unsigned char bg, bool invert);
 };
 #endif

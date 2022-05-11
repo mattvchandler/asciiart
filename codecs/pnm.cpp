@@ -45,7 +45,7 @@ std::uint16_t read_val(std::istream & in)
     }
 }
 
-Pnm::Pnm(std::istream & input)
+void Pnm::open(std::istream & input, const Args &)
 {
     input.exceptions(std::ios_base::badbit | std::ios_base::failbit);
 

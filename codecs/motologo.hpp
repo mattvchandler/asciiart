@@ -13,8 +13,11 @@ inline bool is_motologo(const Image::Header & header)
 class MotoLogo final: public Image
 {
 public:
-    MotoLogo(std::istream & input, const Args & args);
+    MotoLogo() = default;
+    void open(std::istream & input, const Args & args) override;
+
     void handle_extra_args(const Args & args) override;
+    bool supports_multiple_images() const override { return true; }
 
 private:
     bool list_ {false};

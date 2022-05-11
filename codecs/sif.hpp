@@ -6,6 +6,7 @@
 class Sif final: public Image
 {
 public:
-    Sif(std::istream & input);
+    Sif() = default;
+    void open(std::istream & input, const Args & args) override;
 };
 #endif // SIF_HPP

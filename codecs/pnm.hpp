@@ -29,7 +29,8 @@ inline bool is_pnm(const Image::Header & header)
 class Pnm final: public Image
 {
 public:
-    Pnm(std::istream & input);
+    Pnm() = default;
+    void open(std::istream & input, const Args & args) override;
 
     static void write_pbm(std::ostream & path, const Image & image, unsigned char bg, bool invert);
     static void write_pgm(std::ostream & path, const Image & image, unsigned char bg, bool invert);

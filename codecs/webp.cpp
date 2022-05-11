@@ -5,7 +5,7 @@
 #include <webp/decode.h>
 #include <webp/encode.h>
 
-Webp::Webp(std::istream & input)
+void Webp::open(std::istream & input, const Args &)
 {
     auto data = Image::read_input_to_memory(input);
 

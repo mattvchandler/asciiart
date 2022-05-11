@@ -14,6 +14,7 @@ inline bool is_srf(const Image::Header & header)
 class Srf final: public Image
 {
 public:
-    Srf(std::istream & input, const Args & args);
+    Srf() = default;
+    void open(std::istream & input, const Args & args) override;
 };
 #endif // SRF_HPP

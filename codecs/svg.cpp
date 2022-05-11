@@ -48,11 +48,11 @@ RsvgHandle * get_svg_handle(std::istream & input, const std::string & filename)
     return svg_handle;
 }
 
-Svg::Svg(std::istream & input, const std::string & filename)
+void Svg::open(std::istream & input, const Args & args)
 {
     RAII_stack rs;
 
-    RsvgHandle * svg_handle = get_svg_handle(input, filename);
+    RsvgHandle * svg_handle = get_svg_handle(input, args.input_filename);
     rs.push(svg_handle, g_object_unref);
 
     rsvg_handle_set_dpi(svg_handle, 75.0);

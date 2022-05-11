@@ -14,7 +14,8 @@ inline bool is_openexr(const Image::Header & header)
 class OpenEXR final: public Image
 {
 public:
-    OpenEXR(std::istream & input);
+    OpenEXR() = default;
+    void open(std::istream & input, const Args & args) override;
 
     static void write(std::ostream & out, const Image & img, bool invert);
 };

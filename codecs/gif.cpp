@@ -33,7 +33,7 @@ int read_fn(GifFileType* gif_file, GifByteType * data, int length) noexcept
     return in->gcount();
 }
 
-Gif::Gif(std::istream & input, const Args & args)
+void Gif::open(std::istream & input, const Args & args)
 {
     int error_code = GIF_OK;
     GifFileType * gif = DGifOpen(&input, read_fn, &error_code);

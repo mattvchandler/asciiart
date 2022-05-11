@@ -7,7 +7,7 @@
 
 enum class Encoding : std::uint8_t { none = 0, rle = 1 };
 
-Pcx::Pcx(std::istream & input)
+void Pcx::open(std::istream & input, const Args &)
 {
     const std::array<Color, 16> std_ega_palette
     {{

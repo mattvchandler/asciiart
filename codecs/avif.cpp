@@ -6,7 +6,7 @@
 #include "exif.hpp"
 #endif
 
-Avif::Avif(std::istream & input)
+void Avif::open(std::istream & input, const Args &)
 {
     auto data = Image::read_input_to_memory(input);
 

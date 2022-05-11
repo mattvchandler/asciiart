@@ -11,7 +11,7 @@
 #endif
 
 #ifdef FLIF_DEC_FOUND
-Flif::Flif(std::istream & input)
+void Flif::open(std::istream & input, const Args &)
 {
     auto data = Image::read_input_to_memory(input);
 

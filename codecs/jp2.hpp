@@ -23,9 +23,13 @@ class Jp2 final: public Image
 {
 public:
     enum class Type {JP2, JPX, JPT};
-    Jp2(std::istream & input, Type type);
+    Jp2(Type type): type_{type} {}
+    void open(std::istream & input, const Args & args) override;
 
     static void write(std::ostream & out, const Image & img, bool invert);
+
+private:
+    Type type_;
 };
 #endif
 #endif // JP2_HPP

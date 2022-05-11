@@ -547,7 +547,7 @@ auto nbt_read_map(std::istream & input)
     return img;
 }
 
-MCMap::MCMap(std::istream & input)
+void MCMap::open(std::istream & input, const Args &)
 {
     auto dc=zlib_decompress(input);
     std::istringstream decompressed_input{dc};

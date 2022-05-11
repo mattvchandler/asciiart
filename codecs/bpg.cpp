@@ -6,7 +6,7 @@
 #include "exif.hpp"
 #endif
 
-Bpg::Bpg(std::istream & input)
+void Bpg::open(std::istream & input, const Args &)
 {
     auto data = Image::read_input_to_memory(input);
 

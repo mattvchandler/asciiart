@@ -16,8 +16,12 @@ inline bool is_gif(const Image::Header & header)
 class Gif final: public Image
 {
 public:
-    Gif(std::istream & input, const Args & args);
+    Gif() = default;
+    void open(std::istream & input, const Args & args) override;
+
     void handle_extra_args(const Args & args) override;
+    bool supports_multiple_images() const override { return true; }
+    bool supports_animation() const override { return true; }
 
     static void write(std::ostream & out, const Image & img, bool invert);
 

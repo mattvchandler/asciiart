@@ -91,12 +91,12 @@ void warn_cb(const char * msg, void*)
     std::cerr<<"[WARNING]: "<<msg<<'\n';
 }
 
-Jp2::Jp2(std::istream & input, Type type)
+void Jp2::open(std::istream & input, const Args &)
 {
     JP2_io reader {0, Image::read_input_to_memory(input)};
 
     auto codec_type {OPJ_CODEC_JP2};
-    switch(type)
+    switch(type_)
     {
         case Type::JP2:
             codec_type = OPJ_CODEC_JP2;

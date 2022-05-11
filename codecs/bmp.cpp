@@ -6,7 +6,7 @@
 
 #include "bmp_common.hpp"
 
-Bmp::Bmp(std::istream & input)
+void Bmp::open(std::istream & input, const Args &)
 {
     input.exceptions(std::ios_base::badbit | std::ios_base::failbit);
     try

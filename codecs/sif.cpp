@@ -2,7 +2,7 @@
 
 #include <stdexcept>
 
-Sif::Sif(std::istream & input)
+void Sif::open(std::istream & input, const Args &)
 {
     input.exceptions(std::ios_base::badbit | std::ios_base::failbit);
     try

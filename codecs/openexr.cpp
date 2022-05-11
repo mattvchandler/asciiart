@@ -100,7 +100,7 @@ private:
     std::size_t pos_ {0};
 };
 
-OpenEXR::OpenEXR(std::istream & input)
+void OpenEXR::open(std::istream & input, const Args &)
 {
     try
     {

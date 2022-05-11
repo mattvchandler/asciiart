@@ -95,7 +95,7 @@ exif::Orientation get_orientation([[maybe_unused]] const jpeg_decompress_struct 
     return exif::Orientation::r_0;
 };
 
-Jpeg::Jpeg(std::istream & input)
+void Jpeg::open(std::istream & input, const Args &)
 {
     std::vector<unsigned char> buffer;
 

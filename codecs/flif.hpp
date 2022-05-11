@@ -16,7 +16,8 @@ class Flif final: public Image
 {
 public:
     #ifdef FLIF_DEC_FOUND
-    Flif(std::istream & input);
+    Flif() = default;
+    void open(std::istream & input, const Args & args) override;
     #endif
 
     #ifdef FLIF_ENC_FOUND

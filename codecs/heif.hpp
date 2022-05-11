@@ -34,7 +34,8 @@ inline bool is_heif(const Image::Header & header)
 class Heif final: public Image
 {
 public:
-    Heif(std::istream & input);
+    Heif() = default;
+    void open(std::istream & input, const Args & args) override;
 
     static void write(std::ostream & out, const Image & img, bool invert);
 };
