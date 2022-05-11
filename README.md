@@ -4,6 +4,7 @@ Display an image in the terminal using ANSI colors, or ASCII art.
 
 Supports a variety of image formats:
 
+* ANI
 * AVIF (requires libavif)
 * BMP
 * CUR / ICO
@@ -56,4 +57,6 @@ formats:
 
 Add support for
 
+* APNG, MNG?
+* JNG?
 * JPEG XR? XS? XT? LS? HDR?

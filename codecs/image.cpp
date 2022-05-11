@@ -21,6 +21,7 @@
 #include <byteswap.h>
 #endif
 
+#include "ani.hpp"
 #include "avif.hpp"
 #include "bmp.hpp"
 #include "bpg.hpp"
@@ -592,7 +593,7 @@ void Image::convert(const Args & args) const
 
     auto & ext = args.convert_filename->second;
 
-    if(false); // dummy statement
+    if(false); // dummy statement so we don't have weirdness with all of the #ifdefs below
     #ifdef AVIF_FOUND
     else if(ext == ".avif")
         Avif::write(out, *this, args.invert);
@@ -715,7 +716,11 @@ bool Image::supports_animation() const { return false; }
     switch(args.force_file)
     {
     case Args::Force_file::detect:
-        if(is_avif(header))
+        if(is_ani(header))
+        {
+            img = std::make_unique<Ani>();
+        }
+        else if(is_avif(header))
         {
             #ifdef AVIF_FOUND
             img = std::make_unique<Avif>();

@@ -11,7 +11,6 @@ inline bool is_ico(const Image::Header & header)
            std::equal(std::begin(cur_header), std::end(cur_header), std::begin(header), Image::header_cmp);
 }
 
-// TODO: animate cursors?
 class Ico final: public Image
 {
 public:

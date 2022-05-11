@@ -93,13 +93,14 @@ void Gif::open(std::istream & input, const Args & args)
             }
 
             int transparency_ind = -1;
-            float frame_delay = 0.0f;
+            float frame_delay = args.animation_frame_delay;
 
             GraphicsControlBlock gcb;
             if(DGifSavedExtensionToGCB(gif, f, &gcb) == GIF_OK)
             {
                 transparency_ind = gcb.TransparentColor;
-                frame_delay = 0.01f * gcb.DelayTime;
+                if(args.animation_frame_delay > 0.0f)
+                    frame_delay = 0.01f * gcb.DelayTime;
             }
 
             auto left = gif->SavedImages[f].ImageDesc.Left;

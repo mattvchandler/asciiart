@@ -133,6 +133,7 @@ private:
 
 static const std::vector<std::string> input_formats =
 {
+    "ANI",
     #ifdef AVIF_FOUND
     "AVIF",
     #endif

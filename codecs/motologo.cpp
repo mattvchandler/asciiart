@@ -204,6 +204,9 @@ void MotoLogo::handle_extra_args(const Args & args)
 
             image_name_ = sub_args["image-name"].as<std::string>();
         }
+
+        if(args.animate && args.image_no)
+            throw std::runtime_error{options.help(args.help_text) + "\nCan't specify --image-no with --animate"};
     }
     catch(const cxxopts::OptionException & e)
     {

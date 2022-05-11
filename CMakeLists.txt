@@ -55,6 +55,7 @@ add_executable(asciiart
     main.cpp
     codecs/image.cpp
     codecs/sub_args.cpp
+    codecs/ani.cpp
     codecs/bmp.cpp
     codecs/bmp_common.cpp
     codecs/ico.cpp
