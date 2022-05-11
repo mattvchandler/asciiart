@@ -144,28 +144,25 @@ void Gif::open(std::istream & input, const Args & args)
 
 void Gif::handle_extra_args(const Args & args)
 {
-    if(!std::empty(args.extra_args))
+    auto options = Sub_args{"GIF"};
+    try
     {
-        auto options = Sub_args{"GIF"};
-        try
-        {
-            options.add_options()
-                ("not-composed", "Show only information for the given frame, not those leading up to it");
+        options.add_options()
+            ("not-composed", "Show only information for the given frame, not those leading up to it");
 
-            auto sub_args = options.parse(args.extra_args);
+        auto sub_args = options.parse(args.extra_args);
 
-            composed_ = !sub_args.count("not-composed");
+        composed_ = !sub_args.count("not-composed");
 
-            if(args.animate && !composed_)
-                throw std::runtime_error{options.help(args.help_text) + "\nCan't specify --not-composed with --animate"};
+        if(args.animate && !composed_)
+            throw std::runtime_error{options.help(args.help_text) + "\nCan't specify --not-composed with --animate"};
 
-            if(args.animate && args.image_no)
-                throw std::runtime_error{options.help(args.help_text) + "\nCan't specify --image-no with --animate"};
-        }
-        catch(const cxxopts::OptionException & e)
-        {
-            throw std::runtime_error{options.help(args.help_text) + '\n' + e.what()};
-        }
+        if(args.animate && args.image_no)
+            throw std::runtime_error{options.help(args.help_text) + "\nCan't specify --image-no with --animate"};
+    }
+    catch(const cxxopts::OptionException & e)
+    {
+        throw std::runtime_error{options.help(args.help_text) + '\n' + e.what()};
     }
 }
 

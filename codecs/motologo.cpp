@@ -186,30 +186,27 @@ void MotoLogo::open(std::istream & input, const Args & args)
 
 void MotoLogo::handle_extra_args(const Args & args)
 {
-    if(!std::empty(args.extra_args))
+    auto options = Sub_args{"MotoLogo"};
+    try
     {
-        auto options = Sub_args{"MotoLogo"};
-        try
+        options.add_options()
+            ("list-images", "list all image names contained in input file")
+            ("image-name", "image name to extract", cxxopts::value<std::string>()->default_value("logo_boot"), "IMAGE_NAME");
+
+        auto sub_args = options.parse(args.extra_args);
+
+        list_ = sub_args.count("list-images");
+
+        if(sub_args.count("image-name"))
         {
-            options.add_options()
-                ("list-images", "list all image names contained in input file")
-                ("image-name", "image name to extract", cxxopts::value<std::string>()->default_value("logo_boot"), "IMAGE_NAME");
+            if(args.image_no)
+                throw std::runtime_error{options.help(args.help_text) + "\nCan't specify --image-name with --image-no"};
 
-            auto sub_args = options.parse(args.extra_args);
-
-            list_ = sub_args.count("list-images");
-
-            if(sub_args.count("image-name"))
-            {
-                if(args.image_no)
-                    throw std::runtime_error{options.help(args.help_text) + "\nCan't specify --image-name with --image-no"};
-
-                image_name_ = sub_args["image-name"].as<std::string>();
-            }
+            image_name_ = sub_args["image-name"].as<std::string>();
         }
-        catch(const cxxopts::OptionException & e)
-        {
-            throw std::runtime_error{options.help(args.help_text) + '\n' + e.what()};
-        }
+    }
+    catch(const cxxopts::OptionException & e)
+    {
+        throw std::runtime_error{options.help(args.help_text) + '\n' + e.what()};
     }
 }

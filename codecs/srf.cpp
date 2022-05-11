@@ -187,38 +187,35 @@ void Srf::open(std::istream & input, const Args & args)
 
 void Srf::handle_extra_args(const Args & args)
 {
-    if(!std::empty(args.extra_args))
+    auto options = Sub_args{"SRF"};
+    try
     {
-        auto options = Sub_args{"SRF"};
-        try
+        options.add_options()
+            ("frame-no", "Display only a slected angle/frame of the requested image (requires --image-no)", cxxopts::value<unsigned int>(), "FRAME_NO")
+            ("frame-count", "Print number of frames in the requested image (requires --image-no)");
+
+        auto sub_args = options.parse(args.extra_args);
+
+        if(sub_args.count("frame-count"))
         {
-            options.add_options()
-                ("frame-no", "Display only a slected angle/frame of the requested image (requires --image-no)", cxxopts::value<unsigned int>(), "FRAME_NO")
-                ("frame-count", "Print number of frames in the requested image (requires --image-no)");
-
-            auto sub_args = options.parse(args.extra_args);
-
-            if(sub_args.count("frame-count"))
-            {
-                std::cout<<num_frames<<"\n";
-                throw Early_exit{};
-            }
-
-            if(sub_args.count("frame-no"))
-                frame_no_ = sub_args["frame-no"].as<unsigned int>();
-
-            if(!args.image_no && frame_no_)
-                throw std::runtime_error{options.help(args.help_text) + "\nMust specify --image-no with --frame-no"};
-
-            if(!args.image_no && args.animate)
-                throw std::runtime_error{options.help(args.help_text) + "\nMust specify --image-no with --animate for SRF images"};
-
-            if(args.animate && frame_no_)
-                throw std::runtime_error{options.help(args.help_text) + "\nCan't specify --frame-no with --animate"};
+            std::cout<<num_frames<<"\n";
+            throw Early_exit{};
         }
-        catch(const cxxopts::OptionException & e)
-        {
-            throw std::runtime_error{options.help(args.help_text) + '\n' + e.what()};
-        }
+
+        if(sub_args.count("frame-no"))
+            frame_no_ = sub_args["frame-no"].as<unsigned int>();
+
+        if(!args.image_no && frame_no_)
+            throw std::runtime_error{options.help(args.help_text) + "\nMust specify --image-no with --frame-no"};
+
+        if(!args.image_no && args.animate)
+            throw std::runtime_error{options.help(args.help_text) + "\nMust specify --image-no with --animate for SRF images"};
+
+        if(args.animate && frame_no_)
+            throw std::runtime_error{options.help(args.help_text) + "\nCan't specify --frame-no with --animate"};
+    }
+    catch(const cxxopts::OptionException & e)
+    {
+        throw std::runtime_error{options.help(args.help_text) + '\n' + e.what()};
     }
 }
