@@ -49,7 +49,6 @@ constexpr auto image_magic_size = 8u;
 
 MotoLogo::MotoLogo(std::istream & input, const Args & args)
 {
-    handle_extra_args(args);
     input.exceptions(std::ios_base::badbit | std::ios_base::failbit);
     try
     {

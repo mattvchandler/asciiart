@@ -91,9 +91,8 @@ void warn_cb(const char * msg, void*)
     std::cerr<<"[WARNING]: "<<msg<<'\n';
 }
 
-Jp2::Jp2(std::istream & input, Type type, const Args & args)
+Jp2::Jp2(std::istream & input, Type type)
 {
-    handle_extra_args(args);
     JP2_io reader {0, Image::read_input_to_memory(input)};
 
     auto codec_type {OPJ_CODEC_JP2};

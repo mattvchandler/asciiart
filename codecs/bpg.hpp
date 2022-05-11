@@ -15,7 +15,7 @@ inline bool is_bpg(const Image::Header & header)
 class Bpg final: public Image
 {
 public:
-    Bpg(std::istream & input, const Args & args);
+    Bpg(std::istream & input);
 };
 #endif
 #endif // BPG_HPP

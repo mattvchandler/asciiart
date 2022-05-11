@@ -11,10 +11,11 @@ inline bool is_ico(const Image::Header & header)
            std::equal(std::begin(cur_header), std::end(cur_header), std::begin(header), Image::header_cmp);
 }
 
+// TODO: animate cursors?
 class Ico final: public Image
 {
 public:
-    Ico(std::istream & input, const Args & args);
+    Ico(std::istream & input);
 
     static void write_cur(std::ostream & out, const Image & img, bool invert);
     static void write_ico(std::ostream & out, const Image & img, bool invert);

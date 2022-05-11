@@ -2,9 +2,8 @@
 
 #include <stdexcept>
 
-Sif::Sif(std::istream & input, const Args & args)
+Sif::Sif(std::istream & input)
 {
-    handle_extra_args(args);
     input.exceptions(std::ios_base::badbit | std::ios_base::failbit);
     try
     {

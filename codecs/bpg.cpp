@@ -6,9 +6,8 @@
 #include "exif.hpp"
 #endif
 
-Bpg::Bpg(std::istream & input, const Args & args)
+Bpg::Bpg(std::istream & input)
 {
-    handle_extra_args(args);
     auto data = Image::read_input_to_memory(input);
 
     auto decoder = bpg_decoder_open();

@@ -6,7 +6,7 @@
 class Pcx final: public Image
 {
 public:
-    Pcx(std::istream & input, const Args & args);
+    Pcx(std::istream & input);
 
     static void write(std::ostream & out, const Image & img, unsigned char bg, bool invert);
 };

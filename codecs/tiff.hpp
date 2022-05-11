@@ -16,7 +16,7 @@ inline bool is_tiff(const Image::Header & header)
 class Tiff final: public Image
 {
 public:
-    Tiff(std::istream & input, const Args & args);
+    Tiff(std::istream & input);
 
     static void write(std::ostream & out, const Image & img, bool invert);
 };

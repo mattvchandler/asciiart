@@ -6,6 +6,6 @@
 class Sif final: public Image
 {
 public:
-    Sif(std::istream & input, const Args & args);
+    Sif(std::istream & input);
 };
 #endif // SIF_HPP

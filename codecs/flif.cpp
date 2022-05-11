@@ -11,9 +11,8 @@
 #endif
 
 #ifdef FLIF_DEC_FOUND
-Flif::Flif(std::istream & input, const Args & args)
+Flif::Flif(std::istream & input)
 {
-    handle_extra_args(args);
     auto data = Image::read_input_to_memory(input);
 
     auto decoder = flif_create_decoder();

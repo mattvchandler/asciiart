@@ -45,9 +45,8 @@ std::uint16_t read_val(std::istream & in)
     }
 }
 
-Pnm::Pnm(std::istream & input, const Args & args)
+Pnm::Pnm(std::istream & input)
 {
-    handle_extra_args(args);
     input.exceptions(std::ios_base::badbit | std::ios_base::failbit);
 
     std::string type;

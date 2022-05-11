@@ -10,6 +10,7 @@ inline bool is_srf(const Image::Header & header)
     return std::equal(std::begin(srf_header), std::end(srf_header), std::begin(header), Image::header_cmp);
 }
 
+// TODO: animate and select images
 class Srf final: public Image
 {
 public:

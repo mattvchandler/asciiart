@@ -221,9 +221,8 @@ void read_compressed(std::istream & in, const Tga_data & tga, std::vector<std::v
     }
 }
 
-Tga::Tga(std::istream & input, const Args & args)
+Tga::Tga(std::istream & input)
 {
-    handle_extra_args(args);
     input.exceptions(std::ios_base::badbit | std::ios_base::failbit);
     try
     {

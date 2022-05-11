@@ -15,6 +15,7 @@ class MotoLogo final: public Image
 public:
     MotoLogo(std::istream & input, const Args & args);
     void handle_extra_args(const Args & args) override;
+
 private:
     bool list_ {false};
     std::string image_name_ {"logo_boot"};

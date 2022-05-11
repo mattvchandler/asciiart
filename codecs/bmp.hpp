@@ -12,7 +12,7 @@ inline bool is_bmp(const Image::Header & header)
 class Bmp final: public Image
 {
 public:
-    Bmp(std::istream & input, const Args & args);
+    Bmp(std::istream & input);
 
     static void write(std::ostream & out, const Image & img, bool invert);
 };

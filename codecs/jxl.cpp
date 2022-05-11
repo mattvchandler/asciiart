@@ -12,9 +12,8 @@
 #include "exif.hpp"
 #endif
 
-Jxl::Jxl(std::istream & input, const Args & args)
+Jxl::Jxl(std::istream & input)
 {
-    handle_extra_args(args);
     std::cerr<<"Warning: JPEG XL input support is experimental. Success will vary depending on the image and jpeg xl library version\n";
 
     auto decoder = JxlDecoderMake(nullptr);

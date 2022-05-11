@@ -7,7 +7,7 @@
 class Svg final: public Image
 {
 public:
-    Svg(std::istream & input, const std::string & filename, const Args & args);
+    Svg(std::istream & input, const std::string & filename);
 };
 #endif
 #endif // SVG_HPP

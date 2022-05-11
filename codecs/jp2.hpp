@@ -23,7 +23,7 @@ class Jp2 final: public Image
 {
 public:
     enum class Type {JP2, JPX, JPT};
-    Jp2(std::istream & input, Type type, const Args & args);
+    Jp2(std::istream & input, Type type);
 
     static void write(std::ostream & out, const Image & img, bool invert);
 };

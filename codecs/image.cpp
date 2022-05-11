@@ -668,8 +668,11 @@ void Image::convert(const Args & args) const
 void Image::handle_extra_args(const Args & args)
 {
     if(!std::empty(args.extra_args))
-        throw std::runtime_error{args.help_text + "\nUnrecognized option '" + args.extra_args.front() + "'\n"};
+        throw std::runtime_error{args.help_text + "\nUnrecognized option '" + args.extra_args.front()};
 }
+
+bool Image::supports_multiple_images() const { return false; }
+bool Image::supports_animation() const { return false; }
 
 [[nodiscard]] std::unique_ptr<Image> get_image_data(const Args & args)
 {
@@ -704,25 +707,26 @@ void Image::handle_extra_args(const Args & args)
     if(input.bad())
         throw std::runtime_error{"Unable to rewind stream"};
 
+    std::unique_ptr<Image> img;
     switch(args.force_file)
     {
     case Args::Force_file::detect:
         if(is_avif(header))
         {
             #ifdef AVIF_FOUND
-            return std::make_unique<Avif>(input, args);
+            return std::make_unique<Avif>(input);
             #else
             throw std::runtime_error{"Not compiled with AVIF support"};
             #endif
         }
         else if(is_bmp(header))
         {
-            return std::make_unique<Bmp>(input, args);
+            return std::make_unique<Bmp>(input);
         }
         else if(is_bpg(header))
         {
             #ifdef BPG_FOUND
-            return std::make_unique<Bpg>(input, args);
+            return std::make_unique<Bpg>(input);
             #else
             throw std::runtime_error{"Not compiled with BPG support"};
             #endif
@@ -730,7 +734,7 @@ void Image::handle_extra_args(const Args & args)
         else if(is_flif(header))
         {
             #ifdef FLIF_DEC_FOUND
-            return std::make_unique<Flif>(input, args);
+            return std::make_unique<Flif>(input);
             #else
             throw std::runtime_error{"Not compiled with FLIF support"};
             #endif
@@ -746,19 +750,19 @@ void Image::handle_extra_args(const Args & args)
         else if(is_heif(header))
         {
             #ifdef HEIF_FOUND
-            return std::make_unique<Heif>(input, args);
+            return std::make_unique<Heif>(input);
             #else
             throw std::runtime_error{"Not compiled with HEIF support"};
             #endif
         }
         else if(is_ico(header))
         {
-            return std::make_unique<Ico>(input, args);
+            return std::make_unique<Ico>(input);
         }
         else if(is_jp2(header))
         {
             #ifdef JP2_FOUND
-            return std::make_unique<Jp2>(input, Jp2::Type::JP2, args);
+            return std::make_unique<Jp2>(input, Jp2::Type::JP2);
             #else
             throw std::runtime_error{"Not compiled with JPEG 2000 support"};
             #endif
@@ -766,7 +770,7 @@ void Image::handle_extra_args(const Args & args)
         else if(is_jpx(header))
         {
             #ifdef JP2_FOUND
-            return std::make_unique<Jp2>(input, Jp2::Type::JPX, args);
+            return std::make_unique<Jp2>(input, Jp2::Type::JPX);
             #else
             throw std::runtime_error{"Not compiled with JPEG 2000 support"};
             #endif
@@ -774,7 +778,7 @@ void Image::handle_extra_args(const Args & args)
         else if(is_openexr(header))
         {
             #ifdef OpenEXR_FOUND
-            return std::make_unique<OpenEXR>(input, args);
+            return std::make_unique<OpenEXR>(input);
             #else
             throw std::runtime_error{"Not compiled with OpenExr support"};
             #endif
@@ -782,7 +786,7 @@ void Image::handle_extra_args(const Args & args)
         else if(is_jpeg(header))
         {
             #ifdef JPEG_FOUND
-            return std::make_unique<Jpeg>(input, args);
+            return std::make_unique<Jpeg>(input);
             #else
             throw std::runtime_error{"Not compiled with JPEG support"};
             #endif
@@ -790,7 +794,7 @@ void Image::handle_extra_args(const Args & args)
         else if(is_jxl(header))
         {
             #ifdef JXL_FOUND
-            return std::make_unique<Jxl>(input, args);
+            return std::make_unique<Jxl>(input);
             #else
             throw std::runtime_error{"Not compiled with JPEG XL support"};
             #endif
@@ -809,7 +813,7 @@ void Image::handle_extra_args(const Args & args)
         }
         else if(is_pnm(header))
         {
-            return std::make_unique<Pnm>(input, args);
+            return std::make_unique<Pnm>(input);
         }
         else if(is_srf(header))
         {
@@ -818,7 +822,7 @@ void Image::handle_extra_args(const Args & args)
         else if(is_tiff(header))
         {
             #ifdef TIFF_FOUND
-            return std::make_unique<Tiff>(input, args);
+            return std::make_unique<Tiff>(input);
             #else
             throw std::runtime_error{"Not compiled with TIFF support"};
             #endif
@@ -826,7 +830,7 @@ void Image::handle_extra_args(const Args & args)
         else if(is_webp(header))
         {
             #ifdef WEBP_FOUND
-            return std::make_unique<Webp>(input, args);
+            return std::make_unique<Webp>(input);
             #else
             throw std::runtime_error{"Not compiled with WEBP support"};
             #endif
@@ -834,31 +838,31 @@ void Image::handle_extra_args(const Args & args)
         else if(extension == ".dat")
         {
             #ifdef ZLIB_FOUND
-            return std::make_unique<MCMap>(input, args);
+            return std::make_unique<MCMap>(input);
             #else
             throw std::runtime_error{"Not compiled with Minecraft map item / .dat support"};
             #endif
         }
         else if(extension == ".pcx")
         {
-            return std::make_unique<Pcx>(input, args);
+            return std::make_unique<Pcx>(input);
         }
         else if(extension == ".svg" || extension == ".svgz")
         {
             #ifdef SVG_FOUND
-            return std::make_unique<Svg>(input, args.input_filename, args);
+            return std::make_unique<Svg>(input, args.input_filename);
             #else
             throw std::runtime_error{"Not compiled with SVG support"};
             #endif
         }
         else if(extension == ".tga")
         {
-            return std::make_unique<Tga>(input, args);
+            return std::make_unique<Tga>(input);
         }
         else if(extension == ".xpm")
         {
             #ifdef XPM_FOUND
-            return std::make_unique<Xpm>(input, args);
+            return std::make_unique<Xpm>(input);
             #else
             throw std::runtime_error{"Not compiled with XPM support"};
             #endif
@@ -866,7 +870,7 @@ void Image::handle_extra_args(const Args & args)
         else if(extension == ".jpt")
         {
             #ifdef JP2_FOUND
-            return std::make_unique<Jp2>(input, Jp2::Type::JPT, args);
+            return std::make_unique<Jp2>(input, Jp2::Type::JPT);
             #else
             throw std::runtime_error{"Not compiled with JPEG 2000 support"};
             #endif
@@ -878,29 +882,43 @@ void Image::handle_extra_args(const Args & args)
         break;
     #ifdef ZLIB_FOUND
     case Args::Force_file::mcmap:
-        return std::make_unique<MCMap>(input, args);
+        return std::make_unique<MCMap>(input);
         break;
     #endif
     case Args::Force_file::pcx:
-        return std::make_unique<Pcx>(input, args);
+        return std::make_unique<Pcx>(input);
         break;
     #ifdef SVG_FOUND
     case Args::Force_file::svg:
-        return std::make_unique<Svg>(input, args.input_filename, args);
+        return std::make_unique<Svg>(input, args.input_filename);
         break;
     #endif
     case Args::Force_file::tga:
-        return std::make_unique<Tga>(input, args);
+        return std::make_unique<Tga>(input);
         break;
     #ifdef XPM_FOUND
     case Args::Force_file::xpm:
-        return std::make_unique<Xpm>(input, args);
+        return std::make_unique<Xpm>(input);
         break;
     #endif
     case Args::Force_file::aoc_2019_sif:
-        return std::make_unique<Sif>(input, args);
+        return std::make_unique<Sif>(input);
         break;
     default:
         throw std::runtime_error{"Unhandled file format switch"};
     }
+
+    if(!img->supports_multiple_images() && args.image_no > 0)
+        throw std::runtime_error{args.help_text + "\nImage type doesn't support multiple images"};
+
+    if(!img->supports_animation() && args.animate)
+        throw std::runtime_error{args.help_text + "\nImage type doesn't support animation"};
+
+    if(!img->supports_multiple_images() && args.get_image_count)
+    {
+        std::cout<<"0\n";
+        throw Early_exit{};
+    }
+
+    img->handle_extra_args(args);
 }

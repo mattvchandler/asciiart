@@ -82,7 +82,6 @@ Color get_image_color(std::size_t row,
 
 Srf::Srf(std::istream & input, const Args & args)
 {
-    handle_extra_args(args);
     input.exceptions(std::ios_base::badbit | std::ios_base::failbit);
     try
     {

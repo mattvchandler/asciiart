@@ -19,7 +19,7 @@ inline bool is_jxl(const Image::Header & header)
 class Jxl final: public Image
 {
 public:
-    Jxl(std::istream & input, const Args & args);
+    Jxl(std::istream & input);
 
     static void write(std::ostream & out, const Image & img, bool invert);
 };

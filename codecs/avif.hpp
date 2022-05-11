@@ -29,7 +29,7 @@ inline bool is_avif(const Image::Header & header)
 class Avif final: public Image
 {
 public:
-    Avif(std::istream & input, const Args & args);
+    Avif(std::istream & input);
 
     static void write(std::ostream & out, const Image & img, bool invert);
 };

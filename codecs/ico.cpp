@@ -17,9 +17,8 @@ struct Ico_header
     std::uint32_t offset {0};
 };
 
-Ico::Ico(std::istream & input, const Args & args)
+Ico::Ico(std::istream & input)
 {
-    handle_extra_args(args);
     input.exceptions(std::ios_base::badbit | std::ios_base::failbit);
     try
     {
@@ -51,7 +50,7 @@ Ico::Ico(std::istream & input, const Args & args)
         if(is_png(header))
         {
             #ifdef PNG_FOUND
-            Png png_img {input, args};
+            Png png_img {input, Args{}};
             swap(png_img);
             #else
             throw std::runtime_error{"Could not read PNG encoded ICO / CUR: Not compiled with PNG support"};
