@@ -109,10 +109,7 @@ void Gif::open(std::istream & input, const Args & args)
 
             if(left + sub_width > width_ || top + sub_height > height_)
             {
-                if(args.animate)
-                {
-                    DGifCloseFile(gif, NULL);
-                }
+                DGifCloseFile(gif, NULL);
                 throw std::runtime_error{"GIF has wrong size or offset"};
             }
 

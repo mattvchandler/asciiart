@@ -10,11 +10,17 @@ inline bool is_srf(const Image::Header & header)
     return std::equal(std::begin(srf_header), std::end(srf_header), std::begin(header), Image::header_cmp);
 }
 
-// TODO: animate and select images
 class Srf final: public Image
 {
 public:
     Srf() = default;
     void open(std::istream & input, const Args & args) override;
+
+    void handle_extra_args(const Args & args) override;
+    bool supports_animation() const override { return true; }
+    bool supports_multiple_images() const override { return true; }
+
+private:
+    std::optional<unsigned int> frame_no_;
 };
 #endif // SRF_HPP
