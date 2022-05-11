@@ -62,11 +62,17 @@ MotoLogo::MotoLogo(std::istream & input, const Args & args)
         pos += magic_size + sizeof(directory_size);
 
         const auto num_images = (directory_size - magic_size - sizeof(directory_size)) / dir_entry_size;
+        if(args.image_no && *args.image_no >= num_images)
+            throw std::runtime_error{"Error reading MotoLogo: image " + std::to_string(*args.image_no) + " is out of range (0-" + std::to_string(num_images) + ")"};
+        if(args.get_image_count)
+        {
+            std::cout<<num_images<<'\n';
+            throw Early_exit{};
+        }
 
         std::uint32_t target_offset{0}, target_size{0};
         bool target_found = false;
 
-        // find the 'logo_boot' image, or failing that use the first image found
         for(auto i = 0u; i < num_images; ++i)
         {
             std::uint32_t offset, size;
@@ -82,7 +88,8 @@ MotoLogo::MotoLogo(std::istream & input, const Args & args)
             {
                 std::cout<<"  "<<name<<'\n';
             }
-            else if(name == image_name_)
+            else if((args.image_no && *args.image_no == i) ||
+                    (!args.image_no && name == image_name_))
             {
                 target_offset = offset;
                 target_size = size;
@@ -95,7 +102,7 @@ MotoLogo::MotoLogo(std::istream & input, const Args & args)
             throw Early_exit{};
 
         if(!target_found)
-            throw std::runtime_error{"Requested image '" + image_name_ + "' not found in MotoLogo file"};
+            throw std::runtime_error{"Error reading MotoLogo: requested image '" + image_name_ + "' not found in MotoLogo file"};
 
         input.ignore(target_offset - pos);
 
@@ -186,14 +193,19 @@ void MotoLogo::handle_extra_args(const Args & args)
         {
             options.add_options()
                 ("list-images", "list all image names contained in input file")
-                ("image", "image name to extract", cxxopts::value<std::string>()->default_value("logo_boot"), "IMAGE_NAME");
+                ("image-name", "image name to extract", cxxopts::value<std::string>()->default_value("logo_boot"), "IMAGE_NAME");
 
             auto sub_args = options.parse(args.extra_args);
 
             list_ = sub_args.count("list-images");
 
-            if(sub_args.count("image"))
-                image_name_ = sub_args["image"].as<std::string>();
+            if(sub_args.count("image-name"))
+            {
+                if(args.image_no)
+                    throw std::runtime_error{options.help(args.help_text) + "\nCan't specify --image-name with --image-no"};
+
+                image_name_ = sub_args["image-name"].as<std::string>();
+            }
         }
         catch(const cxxopts::OptionException & e)
         {

@@ -52,8 +52,9 @@ Gif::Gif(std::istream & input, const Args & args)
         throw Early_exit{};
     }
 
-    if(args.image_no >= static_cast<decltype(args.image_no)>(gif->ImageCount))
-        throw std::runtime_error{"Error reading GIF: frame " + std::to_string(args.image_no) + " is out of range (0-" + std::to_string(gif->ImageCount - 1) + ")"};
+    auto image_no = args.image_no.value_or(0u);
+    if(image_no >= static_cast<decltype(image_no)>(gif->ImageCount))
+        throw std::runtime_error{"Error reading GIF: frame " + std::to_string(image_no) + " is out of range (0-" + std::to_string(gif->ImageCount - 1) + ")"};
 
     set_size(gif->SWidth, gif->SHeight);
 
@@ -68,8 +69,8 @@ Gif::Gif(std::istream & input, const Args & args)
 
     bool do_loop = args.animate && args.loop_animation;
     auto animator = std::unique_ptr<Animate>{};
-    auto start_frame = composed_ ? 0u : args.image_no;
-    auto frame_count = args.image_no + 1;
+    auto start_frame = composed_ ? 0u : image_no;
+    auto frame_count = image_no + 1;
     if(args.animate)
     {
         frame_count = gif->ImageCount;

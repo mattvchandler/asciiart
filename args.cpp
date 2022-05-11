@@ -289,7 +289,7 @@ static const std::vector<std::string> output_formats =
 
         const std::string multi_group = "Multiple image / animation (where input format support exists)";
         options.add_options(multi_group)
-            ("image-no",    "Get specified image or frame number",      cxxopts::value<unsigned int>()->default_value("0"), "IMAGE_NO")
+            ("image-no",    "Get specified image or frame number", cxxopts::value<unsigned int>(), "IMAGE_NO")
             ("image-count", "Print number of images / frames and exit")
             ("animate",     "Animate image (implies --no-display)")
             ("loop",        "Loop animation (implies --animation")
@@ -528,7 +528,7 @@ static const std::vector<std::string> output_formats =
             disp_char,
             filetype,
             convert_path,
-            args["image-no"].as<unsigned int>(),
+            args.count("image-no") ? std::optional(args["image-no"].as<unsigned int>()) : std::nullopt,
             static_cast<bool>(args.count("image-count")),
             animate,
             static_cast<bool>(args.count("loop")),
