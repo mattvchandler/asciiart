@@ -17,113 +17,8 @@
 #include "../animate.hpp"
 #include "sub_args.hpp"
 
-/*
-void read_fn(png_structp png_ptr, png_bytep data, png_size_t length) noexcept
-{
-    auto in = static_cast<std::istream *>(png_get_io_ptr(png_ptr));
-    if(!in)
-        std::longjmp(png_jmpbuf(png_ptr), 1);
-
-    in->read(reinterpret_cast<char *>(data), length);
-    if(in->bad())
-        std::longjmp(png_jmpbuf(png_ptr), 1);
-}
-void Png::open(std::istream & input, const Args &)
-{
-    auto png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
-    if(!png_ptr)
-        throw std::runtime_error{"Error initializing libpng"};
-
-    auto info_ptr = png_create_info_struct(png_ptr);
-    if(!info_ptr)
-    {
-        png_destroy_read_struct(&png_ptr, nullptr, nullptr);
-        throw std::runtime_error{"Error initializing libpng info"};
-    }
-    auto end_info_ptr = png_create_info_struct(png_ptr);
-    if(!end_info_ptr)
-    {
-        png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
-        throw std::runtime_error{"Error initializing libpng info"};
-    }
-
-    if(setjmp(png_jmpbuf(png_ptr)))
-    {
-        png_destroy_read_strucpng_get_eXIf_1(png_ptr, info_ptr, &exif_length, &exif) != 0 ||t(&png_ptr, &info_ptr, &end_info_ptr);
-        throw std::runtime_error{"Error reading with libpng"};
-    }
-
-    // set custom read callback (to read from header / c++ istream)
-    png_set_read_fn(png_ptr, &input, read_fn);
-
-    // get image properties
-    png_read_info(png_ptr, info_ptr);
-
-    set_size(png_get_image_width(png_ptr, info_ptr), png_get_image_height(png_ptr, info_ptr));
-
-    auto bit_depth = png_get_bit_depth(png_ptr, info_ptr);
-    auto color_type = png_get_color_type(png_ptr, info_ptr);
-
-    // set transformations to convert to 32-bit RGBA
-    if(!(color_type & PNG_COLOR_MASK_COLOR))
-        png_set_gray_to_rgb(png_ptr);
-
-    if(color_type & PNG_COLOR_MASK_PALETTE)
-        png_set_palette_to_rgb(png_ptr);
-
-    if(!(color_type & PNG_COLOR_MASK_ALPHA))
-        png_set_add_alpha(png_ptr, 0xFF, PNG_FILLER_AFTER);
-
-    if(bit_depth == 16)
-        png_set_strip_16(png_ptr);
-
-    if(bit_depth < 8)
-        png_set_packing(png_ptr);
-
-    auto number_of_passes = png_set_interlace_handling(png_ptr);
-
-    png_read_update_info(png_ptr, info_ptr);
-
-    if(png_get_rowbytes(png_ptr, info_ptr) != width_ * 4)
-        throw std::runtime_error{"PNG bytes per row incorrect"};
-
-    for(decltype(number_of_passes) pass = 0; pass < number_of_passes; ++pass)
-    {
-        for(size_t row = 0; row < height_; ++row)
-        {
-            png_read_row(png_ptr, reinterpret_cast<unsigned char*>(std::data(image_data_[row])), NULL);
-        }
-    }
-
-    #ifdef EXIF_FOUND
-    auto orientation { exif::Orientation::r_0};
-
-    png_bytep exif = nullptr;
-    png_uint_32 exif_length = 0;
-
-    png_read_end(png_ptr, end_info_ptr);
-    if(png_get_eXIf_1(png_ptr, info_ptr, &exif_length, &exif) != 0 || png_get_eXIf_1(png_ptr, end_info_ptr, &exif_length, &exif) != 0)
-    {
-        if (exif_length > 1)
-        {
-            std::vector<unsigned char> exif_buf(exif_length + 6);
-            for(auto i = 0; i < 6; ++i)
-                exif_buf[i] = "Exif\0\0"[i];
-            std::copy(exif, exif + exif_length, std::begin(exif_buf) + 6);
-
-            orientation = exif::get_orientation(std::data(exif_buf), std::size(exif_buf));
-        }
-    }
-
-    transpose_image(orientation);
-    #endif
-
-    png_destroy_read_struct(&png_ptr, &info_ptr, &end_info_ptr);
-}
-*/
-
-enum class Dispose_op: std::uint8_t {NONE = 0u, BACKGROUND, PREVIOUS};
-enum class Blend_op: std::uint8_t {SOURCE = 0u, OVER};
+enum class Dispose_op: std::uint8_t {NONE = 0u, BACKGROUND = 1u, PREVIOUS = 2u};
+enum class Blend_op:   std::uint8_t {SOURCE = 0u, OVER = 1u};
 
 struct Animation_info
 {
@@ -140,8 +35,6 @@ struct Animation_info
 #endif
 
     // current frame data
-    bool fctl_set {false};
-    bool idat_set {false};
     bool include_default_image {true};
 
     struct Frame_chunk
@@ -324,13 +217,6 @@ void Png::open(std::istream & input, const Args & args)
     auto row_callback = [](png_structp png_ptr, png_bytep new_row, png_uint_32 row_num, int)
     {
         auto animation_info = reinterpret_cast<Animation_info *>(png_get_progressive_ptr(png_ptr));
-
-        if(!animation_info->idat_set)
-        {
-            animation_info->idat_set = true;
-            animation_info->include_default_image = animation_info->fctl_set;
-        }
-
         png_progressive_combine_row(png_ptr, reinterpret_cast<png_bytep>(std::data(animation_info->img->image_data_[row_num])), new_row);
     };
 
@@ -371,7 +257,8 @@ void Png::open(std::istream & input, const Args & args)
         }
         else if(chunk_name == "fcTL") // frame control
         {
-            animation_info->fctl_set = true;
+            if(!(chunk->location & PNG_AFTER_IDAT))
+                animation_info->include_default_image = true;
 
             auto & fc = animation_info->frame_chunks.emplace_back();
             fc.seq_no = png_get_uint_32(data); data += sizeof(std::uint32_t);
@@ -384,6 +271,9 @@ void Png::open(std::istream & input, const Args & args)
             fc.delay_den  = png_get_uint_16(data); data += sizeof(std::uint16_t);
             fc.dispose_op = static_cast<Dispose_op>(*data++);
             fc.blend_op   = static_cast<Blend_op>(*data++);
+
+            if(fc.dispose_op == Dispose_op::PREVIOUS)
+                std::cerr<<"APNG warning: DISPOSE_OP_PREVIOUS not supported\n";
 
             return 1;
         }
@@ -592,17 +482,33 @@ void Png::open(std::istream & input, const Args & args)
         {
             for(auto f = start_frame; f < frame_end; ++f)
             {
-                for(std::size_t row = 0; row < frames[f].img.height_; ++row)
+                auto &frame = frames[f];
+                for(std::size_t row = 0; row < frame.img.height_; ++row)
                 {
-                    for(std::size_t col = 0; col < frames[f].img.width_; ++col)
+                    for(std::size_t col = 0; col < frame.img.width_; ++col)
                     {
-                        // TODO: blending / discard ops
-                        image_data_[row + frames[f].y_offset][col + frames[f].x_offset] = frames[f].img.image_data_[row][col];
+                        if(frame.blend_op == Blend_op::OVER)
+                        {
+                            auto bg = frame.dispose_op == Dispose_op::BACKGROUND ? FColor{0.0f, 0.0f, 0.0f, 0.0f}
+                                                                                 : FColor{image_data_[row + frame.y_offset][col + frame.x_offset]};
+                            auto fg = FColor{frame.img.image_data_[row][col]};
+                            auto out = FColor{};
+                            out.a = fg.a + bg.a * (1.0f - fg.a);
+                            out.r = (fg.r * fg.a + bg.r * bg.a * (1.0f - fg.a)) / out.a;
+                            out.g = (fg.g * fg.a + bg.g * bg.a * (1.0f - fg.a)) / out.a;
+                            out.b = (fg.b * fg.a + bg.b * bg.a * (1.0f - fg.a)) / out.a;
+
+                            image_data_[row + frame.y_offset][col + frame.x_offset] = out;
+                        }
+                        else
+                        {
+                            image_data_[row + frame.y_offset][col + frame.x_offset] = frame.img.image_data_[row][col];
+                        }
                     }
                 }
                 if(args.animate)
                 {
-                    animator->set_frame_delay(frames[f].delay);
+                    animator->set_frame_delay(frame.delay);
                     animator->display(*this);
                     if(!animator->running())
                         break;
