@@ -20,6 +20,74 @@
 enum class Dispose_op: std::uint8_t {NONE = 0u, BACKGROUND = 1u, PREVIOUS = 2u};
 enum class Blend_op:   std::uint8_t {SOURCE = 0u, OVER = 1u};
 
+struct Libpng
+{
+    enum class Type {READ, WRITE} type;
+
+    png_structp png_ptr{nullptr};
+    png_infop info_ptr{nullptr};
+    inline static std::string error_msg = {"Generic error"};
+
+    explicit Libpng(Type t):
+        type{t}
+    {
+        if(type == Type::READ)
+            png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
+        else
+            png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
+
+        if(!png_ptr)
+            throw std::runtime_error{"Error initializing libpng"};
+
+        info_ptr = png_create_info_struct(png_ptr);
+        if(!info_ptr)
+        {
+            png_destroy_read_struct(&png_ptr, nullptr, nullptr);
+            throw std::runtime_error{"Error initializing libpng info"};
+        }
+    }
+    ~Libpng()
+    {
+        if(png_ptr && info_ptr)
+            png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
+    }
+
+    Libpng(const Libpng &) = delete;
+    Libpng & operator=(const Libpng &) = delete;
+
+    Libpng(Libpng && other):
+        png_ptr{std::move(other.png_ptr)},
+        info_ptr{std::move(other.info_ptr)}
+    {
+        other.png_ptr = nullptr;
+        other.info_ptr = nullptr;
+    }
+
+    Libpng & operator=(Libpng && other)
+    {
+        if(this != &other)
+        {
+            png_ptr = std::move(other.png_ptr);
+            info_ptr = std::move(other.info_ptr);
+            other.png_ptr = nullptr;
+            other.info_ptr = nullptr;
+        }
+        return *this;
+    }
+
+    void set_error_point(const std::string & msg)
+    {
+        error_msg = msg;
+        if(setjmp(png_jmpbuf(png_ptr)))
+            throw std::runtime_error{error_msg};
+    }
+
+    operator png_structp() { return png_ptr; }
+    operator png_struct const *() const { return png_ptr; }
+
+    operator png_infop() { return info_ptr; }
+    operator png_info const *() const { return info_ptr; }
+};
 struct Animation_info
 {
     Png * img;
@@ -57,43 +125,6 @@ struct Animation_info
         img{img},
         args{args}
     {}
-
-    // void start_frame()
-    // {
-    //     auto png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
-    //     if(!png_ptr)
-    //     {
-    //         std::cerr<<"Error initializing libpng for APNG frame decoding"<<'\n';
-    //         std::longjmp(png_jmpbuf(png_ptr), 1);
-    //     }
-
-    //     auto info_ptr = png_create_info_struct(png_ptr);
-    //     if(!info_ptr)
-    //     {
-    //         png_destroy_read_struct(&png_ptr, nullptr, nullptr);
-    //         std::cerr<<"Error initializing libpng info for APNG frame decoding"<<'\n';
-    //         std::longjmp(png_jmpbuf(png_ptr), 1);
-    //     }
-
-    //     if(setjmp(png_jmpbuf(png_ptr)))
-    //     {
-    //         std::cerr<<"Error reading APNG frame with libpng"<<'\n';
-    //         std::longjmp(png_jmpbuf(png_ptr), 1);
-    //     }
-
-    //     png_set_progressive_read_fn(png_ptr, this, info_callback, row_callback, nullptr);
-
-    //     png_process_data(png_ptr, info_ptr, std::data(copied_chunks), std::size(copied_chunks));
-    // }
-    // void end_frame()
-    // {
-    //     if(png_ptr)
-    //     {
-    //         png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
-    //         png_ptr  = nullptr;
-    //         info_ptr = nullptr;
-    //     }
-    // }
 };
 
 void Png::open(std::istream & input, const Args & args)
@@ -299,43 +330,23 @@ void Png::open(std::istream & input, const Args & args)
 
     std::array<char, 4096> io_buffer;
 
-    auto png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
-    if(!png_ptr)
-        throw std::runtime_error{"Error initializing libpng"};
+    auto libpng = std::make_unique<Libpng>(Libpng::Type::READ);
+    libpng->set_error_point("Error reading with libpng");
 
-    auto info_ptr = png_create_info_struct(png_ptr);
-    if(!info_ptr)
-    {
-        png_destroy_read_struct(&png_ptr, nullptr, nullptr);
-        throw std::runtime_error{"Error initializing libpng info"};
-    }
-
-    if(setjmp(png_jmpbuf(png_ptr)))
-    {
-        png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
-        throw std::runtime_error{"Error reading with libpng"};
-    }
-
-    png_set_progressive_read_fn(png_ptr, &animation_info, info_callback, row_callback, nullptr);
-    png_set_read_user_chunk_fn(png_ptr, &animation_info, chunk_callback);
-    png_set_keep_unknown_chunks(png_ptr, PNG_HANDLE_CHUNK_NEVER, nullptr, 0);
-    png_set_keep_unknown_chunks(png_ptr, PNG_HANDLE_CHUNK_ALWAYS, std::data(self_handled_chunks), std::size(self_handled_chunks) / 5);
+    png_set_progressive_read_fn(*libpng, &animation_info, info_callback, row_callback, nullptr);
+    png_set_read_user_chunk_fn(*libpng, &animation_info, chunk_callback);
+    png_set_keep_unknown_chunks(*libpng, PNG_HANDLE_CHUNK_NEVER, nullptr, 0);
+    png_set_keep_unknown_chunks(*libpng, PNG_HANDLE_CHUNK_ALWAYS, std::data(self_handled_chunks), std::size(self_handled_chunks) / 5);
 
     while(input)
     {
         input.read(std::data(io_buffer), std::size(io_buffer));
         if(input.bad())
-        {
-            png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
             throw std::runtime_error {"Error reading PNG file"};
-        }
 
-        png_process_data(png_ptr, info_ptr, reinterpret_cast<png_bytep>(std::data(io_buffer)), input.gcount());
+        png_process_data(*libpng, *libpng, reinterpret_cast<png_bytep>(std::data(io_buffer)), input.gcount());
     }
-
-    png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
-    png_ptr = nullptr;
-    info_ptr = nullptr;
+    libpng.reset();
 
     if(!animation_info.is_apng && args.image_no)
         throw std::runtime_error{args.help_text + "\nImage type doesn't support multiple images"};
@@ -376,12 +387,7 @@ void Png::open(std::istream & input, const Args & args)
 
             // scan for gaps/non seq
             if(fc.seq_no != i)
-            {
-                if(png_ptr)
-                    png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
-
                 throw std::runtime_error {"Error reading APNG file: missing chunks"};
-            }
 
             if(std::empty(fc.fdat))
             {
@@ -392,13 +398,13 @@ void Png::open(std::istream & input, const Args & args)
                 }
                 else
                 {
-                    if(png_ptr)
+                    if(libpng)
                     {
                         constexpr auto iend = std::array<png_byte, 12> {0, 0, 0, 0, 'I', 'E', 'N', 'D', 0, 0, 0, 0};
-                        png_process_data(png_ptr, info_ptr, const_cast<png_bytep>(std::data(iend)), std::size(iend));
-                        png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
-                        png_ptr = nullptr;
-                        info_ptr = nullptr;
+                        libpng->set_error_point("Error processing APNG frame IEND");
+
+                        png_process_data(*libpng, *libpng, const_cast<png_bytep>(std::data(iend)), std::size(iend));
+                        libpng.reset();
                     }
                     frame_ctrl = fc;
 
@@ -409,56 +415,41 @@ void Png::open(std::istream & input, const Args & args)
                         throw std::runtime_error{"Error reading APNG: Invalid frame dimensions\n"};
                     }
 
-                    png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
-                    if(!png_ptr)
-                        throw std::runtime_error{"Error initializing libpng"};
-
-                    info_ptr = png_create_info_struct(png_ptr);
-                    if(!info_ptr)
-                    {
-                        png_destroy_read_struct(&png_ptr, nullptr, nullptr);
-                        throw std::runtime_error{"Error initializing libpng info"};
-                    }
-
-                    // TODO: fix or at least silence clobbering warning for frame_no and i
-                    if(setjmp(png_jmpbuf(png_ptr)))
-                    {
-                        png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
-                        throw std::runtime_error{"Error decoding APNG frames"};
-                    }
-
                     animation_info.img = &frames[frame_no].img;
                     frames[frame_no++].set(fc);
 
-                    png_set_progressive_read_fn(png_ptr, &animation_info, info_callback, row_callback, nullptr);
-                    png_set_read_user_chunk_fn(png_ptr, &animation_info, chunk_callback);
-                    png_set_keep_unknown_chunks(png_ptr, PNG_HANDLE_CHUNK_NEVER, nullptr, 0);
-                    png_set_crc_action(png_ptr, PNG_CRC_QUIET_USE, PNG_CRC_QUIET_USE); // we're going to be feeding this garbage CRC values, so tell libpng to ignore them
+                    libpng = std::make_unique<Libpng>(Libpng::Type::READ);
+                    libpng->set_error_point("Error decoding APNG frame header");
+
+                    png_set_progressive_read_fn(*libpng, &animation_info, info_callback, row_callback, nullptr);
+                    png_set_read_user_chunk_fn(*libpng, &animation_info, chunk_callback);
+                    png_set_keep_unknown_chunks(*libpng, PNG_HANDLE_CHUNK_NEVER, nullptr, 0);
+                    png_set_crc_action(*libpng, PNG_CRC_QUIET_USE, PNG_CRC_QUIET_USE); // we're going to be feeding this garbage CRC values, so tell libpng to ignore them
 
                     png_save_int_32(std::data(animation_info.copied_chunks) + 16, fc.width);
                     png_save_int_32(std::data(animation_info.copied_chunks) + 20, fc.height);
-                    png_process_data(png_ptr, info_ptr, std::data(animation_info.copied_chunks), std::size(animation_info.copied_chunks));
+                    png_process_data(*libpng, *libpng, std::data(animation_info.copied_chunks), std::size(animation_info.copied_chunks));
                 }
             }
             else
             {
                 auto scratch_buffer = std::array<png_byte, 4>{};
-                auto idat_tag = std::array<png_byte, 4>{'I', 'D', 'A', 'T'};
+                auto idat_tag = std::array<png_byte, 4>{'I', 'O', 'A', 'T'};
 
                 png_save_int_32(std::data(scratch_buffer), std::size(fc.fdat));
 
-                png_process_data(png_ptr, info_ptr, std::data(scratch_buffer), std::size(scratch_buffer));
-                png_process_data(png_ptr, info_ptr, std::data(idat_tag), std::size(idat_tag));
-                png_process_data(png_ptr, info_ptr, std::data(fc.fdat), std::size(fc.fdat));
-                png_process_data(png_ptr, info_ptr, std::data(scratch_buffer), std::size(scratch_buffer)); // garbage CRC
+                libpng->set_error_point("Error decoding APNG frame");
+                png_process_data(*libpng, *libpng, std::data(scratch_buffer), std::size(scratch_buffer));
+                png_process_data(*libpng, *libpng, std::data(idat_tag), std::size(idat_tag));
+                png_process_data(*libpng, *libpng, std::data(fc.fdat), std::size(fc.fdat));
+                png_process_data(*libpng, *libpng, std::data(scratch_buffer), std::size(scratch_buffer)); // garbage CRC
             }
         }
-        if(png_ptr)
-            png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
+        libpng.reset();
 
         auto image_no = args.image_no.value_or(0u);
         if(image_no >= animation_info.num_frames)
-            throw std::runtime_error{"Error reading GIF: frame " + std::to_string(image_no) + " is out of range (0-" + std::to_string(animation_info.num_frames - 1) + ")"};
+            throw std::runtime_error{"Error reading APNG: frame " + std::to_string(image_no) + " is out of range (0-" + std::to_string(animation_info.num_frames - 1) + ")"};
 
         bool do_loop = args.animate && args.loop_animation;
         auto animator = std::unique_ptr<Animate>{};
@@ -585,36 +576,21 @@ void Png::write(std::ostream & out, const Image & img, bool invert)
     for(std::size_t i = 0; i < img_p->get_height(); ++i)
         row_ptrs[i] = reinterpret_cast<decltype(row_ptrs)::value_type>(std::data((*img_p)[i]));
 
-    auto png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
-    if(!png_ptr)
-        throw std::runtime_error{"Error initializing libpng"};
-
-    auto info_ptr = png_create_info_struct(png_ptr);
-    if(!info_ptr)
-    {
-        png_destroy_write_struct(&png_ptr, nullptr);
-        throw std::runtime_error{"Error initializing libpng info"};
-    }
-
-    if(setjmp(png_jmpbuf(png_ptr)))
-    {
-        png_destroy_write_struct(&png_ptr, &info_ptr);
-        throw std::runtime_error{"Error writing with libpng"};
-    }
+    auto libpng = Libpng{Libpng::Type::WRITE};
+    libpng.set_error_point("Error writing with libpng");
 
     // set custom write callbacks to write to std::ostream
-    png_set_write_fn(png_ptr, &out, write_fn, flush_fn);
+    png_set_write_fn(libpng, &out, write_fn, flush_fn);
 
-    png_set_IHDR(png_ptr, info_ptr,
+    png_set_IHDR(libpng, libpng,
                  img.get_width(), img.get_height(),
                  8, PNG_COLOR_TYPE_RGB_ALPHA,
                  PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
 
-    png_set_rows(png_ptr, info_ptr, const_cast<png_bytepp>(std::data(row_ptrs)));
+    png_set_rows(libpng, libpng, const_cast<png_bytepp>(std::data(row_ptrs)));
 
-    png_write_png(png_ptr, info_ptr, PNG_TRANSFORM_IDENTITY, nullptr);
+    // TODO: valgrind says this leaks memory
+    png_write_png(libpng, libpng, PNG_TRANSFORM_IDENTITY, nullptr);
 
-    png_write_end(png_ptr, nullptr);
-
-    png_destroy_write_struct(&png_ptr, &info_ptr);
+    png_write_end(libpng, nullptr);
 }
