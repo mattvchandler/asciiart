@@ -70,16 +70,16 @@ void Gif::open(std::istream & input, const Args & args)
     bool do_loop = args.animate && args.loop_animation;
     auto animator = std::unique_ptr<Animate>{};
     auto start_frame = composed_ ? 0u : image_no;
-    auto frame_count = image_no + 1;
+    auto frame_end = image_no + 1;
     if(args.animate)
     {
-        frame_count = gif->ImageCount;
+        frame_end = gif->ImageCount;
         animator = std::make_unique<Animate>(args);
     }
 
     do
     {
-        for(auto f = start_frame; f < frame_count; ++f)
+        for(auto f = start_frame; f < frame_end; ++f)
         {
             auto pal = gif->SavedImages[f].ImageDesc.ColorMap;
             if(!pal)

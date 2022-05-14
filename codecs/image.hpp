@@ -26,6 +26,10 @@ public:
     Image(std::size_t w, std::size_t h) { set_size(w, h); }
 
     virtual ~Image() = default;
+    Image(const Image &) = default;
+    Image & operator=(const Image &) = default;
+    Image(Image &&) = default;
+    Image & operator=(Image &&) = default;
 
     void swap(Image & other)
     {

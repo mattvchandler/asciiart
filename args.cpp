@@ -170,6 +170,7 @@ static const std::vector<std::string> input_formats =
     "PCX",
     #ifdef PNG_FOUND
     "PNG",
+    "APNG",
     #endif
     "PBM", "PGM", "PPM", "PAM", "PFM",
     "SRF",

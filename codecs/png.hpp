@@ -16,7 +16,14 @@ public:
     Png() = default;
     void open(std::istream & input, const Args & args) override;
 
+    void handle_extra_args(const Args & args) override;
+    bool supports_multiple_images() const override { return true; }
+    bool supports_animation() const override { return true; }
+
     static void write(std::ostream & out, const Image & img, bool invert);
+
+private:
+    bool composed_ {true};
 };
 #endif
 #endif // PNG_HPP
