@@ -49,7 +49,12 @@ struct Libpng
     ~Libpng()
     {
         if(png_ptr && info_ptr)
-            png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
+        {
+            if(type == Type::READ)
+                png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
+            else
+                png_destroy_write_struct(&png_ptr, &info_ptr);
+        }
     }
 
     Libpng(const Libpng &) = delete;
@@ -434,7 +439,7 @@ void Png::open(std::istream & input, const Args & args)
             else
             {
                 auto scratch_buffer = std::array<png_byte, 4>{};
-                auto idat_tag = std::array<png_byte, 4>{'I', 'O', 'A', 'T'};
+                auto idat_tag = std::array<png_byte, 4>{'I', 'D', 'A', 'T'};
 
                 png_save_int_32(std::data(scratch_buffer), std::size(fc.fdat));
 
@@ -499,7 +504,7 @@ void Png::open(std::istream & input, const Args & args)
                 }
                 if(args.animate)
                 {
-                    animator->set_frame_delay(frame.delay);
+                    animator->set_frame_delay(args.animation_frame_delay > 0.0f ? args.animation_frame_delay : frame.delay);
                     animator->display(*this);
                     if(!animator->running())
                         break;
@@ -589,7 +594,6 @@ void Png::write(std::ostream & out, const Image & img, bool invert)
 
     png_set_rows(libpng, libpng, const_cast<png_bytepp>(std::data(row_ptrs)));
 
-    // TODO: valgrind says this leaks memory
     png_write_png(libpng, libpng, PNG_TRANSFORM_IDENTITY, nullptr);
 
     png_write_end(libpng, nullptr);
