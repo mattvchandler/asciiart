@@ -353,6 +353,8 @@ void Png::open(std::istream & input, const Args & args)
     }
     libpng.reset();
 
+    transpose_image(animation_info.orientation);
+
     if(!animation_info.is_apng && args.image_no)
         throw std::runtime_error{args.help_text + "\nImage type doesn't support multiple images"};
     if(!animation_info.is_apng && args.animate)
@@ -410,6 +412,7 @@ void Png::open(std::istream & input, const Args & args)
 
                         png_process_data(*libpng, *libpng, const_cast<png_bytep>(std::data(iend)), std::size(iend));
                         libpng.reset();
+                        frames[frame_no].img.transpose_image(animation_info.orientation);
                     }
                     frame_ctrl = fc;
 
