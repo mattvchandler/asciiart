@@ -42,6 +42,7 @@ private:
     {
         auto &src = *static_cast<my_jpeg_source*>(cinfo->src);
 
+        // TODO: scan for EOI, keep start end ptrs, to make reusable for MPO
         src.input_.read(reinterpret_cast<char *>(std::data(src.buffer_)), std::size(src.buffer_));
 
         src.next_input_byte = std::data(src.buffer_);

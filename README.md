@@ -19,7 +19,7 @@ Supports a variety of image formats:
 * Moto logo.bin files
 * OpenEXR (requires libopenexr)
 * PCX
-* PNG (requires libpng)
+* PNG / APNG (requires libpng)
 * PPM / PGM / PBM / PAM / PFM
 * [SIF](https://adventofcode.com/2019/day/8)
 * SRF (Garmin GPS vehicle icon file)
@@ -57,6 +57,7 @@ formats:
 
 Add support for
 
-* APNG, MNG?
+* MNG?
 * JNG?
+* MPO
 * JPEG XR? XS? XT? LS? HDR?
