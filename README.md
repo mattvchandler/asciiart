@@ -16,6 +16,7 @@ Supports a variety of image formats:
 * JPEG 2000 (requires OpenJPEG)
 * JPEG XL (requires libjxl)
 * Minecraft map items (requires zlib)
+* MNG / JNG (requires libmng)
 * Moto logo.bin files
 * OpenEXR (requires libopenexr)
 * PCX
@@ -57,7 +58,5 @@ formats:
 
 Add support for
 
-* MNG?
-* JNG?
 * MPO
 * JPEG XR? XS? XT? LS? HDR?

@@ -33,6 +33,7 @@
 #include "jpeg.hpp"
 #include "jxl.hpp"
 #include "mcmap.hpp"
+#include "mng.hpp"
 #include "motologo.hpp"
 #include "openexr.hpp"
 #include "pcx.hpp"
@@ -782,6 +783,14 @@ bool Image::supports_animation() const { return false; }
             img = std::make_unique<Jp2>(Jp2::Type::JPX);
             #else
             throw std::runtime_error{"Not compiled with JPEG 2000 support"};
+            #endif
+        }
+        else if(is_mng(header))
+        {
+            #ifdef MNG_FOUND
+            img = std::make_unique<Mng>();
+            #else
+            throw std::runtime_error{"Not compiled with MNG support"};
             #endif
         }
         else if(is_openexr(header))
