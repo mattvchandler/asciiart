@@ -25,6 +25,8 @@ public:
     Jpeg() = default;
     void open(std::istream & input, const Args & args) override;
 
+    bool supports_multiple_images() const override { return true; }
+
     static void write(std::ostream & out, const Image & img, unsigned char bg, bool invert);
 };
 #endif

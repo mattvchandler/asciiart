@@ -72,10 +72,8 @@ struct Libpng
     {
         if(this != &other)
         {
-            png_ptr = std::move(other.png_ptr);
-            info_ptr = std::move(other.info_ptr);
-            other.png_ptr = nullptr;
-            other.info_ptr = nullptr;
+            std::swap(png_ptr , other.png_ptr);
+            std::swap(info_ptr, other.info_ptr);
         }
         return *this;
     }

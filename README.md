@@ -12,7 +12,7 @@ Supports a variety of image formats:
 * FLIF (requires libflif)
 * GIF (requires giflib)
 * HEIF / HEIC (requires libheif)
-* JPEG (requires libjpeg)
+* JPEG / MPF / MPO (requires libjpeg)
 * JPEG 2000 (requires OpenJPEG)
 * JPEG XL (requires libjxl)
 * Minecraft map items (requires zlib)

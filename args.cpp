@@ -152,7 +152,7 @@ static const std::vector<std::string> input_formats =
     "HEIF",
     #endif
     #ifdef JPEG_FOUND
-    "JPEG",
+    "JPEG", "MPF", "MPO",
     #endif
     #ifdef JP2_FOUND
     "JPEG 2000",
