@@ -8,7 +8,6 @@
 
 #include <cstdint>
 
-#include "../animate.hpp"
 #include "binio.hpp"
 #include "sub_args.hpp"
 
@@ -82,9 +81,11 @@ Color get_image_color(std::size_t row,
     return Color(r, g, b, alpha);
 }
 
-constexpr auto num_frames = 36u;
+constexpr auto frames_per_image = 36u;
 void Srf::open(std::istream & input, const Args & args)
 {
+    this_is_first_image_ = false;
+
     input.exceptions(std::ios_base::badbit | std::ios_base::failbit);
     try
     {
@@ -92,20 +93,7 @@ void Srf::open(std::istream & input, const Args & args)
         input.ignore(16); // magic
         input.ignore(8); // unknown
 
-        std::uint32_t num_images;
-        readb(input, num_images);
-
-        if(args.get_image_count)
-        {
-            std::cout<<num_images<<'\n';
-            throw Early_exit{};
-        }
-
-        if(args.image_no && *args.image_no >= num_images)
-            throw std::runtime_error{"Error reading SRF: image " + std::to_string(*args.image_no) + " is out of range (0-" + std::to_string(num_images - 1) + ")"};
-
-        if(frame_no_ && *frame_no_ >= num_frames)
-            throw std::runtime_error{"Error reading SRF: frame " + std::to_string(*frame_no_) + " is out of range (0-" + std::to_string(num_frames - 1) + ")"};
+        auto num_images = readb<std::uint32_t>(input);
 
         input.ignore(4);
         std::uint32_t garmin_strlen;
@@ -123,58 +111,61 @@ void Srf::open(std::istream & input, const Args & args)
         readb(input, garmin_strlen);
         input.ignore(garmin_strlen); // product code?
 
-        std::vector<SRF_image> images;
+        std::vector<SRF_image> image_sets;
 
         std::uint16_t max_width = 0;
         std::uint16_t total_height = 0;
 
         for(std::uint32_t i = 0u; i < num_images; ++i)
         {
-            images.emplace_back(read_image_data(input));
-            max_width = std::max(max_width, images.back().width);
-            total_height += images.back().height;
+            image_sets.emplace_back(read_image_data(input));
+            max_width = std::max(max_width, image_sets.back().width);
+            total_height += image_sets.back().height;
         }
 
-        bool single_frame = args.animate || frame_no_;
-        auto frame_no = args.animate ? 0u :
-                        frame_no_    ? *frame_no_ : 0u;
         if(args.image_no)
         {
-            if(single_frame)
-                set_size(images[*args.image_no].width / num_frames, images[*args.image_no].height);
-            else
-                set_size(images[*args.image_no].width, images[*args.image_no].height);
+            selected_image_no_ = args.image_no;
+            if(args.image_no > num_images)
+                throw std::runtime_error{"Error showing image: " + std::to_string(*args.image_no) + " is out of range (0-" + std::to_string(num_images - 1) + ")"};
+
+            images_.resize(frames_per_image);
+            set_size(image_sets[*args.image_no].width, image_sets[*args.image_no].height);
+
+            for(std::size_t row = 0u; row < image_sets[*args.image_no].height; ++row)
+            {
+                for(std::size_t col = 0u; col < image_sets[*args.image_no].width; ++col)
+                    image_data_[row][col] = get_image_color(row, col, image_sets[*args.image_no]);
+            }
+
+            const auto frame_width = image_sets[*args.image_no].width / frames_per_image;
+            for(std::uint32_t i = 0u; i < frames_per_image; ++i)
+            {
+                images_[i].set_size(frame_width, image_sets[*args.image_no].height);
+                for(std::size_t row = 0u; row < image_sets[*args.image_no].height; ++row)
+                {
+                    for(std::size_t col = i * frame_width, current_col = 0u; col < (i + 1) * frame_width; ++col, ++current_col)
+                        images_[i][row][current_col] = get_image_color(row, col, image_sets[*args.image_no]);
+                }
+            }
         }
         else
         {
+            images_.resize(num_images);
+            supports_animation_ = false;
+
             set_size(max_width, total_height);
-        }
-
-        bool do_loop = args.animate && args.loop_animation;
-        auto animator = std::unique_ptr<Animate>{};
-        if(args.animate)
-            animator = std::make_unique<Animate>(args);
-
-        do
-        {
             std::size_t current_row = 0;
-            for(std::uint32_t i = args.image_no.value_or(0u); i < (args.image_no ? (*args.image_no + 1u) : num_images); ++i)
+            for(std::uint32_t i = 0u; i < num_images; ++i)
             {
-                for(std::size_t row = 0; row < images[i].height; ++row, ++current_row)
+                images_[i].set_size(image_sets[i].width, image_sets[i].height);
+                for(std::size_t row = 0u; row < image_sets[i].height; ++row, ++current_row)
                 {
-                    for(std::size_t col = (single_frame ? (frame_no * images[i].width / num_frames) : 0u), current_col = 0u; col < (single_frame ? ((frame_no + 1u) * images[i].width / num_frames) : images[i].width); ++col, ++current_col)
-                    {
-                        image_data_[current_row][current_col] = get_image_color(row, col, images[i]);
-                    }
+                    for(std::size_t col = 0u; col < image_sets[i].width; ++col)
+                        image_data_[current_row][col] = images_[i][row][col] = get_image_color(row, col, image_sets[i]);
                 }
             }
-            if(args.animate)
-            {
-                animator->display(*this);
-                if(++frame_no == num_frames && do_loop)
-                    frame_no = 0;
-            }
-        } while (animator && animator->running() && frame_no < num_frames);
+        }
     }
     catch(std::ios_base::failure & e)
     {
@@ -185,37 +176,24 @@ void Srf::open(std::istream & input, const Args & args)
     }
 }
 
-void Srf::handle_extra_args(const Args & args)
+const Image & Srf::get_image(std::size_t image_no) const
 {
-    auto options = Sub_args{"SRF"};
-    try
+    if(selected_image_no_)
     {
-        options.add_options()
-            ("frame-no", "Display only a slected angle/frame of the requested image (requires --image-no)", cxxopts::value<unsigned int>(), "FRAME_NO")
-            ("frame-count", "Print number of frames in the requested image (requires --image-no)");
-
-        auto sub_args = options.parse(args.extra_args);
-
-        if(sub_args.count("frame-count"))
-        {
-            std::cout<<num_frames<<"\n";
-            throw Early_exit{};
-        }
-
-        if(sub_args.count("frame-no"))
-            frame_no_ = sub_args["frame-no"].as<unsigned int>();
-
-        if(!args.image_no && frame_no_)
-            throw std::runtime_error{options.help(args.help_text) + "\nMust specify --image-no with --frame-no"};
-
-        if(!args.image_no && args.animate)
-            throw std::runtime_error{options.help(args.help_text) + "\nMust specify --image-no with --animate for SRF images"};
-
-        if(args.animate && frame_no_)
-            throw std::runtime_error{options.help(args.help_text) + "\nCan't specify --frame-no with --animate"};
+        if(image_no == *selected_image_no_)
+            return *this;
+        else
+            throw std::runtime_error{"Error: Attempted to select different image than specified in --image_no"};
     }
-    catch(const cxxopts::OptionException & e)
-    {
-        throw std::runtime_error{options.help(args.help_text) + '\n' + e.what()};
-    }
+    else
+        return Image::get_image(image_no);
+}
+
+const Image & Srf::get_frame(std::size_t frame_no) const
+{
+    return Image::get_image(frame_no);
+}
+std::chrono::duration<float> Srf::get_frame_delay(std::size_t) const
+{
+    return std::chrono::duration<float>(1.0f / 25.0f);
 }

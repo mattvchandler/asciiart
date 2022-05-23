@@ -47,6 +47,7 @@
 #include "webp.hpp"
 #include "xpm.hpp"
 
+// TODO: remove?
 const char * Early_exit::what() const noexcept { return "Success"; }
 
 bool Image::header_cmp(unsigned char a, char b){ return a == static_cast<unsigned char>(b); };
@@ -585,9 +586,6 @@ void Image::open(std::istream &, const Args &)
 }
 void Image::convert(const Args & args) const
 {
-    if(!args.convert_filename)
-        return;
-
     std::ofstream out{args.convert_filename->first, std::ios_base::binary};
     if(!out)
         throw std::runtime_error {"Could not open " + args.convert_filename->first + " for writing: " + std::strerror(errno)};
@@ -678,11 +676,17 @@ void Image::handle_extra_args(const Args & args)
 }
 
 bool Image::supports_multiple_images() const { return false; }
+bool Image::supports_subimages() const { return false; }
 bool Image::supports_animation() const { return false; }
 
 std::size_t Image::num_images() const
 {
     return this_is_first_image_ ? std::size(images_) + 1u : std::size(images_);
+}
+
+std::size_t Image::num_frames() const
+{
+    return num_images();
 }
 
 const Image & Image::get_image(std::size_t image_no) const
@@ -700,6 +704,10 @@ const Image & Image::get_image(std::size_t image_no) const
     }
     else
         return images_[image_no];
+}
+const Image & Image::get_frame(std::size_t frame_no) const
+{
+    return get_image(frame_no);
 }
 
 std::chrono::duration<float> Image::get_frame_delay(std::size_t frame_no) const
@@ -989,17 +997,19 @@ void Image::move_image_data(Image & other)
         throw std::runtime_error{"Unhandled file format switch"};
     }
 
-    if(!img->supports_multiple_images() && args.image_no > 0)
-        throw std::runtime_error{args.help_text + "\nImage type doesn't support multiple images"};
+    if(!img->supports_subimages())
+    {
+        if(args.frame_no)
+            throw std::runtime_error{args.help_text + "\nImage type doesn't support multiple frames per image. --frame-no is invalid"};
+        if(args.get_frame_count)
+            throw std::runtime_error{args.help_text + "\nImage type doesn't support multiple frames per image. --frame-count is invalid"};
+
+        if(!img->supports_multiple_images() && args.image_no.value_or(0u) > 0)
+            throw std::runtime_error{args.help_text + "\nImage type doesn't support multiple images"};
+    }
 
     if(!img->supports_animation() && args.animate)
         throw std::runtime_error{args.help_text + "\nImage type doesn't support animation"};
-
-    if(!img->supports_multiple_images() && args.get_image_count)
-    {
-        std::cout<<"1\n";
-        throw Early_exit{};
-    }
 
     img->handle_extra_args(args);
     img->open(input, args);

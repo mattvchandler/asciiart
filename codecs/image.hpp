@@ -61,11 +61,14 @@ public:
 
     virtual void handle_extra_args(const Args & args);
     virtual bool supports_multiple_images() const;
+    virtual bool supports_subimages() const;
     virtual bool supports_animation() const;
 
-    std::size_t num_images() const;
-    const Image & get_image(std::size_t image_no) const;
-    std::chrono::duration<float> get_frame_delay(std::size_t image_no) const;
+    virtual std::size_t num_images() const;
+    virtual std::size_t num_frames() const;
+    virtual const Image & get_image(std::size_t image_no) const;
+    virtual const Image & get_frame(std::size_t frame_no) const;
+    virtual std::chrono::duration<float> get_frame_delay(std::size_t image_no) const;
 
     char * row_buffer(std::size_t row);
     const char * row_buffer(std::size_t row) const;

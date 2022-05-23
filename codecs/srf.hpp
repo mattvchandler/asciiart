@@ -16,11 +16,17 @@ public:
     Srf() = default;
     void open(std::istream & input, const Args & args) override;
 
-    void handle_extra_args(const Args & args) override;
-    bool supports_animation() const override { return true; }
+    bool supports_animation() const override { return supports_animation_; }
     bool supports_multiple_images() const override { return true; }
+    bool supports_subimages() const override { return true; }
+
+    const Image & get_image(std::size_t image_no) const override;
+    const Image & get_frame(std::size_t frame_no) const override;
+
+    std::chrono::duration<float> get_frame_delay(std::size_t) const override;
 
 private:
-    std::optional<unsigned int> frame_no_;
+    std::optional<unsigned int> selected_image_no_;
+    bool supports_animation_ {true};
 };
 #endif // SRF_HPP

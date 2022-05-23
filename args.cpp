@@ -296,6 +296,8 @@ static const std::vector<std::string> output_formats =
         options.add_options(multi_group)
             ("image-no",    "Get specified image or frame number", cxxopts::value<unsigned int>(), "IMAGE_NO")
             ("image-count", "Print number of images / frames and exit")
+            ("frame-no",    "Get specified image or frame number. Only valid when image supports multiple animated images. Use --frame-no to choose a frame from an image specified with --image-no in those cases", cxxopts::value<unsigned int>(), "FRAME_NO")
+            ("frame-count", "Print number of frames and exit. Only valid when image supports multiple animated images. Use --frame-count to get the frame count for an image specified with --image-no in those cases")
             ("animate",     "Animate image (implies --no-display)")
             ("loop",        "Loop animation (implies --animate")
             ("frame-delay", "Animation delay between frames (in seconds). If not specified, get from image", cxxopts::value<float>(), "FRAME_DELAY")
@@ -416,9 +418,21 @@ static const std::vector<std::string> output_formats =
             return {};
         }
 
+        if(animate && args.count("frame-no"))
+        {
+            std::cerr<<options.help("Can't specify --frame-no with --animate")<<'\n';
+            return {};
+        }
+
         if(animate && args.count("image-count"))
         {
             std::cerr<<options.help("Can't specify --image-count with --animate")<<'\n';
+            return {};
+        }
+
+        if(animate && args.count("frame-count"))
+        {
+            std::cerr<<options.help("Can't specify --frame-count with --animate")<<'\n';
             return {};
         }
 
@@ -536,7 +550,9 @@ static const std::vector<std::string> output_formats =
             .force_file            = filetype,
             .convert_filename      = convert_path,
             .image_no              = args.count("image-no") ? std::optional(args["image-no"].as<unsigned int>()) : std::nullopt,
+            .frame_no              = args.count("frame-no") ? std::optional(args["frame-no"].as<unsigned int>()) : std::nullopt,
             .get_image_count       = static_cast<bool>(args.count("image-count")),
+            .get_frame_count       = static_cast<bool>(args.count("frame-count")),
             .animate               = animate,
             .loop_animation        = static_cast<bool>(args.count("loop")),
             .animation_frame_delay = frame_delay,

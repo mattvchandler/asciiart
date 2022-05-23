@@ -197,27 +197,15 @@ namespace
 
 void display_image(const Image & img, const Args & args)
 {
-    if(!img.supports_multiple_images() && args.image_no > 0)
-        throw std::runtime_error{args.help_text + "\nImage type doesn't support multiple images"};
-
-    if(!img.supports_animation() && args.animate)
-        throw std::runtime_error{args.help_text + "\nImage type doesn't support animation"};
-
-    if(args.get_image_count)
-    {
-        std::cout<<img.num_images()<<'\n';
-        return;
-    }
-
     if(args.animate)
     {
         auto animator = Animate{args};
         do
         {
-            for(auto f = 0u; f < img.num_images(); ++f)
+            for(auto f = 0u; f < img.num_frames(); ++f)
             {
                 animator.set_frame_delay(args.animation_frame_delay > 0.0f ? args.animation_frame_delay : img.get_frame_delay(f).count()); // TODO: remove count once we've switch over from per-codec animator loops
-                animator.display(img.get_image(f));
+                animator.display(img.get_frame(f));
                 if(!animator)
                     break;
             }
@@ -233,7 +221,10 @@ void display_image(const Image & img, const Args & args)
         if(!out)
             throw std::runtime_error{"Could not open output file " + (args.output_filename == "-" ? "" : ("(" + args.output_filename + ") ")) + ": " + std::string{std::strerror(errno)}};
 
-        print_image(img.get_image(args.image_no.value_or(0u)), args, out);
+        if(args.frame_no)
+            print_image(img.get_frame(*args.frame_no), args, out);
+        else
+            print_image(img.get_image(args.image_no.value_or(0u)), args, out);
     }
 }
 

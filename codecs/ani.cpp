@@ -17,8 +17,6 @@ void Ani::open(std::istream & input, const Args & args)
     constexpr auto id_size = 4u;
     constexpr auto anih_size = 36u;
 
-    if(args.animate && args.image_no)
-        throw std::runtime_error{args.help_text + "\nCan't specify --image-no with --animate"};
     this_is_first_image_ = false;
 
     input.exceptions(std::ios_base::badbit | std::ios_base::failbit);

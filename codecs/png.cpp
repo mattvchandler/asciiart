@@ -40,7 +40,10 @@ struct Libpng
         info_ptr = png_create_info_struct(png_ptr);
         if(!info_ptr)
         {
-            png_destroy_read_struct(&png_ptr, nullptr, nullptr);
+            if(type == Type::READ)
+                png_destroy_read_struct(&png_ptr, nullptr, nullptr);
+            else
+                png_destroy_write_struct(&png_ptr, nullptr);
             throw std::runtime_error{"Error initializing libpng info"};
         }
     }
@@ -533,9 +536,6 @@ void Png::handle_extra_args(const Args & args)
 
         if(args.animate && !composed_)
             throw std::runtime_error{options.help(args.help_text) + "\nCan't specify --not-composed with --animate"};
-
-        if(args.animate && args.image_no)
-            throw std::runtime_error{options.help(args.help_text) + "\nCan't specify --image-no with --animate"};
     }
     catch(const cxxopts::OptionException & e)
     {
@@ -547,17 +547,17 @@ void write_fn(png_structp png_ptr, png_bytep data, png_size_t length) noexcept
 {
     auto out = static_cast<std::ostream *>(png_get_io_ptr(png_ptr));
     if(!out)
-        std::longjmp(png_jmpbuf(png_ptr), 1);
+        png_longjmp(png_ptr, 1);
 
     out->write(reinterpret_cast<char *>(data), length);
     if(out->bad())
-        std::longjmp(png_jmpbuf(png_ptr), 1);
+        png_longjmp(png_ptr, 1);
 }
 void flush_fn(png_structp png_ptr)
 {
     auto out = static_cast<std::ostream *>(png_get_io_ptr(png_ptr));
     if(!out)
-        std::longjmp(png_jmpbuf(png_ptr), 1);
+        png_longjmp(png_ptr, 1);
 
     out->flush();
 }
@@ -587,7 +587,10 @@ void Png::write(std::ostream & out, const Image & img, bool invert)
         row_ptrs[i] = reinterpret_cast<decltype(row_ptrs)::value_type>(std::data((*img_p)[i]));
 
     auto libpng = Libpng{Libpng::Type::WRITE};
-    libpng.set_error_point("Error writing with libpng");
+    if(setjmp(png_jmpbuf(libpng)))
+    {
+        throw std::runtime_error{"Error writing with libpng"};
+    }
 
     // set custom write callbacks to write to std::ostream
     png_set_write_fn(libpng, &out, write_fn, flush_fn);

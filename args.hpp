@@ -39,7 +39,9 @@ struct Args
     } force_file { Force_file::detect };
     std::optional<std::pair<std::string, std::string>> convert_filename;
     std::optional<unsigned int> image_no;
+    std::optional<unsigned int> frame_no;
     bool get_image_count;
+    bool get_frame_count;
     bool animate;
     bool loop_animation;
     float animation_frame_delay;
