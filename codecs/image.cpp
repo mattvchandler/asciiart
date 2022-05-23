@@ -680,6 +680,47 @@ void Image::handle_extra_args(const Args & args)
 bool Image::supports_multiple_images() const { return false; }
 bool Image::supports_animation() const { return false; }
 
+std::size_t Image::num_images() const
+{
+    return this_is_first_image_ ? std::size(images_) + 1u : std::size(images_);
+}
+
+const Image & Image::get_image(std::size_t image_no) const
+{
+    if(auto count = num_images(); image_no >= count)
+    {
+        throw std::runtime_error{"Error showing image: " + std::to_string(image_no) + " is out of range (0-" + std::to_string(count - 1) + ")"};
+    }
+    if(this_is_first_image_)
+    {
+        if(image_no == 0u)
+            return *this;
+        else
+            return images_[image_no - 1];
+    }
+    else
+        return images_[image_no];
+}
+
+std::chrono::duration<float> Image::get_frame_delay(std::size_t frame_no) const
+{
+    return frame_delays_[frame_no];
+}
+std::chrono::duration<float> Image::get_default_frame_delay() const
+{
+    return default_frame_delay_;
+}
+
+char * Image::row_buffer(std::size_t row)
+{
+    return reinterpret_cast<char *>(std::data(image_data_[row]));
+}
+
+const char * Image::row_buffer(std::size_t row) const
+{
+    return reinterpret_cast<const char *>(std::data(image_data_[row]));
+}
+
 [[nodiscard]] std::unique_ptr<Image> get_image_data(const Args & args)
 {
     std::string extension;
@@ -934,7 +975,7 @@ bool Image::supports_animation() const { return false; }
 
     if(!img->supports_multiple_images() && args.get_image_count)
     {
-        std::cout<<"0\n";
+        std::cout<<"1\n";
         throw Early_exit{};
     }
 

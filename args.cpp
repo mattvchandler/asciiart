@@ -297,7 +297,7 @@ static const std::vector<std::string> output_formats =
             ("image-no",    "Get specified image or frame number", cxxopts::value<unsigned int>(), "IMAGE_NO")
             ("image-count", "Print number of images / frames and exit")
             ("animate",     "Animate image (implies --no-display)")
-            ("loop",        "Loop animation (implies --animation")
+            ("loop",        "Loop animation (implies --animate")
             ("frame-delay", "Animation delay between frames (in seconds). If not specified, get from image", cxxopts::value<float>(), "FRAME_DELAY")
             ("framerate",   "Animation framerate (in fps). If not specified, get from image", cxxopts::value<float>(), "FPS");
 
@@ -409,6 +409,12 @@ static const std::vector<std::string> output_formats =
         bool animate = args.count("animate");
         if(args.count("loop"))
             animate = true;
+
+        if(animate && args.count("output"))
+        {
+            std::cerr<<options.help("Can't specify --output with --animate")<<'\n';
+            return {};
+        }
 
         if(animate && args.count("image-count"))
         {
@@ -524,7 +530,7 @@ static const std::vector<std::string> output_formats =
             .cols                  = cols,
             .bg                    = static_cast<unsigned char>(args["bg"].as<int>()),
             .invert                = static_cast<bool>(args.count("invert")),
-            .display               = animate ? false : !static_cast<bool>(args.count("no-display")),
+            .display               = !static_cast<bool>(args.count("no-display")),
             .color                 = color,
             .disp_char             = disp_char,
             .force_file            = filetype,

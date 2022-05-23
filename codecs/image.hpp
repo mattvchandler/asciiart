@@ -2,6 +2,7 @@
 #define IMAGE_HPP
 
 #include <array>
+#include <chrono>
 #include <functional>
 #include <istream>
 #include <memory>
@@ -48,12 +49,14 @@ public:
     }
     std::size_t get_width() const { return width_; }
     std::size_t get_height() const { return height_; }
+    void set_size(std::size_t w, std::size_t h);
 
     using Header = std::array<char, max_header_len>;
     static bool header_cmp(unsigned char a, char b);
     static std::vector<unsigned char> read_input_to_memory(std::istream & input);
 
     Image scale(std::size_t new_width, std::size_t new_height) const;
+    void transpose_image(exif::Orientation orientation);
 
     std::vector<Color> generate_palette(std::size_t num_colors, bool gif_transparency = false) const;
     std::vector<Color> generate_and_apply_palette(std::size_t num_colors, bool gif_transparency = false);
@@ -67,13 +70,24 @@ public:
     virtual bool supports_multiple_images() const;
     virtual bool supports_animation() const;
 
+    std::size_t num_images() const;
+    const Image & get_image(std::size_t image_no) const;
+    std::chrono::duration<float> get_frame_delay(std::size_t image_no) const;
+    std::chrono::duration<float> get_default_frame_delay() const;
+
+    char * row_buffer(std::size_t row);
+    const char * row_buffer(std::size_t row) const;
+
 protected:
-    void set_size(std::size_t w, std::size_t h);
-    void transpose_image(exif::Orientation orientation);
 
     std::size_t width_{0};
     std::size_t height_{0};
     std::vector<std::vector<Color>> image_data_;
+
+    bool this_is_first_image_ {true};
+    std::vector<Image> images_;
+    std::vector<std::chrono::duration<float>> frame_delays_;
+    std::chrono::duration<float> default_frame_delay_ {std::chrono::milliseconds{25}};
 };
 
 [[nodiscard]] std::unique_ptr<Image> get_image_data(const Args & args);

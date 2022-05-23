@@ -1,7 +1,6 @@
 #include "png.hpp"
 
 #include <algorithm>
-#include <iostream>
 #include <memory>
 #include <stdexcept>
 
@@ -14,7 +13,6 @@
 #include "exif.hpp"
 #endif
 
-#include "../animate.hpp"
 #include "sub_args.hpp"
 
 enum class Dispose_op: std::uint8_t {NONE = 0u, BACKGROUND = 1u, PREVIOUS = 2u};
@@ -93,7 +91,7 @@ struct Libpng
 };
 struct Animation_info
 {
-    Png * img;
+    Image * img;
     const Args & args;
 
     bool is_apng {false};
@@ -124,7 +122,7 @@ struct Animation_info
 
     std::vector<Frame_chunk> frame_chunks;
 
-    Animation_info(Png * img, const Args & args):
+    Animation_info(Image * img, const Args & args):
         img{img},
         args{args}
     {}
@@ -140,8 +138,7 @@ void Png::open(std::istream & input, const Args & args)
         int bit_depth, color_type, interlace_type, compression_type, filter_type;
         png_get_IHDR(png_ptr, info_ptr, &width, &height, &bit_depth, &color_type, &interlace_type, &compression_type, &filter_type);
 
-        // if(animation_info->img->width_ == 0 && animation_info->img->height_ == 0)
-            animation_info->img->set_size(width, height);
+        animation_info->img->set_size(width, height);
 
         // set transformations to convert to 32-bit RGBA
         if(!(color_type & PNG_COLOR_MASK_COLOR))
@@ -251,7 +248,7 @@ void Png::open(std::istream & input, const Args & args)
     auto row_callback = [](png_structp png_ptr, png_bytep new_row, png_uint_32 row_num, int)
     {
         auto animation_info = reinterpret_cast<Animation_info *>(png_get_progressive_ptr(png_ptr));
-        png_progressive_combine_row(png_ptr, reinterpret_cast<png_bytep>(std::data(animation_info->img->image_data_[row_num])), new_row);
+        png_progressive_combine_row(png_ptr, reinterpret_cast<png_bytep>(animation_info->img->row_buffer(row_num)), new_row);
     };
 
     auto chunk_callback = [](png_structp png_ptr, png_unknown_chunkp chunk) -> int
@@ -306,9 +303,6 @@ void Png::open(std::istream & input, const Args & args)
             fc.dispose_op = static_cast<Dispose_op>(*data++);
             fc.blend_op   = static_cast<Blend_op>(*data++);
 
-            if(fc.dispose_op == Dispose_op::PREVIOUS)
-                std::cerr<<"APNG warning: DISPOSE_OP_PREVIOUS not supported\n";
-
             return 1;
         }
         else if(chunk_name == "fdAT") // frame data
@@ -353,37 +347,34 @@ void Png::open(std::istream & input, const Args & args)
 
     transpose_image(animation_info.orientation);
 
-    if(!animation_info.is_apng && args.image_no)
-        throw std::runtime_error{args.help_text + "\nImage type doesn't support multiple images"};
-    if(!animation_info.is_apng && args.animate)
-        throw std::runtime_error{args.help_text + "\nImage type doesn't support animation"};
-
     if(animation_info.is_apng && (args.animate || args.image_no))
     {
+        this_is_first_image_ = false;
+
         std::sort(std::begin(animation_info.frame_chunks), std::end(animation_info.frame_chunks), [](auto && a, auto && b){ return a.seq_no < b.seq_no; });
         Animation_info::Frame_chunk frame_ctrl;
-        struct Frame
+
+        auto calc_delay = [](const Animation_info::Frame_chunk & fc)
         {
-            Png img;
-            unsigned int x_offset{0};
-            unsigned int y_offset{0};
-            float delay {0.0f};
-            Dispose_op dispose_op {Dispose_op::NONE};
-            Blend_op blend_op {Blend_op::SOURCE};
-
-            Frame() = default;
-            void set(const Animation_info::Frame_chunk & fc)
-            {
-                x_offset = fc.x_offset;
-                y_offset = fc.y_offset;
-
-                if(fc.delay_den == 0)
-                    delay = static_cast<float>(fc.delay_num) / 100.0f;
-                else
-                    delay = static_cast<float>(fc.delay_num) / static_cast<float>(fc.delay_den);
-            }
+            if(fc.delay_den == 0)
+                return std::chrono::duration<float>{static_cast<float>(fc.delay_num) / 100.0f};
+            else
+                return std::chrono::duration<float>{static_cast<float>(fc.delay_num) / static_cast<float>(fc.delay_den)};
         };
-        auto frames = std::vector<Frame>(animation_info.num_frames);
+
+        // NOTE: this gets a little confusing - We are decoding each frame's image data into this->image_data_, then composing them into output_buffer, and copying each completed frames to images_
+        images_.resize(animation_info.num_frames);
+        frame_delays_.resize(animation_info.num_frames);
+
+        auto output_buffer = Image{width_, height_};
+
+        // APNG spec calls for starting with transparent black
+        for(std::size_t row = 0; row < get_height(); ++row)
+        {
+            for(std::size_t col = 0; col < get_width(); ++col)
+                output_buffer[row][col] = Color{0u, 0u, 0u, 0u};
+        }
+
         auto frame_no = 0u;
 
         for(auto i = 0u; i < std::size(animation_info.frame_chunks); ++i)
@@ -398,8 +389,8 @@ void Png::open(std::istream & input, const Args & args)
             {
                 if(i == 0 && animation_info.include_default_image)
                 {
-                    frames[frame_no].img = *this;
-                    frames[frame_no++].set(fc);
+                    images_[frame_no] = output_buffer = *this;
+                    frame_delays_[frame_no] = calc_delay(fc);
                 }
                 else
                 {
@@ -410,19 +401,88 @@ void Png::open(std::istream & input, const Args & args)
 
                         png_process_data(*libpng, *libpng, const_cast<png_bytep>(std::data(iend)), std::size(iend));
                         libpng.reset();
-                        frames[frame_no].img.transpose_image(animation_info.orientation);
+
+                        transpose_image(animation_info.orientation);
+
+                        if(composed_)
+                        {
+                            // the framee's data is in this->image_data_ now, so blend or replace into output_buffer
+                            for(std::size_t row = 0; row < get_height(); ++row)
+                            {
+                                for(std::size_t col = 0; col < get_width(); ++col)
+                                {
+                                    if(frame_ctrl.blend_op == Blend_op::OVER)
+                                    {
+                                        auto bg = FColor{output_buffer[row + frame_ctrl.y_offset][col + frame_ctrl.x_offset]};
+                                        auto fg = FColor{image_data_[row][col]};
+
+                                        auto out = FColor{};
+                                        out.a = fg.a + bg.a * (1.0f - fg.a);
+                                        out.r = (fg.r * fg.a + bg.r * bg.a * (1.0f - fg.a)) / out.a;
+                                        out.g = (fg.g * fg.a + bg.g * bg.a * (1.0f - fg.a)) / out.a;
+                                        out.b = (fg.b * fg.a + bg.b * bg.a * (1.0f - fg.a)) / out.a;
+
+                                        output_buffer[row + frame_ctrl.y_offset][col + frame_ctrl.x_offset] = out;
+                                    }
+                                    else
+                                    {
+                                        output_buffer[row + frame_ctrl.y_offset][col + frame_ctrl.x_offset] = image_data_[row][col];
+                                    }
+                                }
+                            }
+
+                            images_[frame_no] = output_buffer;
+
+                            // dispose of this frame's data if requested
+                            if(frame_ctrl.dispose_op == Dispose_op::BACKGROUND)
+                            {
+                                // clear to tranparent black
+                                for(std::size_t row = 0; row < get_height(); ++row)
+                                {
+                                    for(std::size_t col = 0; col < get_width(); ++col)
+                                        output_buffer[row + frame_ctrl.y_offset][col + frame_ctrl.x_offset] = Color{0u, 0u, 0u, 0u};
+                                }
+                            }
+                            else if(frame_ctrl.dispose_op == Dispose_op::PREVIOUS)
+                            {
+                                // clear to previous frame
+                                for(std::size_t row = 0; row < get_height(); ++row)
+                                {
+                                    for(std::size_t col = 0; col < get_width(); ++col)
+                                    {
+                                        if(frame_no > 0)
+                                            output_buffer[row + frame_ctrl.y_offset][col + frame_ctrl.x_offset] = Color{0u, 0u, 0u, 0u};
+                                        else
+                                            output_buffer[row + frame_ctrl.y_offset][col + frame_ctrl.x_offset] = images_[frame_no - 1][row + frame_ctrl.y_offset][col + frame_ctrl.x_offset];
+                                    }
+                                }
+                            }
+                        }
+                        else // not-composed
+                        {
+                            for(std::size_t row = 0; row < output_buffer.get_height(); ++row)
+                            {
+                                for(std::size_t col = 0; col < output_buffer.get_width(); ++col)
+                                    output_buffer[row][col] = Color{0u, 0u, 0u, 0u};
+                            }
+                            for(std::size_t row = 0; row < get_height(); ++row)
+                            {
+                                for(std::size_t col = 0; col < get_width(); ++col)
+                                    output_buffer[row + frame_ctrl.y_offset][col + frame_ctrl.x_offset] = image_data_[row][col];
+                            }
+                            images_[frame_no] = output_buffer;
+                        }
                     }
                     frame_ctrl = fc;
 
                     if(fc.width == 0 || fc.height == 0 ||
-                            fc.x_offset + fc.width > width_ ||
-                            fc.y_offset + fc.height > height_)
+                            fc.x_offset + fc.width > output_buffer.get_width() ||
+                            fc.y_offset + fc.height > output_buffer.get_height())
                     {
                         throw std::runtime_error{"Error reading APNG: Invalid frame dimensions\n"};
                     }
 
-                    animation_info.img = &frames[frame_no].img;
-                    frames[frame_no++].set(fc);
+                    frame_delays_[frame_no++] = calc_delay(fc);
 
                     libpng = std::make_unique<Libpng>(Libpng::Type::READ);
                     libpng->set_error_point("Error decoding APNG frame header");
@@ -452,66 +512,10 @@ void Png::open(std::istream & input, const Args & args)
             }
         }
         libpng.reset();
-
-        auto image_no = args.image_no.value_or(0u);
-        if(image_no >= animation_info.num_frames)
-            throw std::runtime_error{"Error reading APNG: frame " + std::to_string(image_no) + " is out of range (0-" + std::to_string(animation_info.num_frames - 1) + ")"};
-
-        bool do_loop = args.animate && args.loop_animation;
-        auto animator = std::unique_ptr<Animate>{};
-        auto start_frame = composed_ ? 0u : image_no;
-        auto frame_end = image_no + 1;
-        if(args.animate)
-        {
-            frame_end = animation_info.num_frames;
-            animator = std::make_unique<Animate>(args);
-        }
-
-        // set to transparent black
-        for(std::size_t row = 0; row < height_; ++row)
-        {
-            for(std::size_t col = 0; col < width_; ++col)
-                image_data_[row][col] = Color{0u, 0u, 0u, 0u};
-        }
-
-        auto play = 0u;
-        do
-        {
-            for(auto f = start_frame; f < frame_end; ++f)
-            {
-                auto &frame = frames[f];
-                for(std::size_t row = 0; row < frame.img.height_; ++row)
-                {
-                    for(std::size_t col = 0; col < frame.img.width_; ++col)
-                    {
-                        if(frame.blend_op == Blend_op::OVER)
-                        {
-                            auto bg = frame.dispose_op == Dispose_op::BACKGROUND ? FColor{0.0f, 0.0f, 0.0f, 0.0f}
-                                                                                 : FColor{image_data_[row + frame.y_offset][col + frame.x_offset]};
-                            auto fg = FColor{frame.img.image_data_[row][col]};
-                            auto out = FColor{};
-                            out.a = fg.a + bg.a * (1.0f - fg.a);
-                            out.r = (fg.r * fg.a + bg.r * bg.a * (1.0f - fg.a)) / out.a;
-                            out.g = (fg.g * fg.a + bg.g * bg.a * (1.0f - fg.a)) / out.a;
-                            out.b = (fg.b * fg.a + bg.b * bg.a * (1.0f - fg.a)) / out.a;
-
-                            image_data_[row + frame.y_offset][col + frame.x_offset] = out;
-                        }
-                        else
-                        {
-                            image_data_[row + frame.y_offset][col + frame.x_offset] = frame.img.image_data_[row][col];
-                        }
-                    }
-                }
-                if(args.animate)
-                {
-                    animator->set_frame_delay(args.animation_frame_delay > 0.0f ? args.animation_frame_delay : frame.delay);
-                    animator->display(*this);
-                    if(!animator->running())
-                        break;
-                }
-            }
-        } while(do_loop && animator && animator->running() && (++play < animation_info.num_plays || animation_info.num_plays == 0));
+    }
+    else
+    {
+        supports_multiple_images_ = supports_animation_ = false;
     }
 }
 
