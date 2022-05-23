@@ -52,7 +52,7 @@ void Ico::open(std::istream & input, const Args & args)
             #ifdef PNG_FOUND
             Png png_img;
             png_img.open(input, args);
-            swap(png_img);
+            move_image_data(png_img);
             #else
             throw std::runtime_error{"Could not read PNG encoded ICO / CUR: Not compiled with PNG support"};
             #endif

@@ -704,11 +704,10 @@ const Image & Image::get_image(std::size_t image_no) const
 
 std::chrono::duration<float> Image::get_frame_delay(std::size_t frame_no) const
 {
+    if(std::empty(frame_delays_))
+        return default_frame_delay_;
+
     return frame_delays_[frame_no];
-}
-std::chrono::duration<float> Image::get_default_frame_delay() const
-{
-    return default_frame_delay_;
 }
 
 char * Image::row_buffer(std::size_t row)
@@ -719,6 +718,29 @@ char * Image::row_buffer(std::size_t row)
 const char * Image::row_buffer(std::size_t row) const
 {
     return reinterpret_cast<const char *>(std::data(image_data_[row]));
+}
+
+void Image::swap_image_data(Image & other)
+{
+    std::swap(width_, other.width_);
+    std::swap(height_, other.height_);
+    std::swap(image_data_, other.image_data_);
+}
+void Image::copy_image_data(const Image & other)
+{
+    width_ = other.width_;
+    height_ = other.height_;
+    image_data_ = other.image_data_;
+}
+void Image::move_image_data(Image & other)
+{
+    width_ = other.width_;
+    height_ = other.height_;
+    image_data_ = std::move(other.image_data_);
+
+    other.image_data_.clear();
+    other.width_ = 0;
+    other.height_ = 0;
 }
 
 [[nodiscard]] std::unique_ptr<Image> get_image_data(const Args & args)

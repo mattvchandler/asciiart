@@ -8,7 +8,6 @@
 
 #include <cstdint>
 
-#include "../animate.hpp"
 #include "binio.hpp"
 #include "sub_args.hpp"
 #include "ico.hpp"
@@ -20,6 +19,7 @@ void Ani::open(std::istream & input, const Args & args)
 
     if(args.animate && args.image_no)
         throw std::runtime_error{args.help_text + "\nCan't specify --image-no with --animate"};
+    this_is_first_image_ = false;
 
     input.exceptions(std::ios_base::badbit | std::ios_base::failbit);
     try
@@ -129,53 +129,31 @@ void Ani::open(std::istream & input, const Args & args)
         if(num_frames == 0)
             throw std::runtime_error{"Error reading ANI: no frames"};
 
-        if(args.get_image_count)
+        if(std::empty(seq))
         {
-            std::cout<<num_frames<<'\n';
-            throw Early_exit{};
-        }
-
-        if(args.image_no && *args.image_no >= num_frames)
-            throw std::runtime_error{"Error reading ANI: image " + std::to_string(*args.image_no) + " is out of range (0-" + std::to_string(num_frames - 1) + ")"};
-
-        if(!args.animate)
-        {
-            swap(frames.at(args.image_no.value_or(0u)));
-        }
-        else
-        {
-            if(std::empty(seq))
+            seq.resize(animation_steps);
+            for(auto i = 0u, j = 0u; i < animation_steps; ++i)
             {
-                seq.resize(animation_steps);
-                for(auto i = 0u, j = 0u; i < animation_steps; ++i)
-                {
-                    seq[i] = j++;
-                    if(j == num_frames)
-                        j = 0;
-                }
+                seq[i] = j++;
+                if(j == num_frames)
+                    j = 0;
             }
-
-            if(std::empty(rate))
-                rate = std::vector<std::uint32_t>(animation_steps, delay_count);
-
-            auto animator = Animate{args};
-            {
-                animator.set_frame_delay(args.animation_frame_delay);
-            }
-            do
-            {
-                for(auto i = 0u; i < animation_steps; ++i)
-                {
-                    if(args.animation_frame_delay == 0.0f)
-                        animator.set_frame_delay(rate[i] / 60.0f);
-
-                    animator.display(frames.at(seq.at(i)));
-                    if(!animator)
-                        break;
-                }
-            } while(args.loop_animation && animator);
-
         }
+
+        if(std::empty(rate))
+            rate = std::vector<std::uint32_t>(animation_steps, delay_count);
+
+        frame_delays_.reserve(animation_steps);
+        images_.reserve(animation_steps);
+
+        for(auto i = 0u; i < animation_steps; ++i)
+        {
+            frame_delays_.emplace_back(rate[i] / 60.0f);
+            images_.emplace_back(frames.at(seq.at(i)));
+        }
+
+        if(!args.animate && !args.image_no)
+            copy_image_data(images_[0]);
     }
     catch(std::ios_base::failure & e)
     {

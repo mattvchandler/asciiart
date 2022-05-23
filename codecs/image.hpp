@@ -32,13 +32,6 @@ public:
     Image(Image &&) = default;
     Image & operator=(Image &&) = default;
 
-    void swap(Image & other)
-    {
-        std::swap(width_, other.width_);
-        std::swap(height_, other.height_);
-        std::swap(image_data_, other.image_data_);
-    }
-
     const std::vector<Color> & operator[](std::size_t i) const
     {
         return image_data_[i];
@@ -73,10 +66,13 @@ public:
     std::size_t num_images() const;
     const Image & get_image(std::size_t image_no) const;
     std::chrono::duration<float> get_frame_delay(std::size_t image_no) const;
-    std::chrono::duration<float> get_default_frame_delay() const;
 
     char * row_buffer(std::size_t row);
     const char * row_buffer(std::size_t row) const;
+
+    void swap_image_data(Image & other);
+    void copy_image_data(const Image & other);
+    void move_image_data(Image & other);
 
 protected:
 
