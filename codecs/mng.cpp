@@ -9,8 +9,6 @@
 
 #include <libmng.h>
 
-#include "../animate.hpp"
-
 class Libmng
 {
 private:
@@ -70,16 +68,18 @@ public:
     operator mng_data_struct const *() const { return mng_; }
 };
 
-void Mng::open(std::istream & input, const Args & args)
+void Mng::open(std::istream & input, const Args &)
 {
+    this_is_first_image_ = false;
+
     struct Mng_info
     {
         Mng & mng;
+        unsigned int width{0u}, height{0u};
         std::istream & input;
         mng_uint32 faked_timer {0};
 
         bool hit_mend {false};
-        std::vector<Mng> frames;
 
         Mng_info(Mng & mng, std::istream & input):
             mng{mng},
@@ -110,7 +110,9 @@ void Mng::open(std::istream & input, const Args & args)
     {
         auto mng_info = reinterpret_cast<Mng_info *>(mng_get_userdata(handle));
 
-        mng_info->mng.set_size(width, height);
+        mng_info->width = width;
+        mng_info->height = height;
+        mng_info->mng.images_.back().set_size(width, height);
 
         return MNG_TRUE;
     }) != MNG_NOERROR)
@@ -138,7 +140,7 @@ void Mng::open(std::istream & input, const Args & args)
     {
         auto mng_info = reinterpret_cast<Mng_info *>(mng_get_userdata(handle));
 
-        return reinterpret_cast<mng_ptr>(std::data(mng_info->mng.image_data_[row]));
+        return reinterpret_cast<mng_ptr>(mng_info->mng.images_.back().row_buffer(row));
     }) != MNG_NOERROR)
         mng->throw_error(" setting row callback: ");
 
@@ -146,12 +148,13 @@ void Mng::open(std::istream & input, const Args & args)
     {
         auto mng_info = reinterpret_cast<Mng_info *>(mng_get_userdata(handle));
 
-        mng_info->frames.emplace_back(mng_info->mng);
+        mng_info->mng.images_.emplace_back(mng_info->mng.images_.back());
 
         return MNG_TRUE;
     }) != MNG_NOERROR)
         mng->throw_error(" setting refresh_callback ");
 
+    images_.emplace_back();
     if(mng_read(*mng) != MNG_NOERROR)
         mng->throw_error(" reading input: ");
 
@@ -178,36 +181,6 @@ void Mng::open(std::istream & input, const Args & args)
     if(disp_status != MNG_NOERROR)
         mng->throw_error(" on retrieving frames: ");
 
-    auto frame_delay = mng_get_ticks(*mng) ? mng_get_ticks(*mng) / 1000.0f : 1.0f / 30.0f;
+    default_frame_delay_ = decltype(default_frame_delay_){mng_get_ticks(*mng) ? mng_get_ticks(*mng) / 1000.0f : 1.0f / 30.0f};
     mng.reset();
-
-    auto & frames = mng_info.frames;
-    if(std::size(frames) <= 1u && args.image_no)
-        throw std::runtime_error{args.help_text + "\nImage type doesn't support multiple images"};
-    if(std::size(frames) <= 1u && args.animate)
-        throw std::runtime_error{args.help_text + "\nImage type doesn't support animation"};
-
-    auto image_no = args.image_no.value_or(0u);
-
-    if(image_no >= std::size(frames))
-        throw std::runtime_error{"Error reading MNG: frame " + std::to_string(image_no) + " is out of range (0-" + std::to_string(std::size(frames) - 1) + ")"};
-
-    if(args.animate)
-    {
-        auto animator = Animate{args};
-        do
-        {
-            for(auto && f: frames)
-            {
-                animator.set_frame_delay(args.animation_frame_delay > 0.0f ? args.animation_frame_delay : frame_delay);
-                animator.display(f);
-                if(!animator)
-                    break;
-            }
-        } while(animator && args.loop_animation);
-    }
-    else
-    {
-        *this = std::move(frames[image_no]);
-    }
 }

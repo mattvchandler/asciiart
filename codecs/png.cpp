@@ -604,5 +604,5 @@ void Png::write(std::ostream & out, const Image & img, bool invert)
 
     png_write_png(libpng, libpng, PNG_TRANSFORM_IDENTITY, nullptr);
 
-    png_write_end(libpng, nullptr);
+    png_write_end(libpng, nullptr); // TODO: multiple IENDs?
 }

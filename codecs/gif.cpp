@@ -9,7 +9,6 @@
 
 #include <gif_lib.h>
 
-#include "../animate.hpp"
 #include "sub_args.hpp"
 
 // giflib is a very poorly designed library. Its documentation is even worse
@@ -33,8 +32,10 @@ int read_fn(GifFileType* gif_file, GifByteType * data, int length) noexcept
     return in->gcount();
 }
 
-void Gif::open(std::istream & input, const Args & args)
+void Gif::open(std::istream & input, const Args &)
 {
+    this_is_first_image_ = false;
+
     int error_code = GIF_OK;
     GifFileType * gif = DGifOpen(&input, read_fn, &error_code);
     if(!gif)
@@ -45,16 +46,6 @@ void Gif::open(std::istream & input, const Args & args)
         DGifCloseFile(gif, NULL);
         throw std::runtime_error{"Error reading GIF: " + std::string{GifErrorString(gif->Error)}};
     }
-
-    if(args.get_image_count)
-    {
-        std::cout<<gif->ImageCount<<'\n';
-        throw Early_exit{};
-    }
-
-    auto image_no = args.image_no.value_or(0u);
-    if(image_no >= static_cast<decltype(image_no)>(gif->ImageCount))
-        throw std::runtime_error{"Error reading GIF: frame " + std::to_string(image_no) + " is out of range (0-" + std::to_string(gif->ImageCount - 1) + ")"};
 
     set_size(gif->SWidth, gif->SHeight);
 
@@ -67,78 +58,64 @@ void Gif::open(std::istream & input, const Args & args)
         }
     }
 
-    bool do_loop = args.animate && args.loop_animation;
-    auto animator = std::unique_ptr<Animate>{};
-    auto start_frame = composed_ ? 0u : image_no;
-    auto frame_end = image_no + 1;
-    if(args.animate)
+    for(auto f = 0; f < gif->ImageCount; ++f)
     {
-        frame_end = gif->ImageCount;
-        animator = std::make_unique<Animate>(args);
-    }
-
-    do
-    {
-        for(auto f = start_frame; f < frame_end; ++f)
+        auto pal = gif->SavedImages[f].ImageDesc.ColorMap;
+        if(!pal)
         {
-            auto pal = gif->SavedImages[f].ImageDesc.ColorMap;
+            pal = gif->SColorMap;
             if(!pal)
             {
-                pal = gif->SColorMap;
-                if(!pal)
-                {
-                    DGifCloseFile(gif, NULL);
-                    throw std::runtime_error{"Could not find color map"};
-                }
-            }
-
-            int transparency_ind = -1;
-            float frame_delay = args.animation_frame_delay;
-
-            GraphicsControlBlock gcb;
-            if(DGifSavedExtensionToGCB(gif, f, &gcb) == GIF_OK)
-            {
-                transparency_ind = gcb.TransparentColor;
-                if(args.animation_frame_delay > 0.0f)
-                    frame_delay = 0.01f * gcb.DelayTime;
-            }
-
-            auto left = gif->SavedImages[f].ImageDesc.Left;
-            auto top = gif->SavedImages[f].ImageDesc.Top;
-            auto sub_width = static_cast<std::size_t>(gif->SavedImages[f].ImageDesc.Width);
-            auto sub_height = static_cast<std::size_t>(gif->SavedImages[f].ImageDesc.Height);
-
-            if(left + sub_width > width_ || top + sub_height > height_)
-            {
                 DGifCloseFile(gif, NULL);
-                throw std::runtime_error{"GIF has wrong size or offset"};
-            }
-
-            const auto & im = gif->SavedImages[f].RasterBits;
-
-            for(std::size_t row = 0; row < sub_height; ++row)
-            {
-                for(std::size_t col = 0; col < sub_width; ++col)
-                {
-                    auto index = im[row * sub_width + col];
-
-                    if(index != transparency_ind)
-                    {
-                        auto & pal_color = pal->Colors[index];
-                        image_data_[row + top][col + left] = Color{pal_color.Red, pal_color.Green, pal_color.Blue};
-                    }
-                }
-            }
-
-            if(args.animate)
-            {
-                animator->set_frame_delay(frame_delay);
-                animator->display(*this);
-                if(!animator->running())
-                    break;
+                throw std::runtime_error{"Could not find color map"};
             }
         }
-    } while(do_loop && animator && animator->running());
+
+        int transparency_ind = -1;
+
+        GraphicsControlBlock gcb;
+        if(DGifSavedExtensionToGCB(gif, f, &gcb) == GIF_OK)
+        {
+            transparency_ind = gcb.TransparentColor;
+            frame_delays_.emplace_back(0.01f * gcb.DelayTime);
+        }
+        else
+            frame_delays_.emplace_back(1.0f / 25.0f);
+
+        auto left = gif->SavedImages[f].ImageDesc.Left;
+        auto top = gif->SavedImages[f].ImageDesc.Top;
+        auto sub_width = static_cast<std::size_t>(gif->SavedImages[f].ImageDesc.Width);
+        auto sub_height = static_cast<std::size_t>(gif->SavedImages[f].ImageDesc.Height);
+
+        if(left + sub_width > width_ || top + sub_height > height_)
+        {
+            DGifCloseFile(gif, NULL);
+            throw std::runtime_error{"GIF has wrong size or offset"};
+        }
+
+        const auto & im = gif->SavedImages[f].RasterBits;
+
+        auto & frame = images_.emplace_back(width_, height_);
+        for(std::size_t row = 0; row < sub_height; ++row)
+        {
+            for(std::size_t col = 0; col < sub_width; ++col)
+            {
+                auto index = im[row * sub_width + col];
+
+                if(index != transparency_ind)
+                {
+                    auto & pal_color = pal->Colors[index];
+                    auto c = Color{pal_color.Red, pal_color.Green, pal_color.Blue};
+                    if(composed_)
+                        image_data_[row + top][col + left] = c;
+                    else
+                        frame[row + top][col + left] = c;
+                }
+            }
+        }
+        if(composed_)
+            frame.copy_image_data(*this);
+    }
 
     DGifCloseFile(gif, NULL);
 }
@@ -157,9 +134,6 @@ void Gif::handle_extra_args(const Args & args)
 
         if(args.animate && !composed_)
             throw std::runtime_error{options.help(args.help_text) + "\nCan't specify --not-composed with --animate"};
-
-        if(args.animate && args.image_no)
-            throw std::runtime_error{options.help(args.help_text) + "\nCan't specify --image-no with --animate"};
     }
     catch(const cxxopts::OptionException & e)
     {
