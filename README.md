@@ -58,5 +58,4 @@ formats:
 
 Add support for
 
-* MPO
 * JPEG XR? XS? XT? LS? HDR?
