@@ -203,7 +203,7 @@ void display_image(const Image & img, const Args & args)
         {
             for(auto f = 0u; f < img.num_frames(); ++f)
             {
-                animator.set_frame_delay(args.animation_frame_delay > 0.0f ? args.animation_frame_delay : img.get_frame_delay(f).count()); // TODO: remove count once we've switch over from per-codec animator loops
+                animator.set_frame_delay(args.animation_frame_delay > 0.0f ? std::chrono::duration<float>(args.animation_frame_delay) : img.get_frame_delay(f));
                 animator.display(img.get_frame(f));
                 if(!animator)
                     break;

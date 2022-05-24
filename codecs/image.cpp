@@ -47,7 +47,6 @@
 #include "webp.hpp"
 #include "xpm.hpp"
 
-// TODO: remove?
 const char * Early_exit::what() const noexcept { return "Success"; }
 
 bool Image::header_cmp(unsigned char a, char b){ return a == static_cast<unsigned char>(b); };

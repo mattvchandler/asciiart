@@ -1,6 +1,7 @@
 #ifndef ANIMATE_HPP
 #define ANIMATE_HPP
 
+#include <chrono>
 #include <memory>
 
 #include "args.hpp"
@@ -19,7 +20,7 @@ public:
 
     void display(const Image & img);
     void set_framerate(float fps);
-    void set_frame_delay(float delay_s);
+    void set_frame_delay(std::chrono::duration<float> delay_s);
 
     bool running() const;
     operator bool() const { return running(); }

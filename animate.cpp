@@ -49,7 +49,7 @@ public:
     Animate_impl & operator=(Animate_impl &&) = delete;
 
     void display(const Image & img);
-    void set_frame_delay(float delay_s);
+    void set_frame_delay(std::chrono::duration<float> delay_s);
 
     bool running() const;
 
@@ -179,9 +179,9 @@ void Animate::Animate_impl::display(const Image & img)
     last_frame_time_ = std::chrono::high_resolution_clock::now();
 }
 
-void Animate::set_framerate(float fps) { pimpl->set_frame_delay(1.0f / fps); }
-void Animate::set_frame_delay(float delay_s) { pimpl->set_frame_delay(delay_s); }
-void Animate::Animate_impl::set_frame_delay(float delay_s) { frame_delay_ = decltype(frame_delay_){delay_s}; }
+void Animate::set_framerate(float fps) { pimpl->set_frame_delay(std::chrono::duration<float>(1.0f / fps)); }
+void Animate::set_frame_delay(std::chrono::duration<float> delay_s) { pimpl->set_frame_delay(delay_s); }
+void Animate::Animate_impl::set_frame_delay(std::chrono::duration<float> delay_s) { frame_delay_ = delay_s; }
 
 bool Animate::running() const { return pimpl->running(); }
 bool Animate::Animate_impl::running() const { return running_; }
