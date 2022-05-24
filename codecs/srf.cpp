@@ -84,8 +84,6 @@ Color get_image_color(std::size_t row,
 constexpr auto frames_per_image = 36u;
 void Srf::open(std::istream & input, const Args & args)
 {
-    this_is_first_image_ = false;
-
     input.exceptions(std::ios_base::badbit | std::ios_base::failbit);
     try
     {
@@ -123,46 +121,83 @@ void Srf::open(std::istream & input, const Args & args)
             total_height += image_sets.back().height;
         }
 
-        if(args.image_no)
+        if(args.frame_no)
         {
-            selected_image_no_ = args.image_no;
-            if(args.image_no > num_images)
-                throw std::runtime_error{"Error showing image: " + std::to_string(*args.image_no) + " is out of range (0-" + std::to_string(num_images - 1) + ")"};
+            if(!args.image_no)
+                throw std::runtime_error{"Error processing SRF: --frame-no set without --image-no"};
 
-            images_.resize(frames_per_image);
-            set_size(image_sets[*args.image_no].width, image_sets[*args.image_no].height);
+            this_is_first_image_ = true;
+            supports_animation_ = false;
+
+            const auto frame_width = image_sets[*args.image_no].width / frames_per_image;
+
+            set_size(frame_width, image_sets[*args.image_no].height);
 
             for(std::size_t row = 0u; row < image_sets[*args.image_no].height; ++row)
             {
-                for(std::size_t col = 0u; col < image_sets[*args.image_no].width; ++col)
-                    image_data_[row][col] = get_image_color(row, col, image_sets[*args.image_no]);
+                for(std::size_t col = *args.frame_no * frame_width, current_col = 0u; col < (*args.frame_no + 1) * frame_width; ++col, ++current_col)
+                    image_data_[row][current_col] = get_image_color(row, col, image_sets[*args.image_no]);
             }
+        }
+        else if(mosaic_)
+        {
+            this_is_first_image_ = true;
+            supports_animation_ = false;
 
-            const auto frame_width = image_sets[*args.image_no].width / frames_per_image;
-            for(std::uint32_t i = 0u; i < frames_per_image; ++i)
+            if(args.image_no)
             {
-                images_[i].set_size(frame_width, image_sets[*args.image_no].height);
+                set_size(image_sets[*args.image_no].width, image_sets[*args.image_no].height);
+
                 for(std::size_t row = 0u; row < image_sets[*args.image_no].height; ++row)
                 {
-                    for(std::size_t col = i * frame_width, current_col = 0u; col < (i + 1) * frame_width; ++col, ++current_col)
-                        images_[i][row][current_col] = get_image_color(row, col, image_sets[*args.image_no]);
+                    for(std::size_t col = 0u; col < image_sets[*args.image_no].width; ++col)
+                        image_data_[row][col] = get_image_color(row, col, image_sets[*args.image_no]);
+                }
+            }
+            else
+            {
+                set_size(max_width, total_height);
+
+                std::size_t current_row = 0;
+                for(std::uint32_t i = 0u; i < num_images; ++i)
+                {
+                    for(std::size_t row = 0u; row < image_sets[i].height; ++row, ++current_row)
+                    {
+                        for(std::size_t col = 0u; col < image_sets[i].width; ++col)
+                            image_data_[current_row][col] = get_image_color(row, col, image_sets[i]);
+                    }
                 }
             }
         }
         else
         {
-            images_.resize(num_images);
-            supports_animation_ = false;
+            this_is_first_image_ = false;
+            supports_animation_ = true;
 
-            set_size(max_width, total_height);
-            std::size_t current_row = 0;
-            for(std::uint32_t i = 0u; i < num_images; ++i)
+            if(args.image_no)
             {
-                images_[i].set_size(image_sets[i].width, image_sets[i].height);
-                for(std::size_t row = 0u; row < image_sets[i].height; ++row, ++current_row)
+                const auto frame_width = image_sets[*args.image_no].width / frames_per_image;
+
+                for(std::uint32_t i = 0u; i < frames_per_image; ++i)
                 {
-                    for(std::size_t col = 0u; col < image_sets[i].width; ++col)
-                        image_data_[current_row][col] = images_[i][row][col] = get_image_color(row, col, image_sets[i]);
+                    auto & frame = images_.emplace_back(frame_width, image_sets[*args.image_no].height);
+                    for(std::size_t row = 0u; row < image_sets[*args.image_no].height; ++row)
+                    {
+                        for(std::size_t col = i * frame_width, current_col = 0u; col < (i + 1) * frame_width; ++col, ++current_col)
+                            frame[row][current_col] = get_image_color(row, col, image_sets[*args.image_no]);
+                    }
+                }
+            }
+            else
+            {
+                for(std::uint32_t i = 0u; i < num_images; ++i)
+                {
+                    auto & img = images_.emplace_back(image_sets[i].width, image_sets[i].height);
+                    for(std::size_t row = 0u; row < image_sets[i].height; ++row)
+                    {
+                        for(std::size_t col = 0u; col < image_sets[i].width; ++col)
+                            img[row][col] = get_image_color(row, col, image_sets[i]);
+                    }
                 }
             }
         }
@@ -175,25 +210,27 @@ void Srf::open(std::istream & input, const Args & args)
             throw std::runtime_error{"Error reading SRF: unexpected end of file"};
     }
 }
-// TODO: --mosaic option
 
-const Image & Srf::get_image(std::size_t image_no) const
+void Srf::handle_extra_args(const Args & args)
 {
-    if(selected_image_no_)
+    auto options = Sub_args{"SRF"};
+    try
     {
-        if(image_no == *selected_image_no_)
-            return *this;
-        else
-            throw std::runtime_error{"Error: Attempted to select different image than specified in --image_no"};
+        options.add_options()
+            ("mosaic", "Without --image-no, shows all images as a mosic. With --image-no, shows a mosaic of each frame in the selected image. Invalid with --frame-no");
+
+        auto sub_args = options.parse(args.extra_args);
+
+        mosaic_ = sub_args.count("mosaic");
+        if(args.frame_no && mosaic_)
+            throw std::runtime_error{options.help(args.help_text) + "\nCan't specify --mosaic with --frame-no"};
     }
-    else
-        return Image::get_image(image_no);
+    catch(const cxxopts::OptionException & e)
+    {
+        throw std::runtime_error{options.help(args.help_text) + '\n' + e.what()};
+    }
 }
 
-const Image & Srf::get_frame(std::size_t frame_no) const
-{
-    return Image::get_image(frame_no);
-}
 std::chrono::duration<float> Srf::get_frame_delay(std::size_t) const
 {
     return std::chrono::duration<float>(1.0f / 25.0f);

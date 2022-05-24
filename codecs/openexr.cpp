@@ -2,11 +2,11 @@
 
 #include <algorithm>
 
+#include <cstdlib>
 #include <cstring>
 
 #include <ImfIO.h>
 #include <ImfRgbaFile.h>
-#include <stdlib.h>
 
 class OpenExr_reader: public Imf::IStream
 {
