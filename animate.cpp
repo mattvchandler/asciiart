@@ -37,7 +37,6 @@
 #define SEP ";"
 #define CUP "H"
 #define RESET_CHAR CSI "0" SGR
-#define DISABLE_ECHO CSI "8" SGR
 
 class Animate::Animate_impl
 {
@@ -189,7 +188,7 @@ bool Animate::Animate_impl::running() const { return running_; }
 
 void Animate::Animate_impl::open_alternate_buffer()
 {
-    std::cout <<ALT_BUFF ENABLED CLS CURSOR DISABLED DISABLE_ECHO << std::flush;
+    std::cout <<ALT_BUFF ENABLED CLS CURSOR DISABLED << std::flush;
 
 #ifdef HAS_TERMIOS
     tcgetattr(STDIN_FILENO, &old_term_info_); // save old term attrs

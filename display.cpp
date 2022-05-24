@@ -79,7 +79,6 @@ namespace
 
     constexpr auto color_table = build_color_table();
 
-    // TODO: --nocolor doesn't work in animation
     class set_color
     {
     public:
