@@ -106,6 +106,7 @@ void zlib_compress(std::ostream & out, const std::string & data)
 
 const std::array mc_palette
 {
+    // color values come from https://minecraft.fandom.com/wiki/Map_item_format#Color_table
     Color{  0,   0,   0,   0},
     Color{  0,   0,   0,   0},
     Color{  0,   0,   0,   0},
@@ -344,19 +345,19 @@ const std::array mc_palette
     Color{ 17, 155, 114, 255},
     Color{ 20, 180, 133, 255},
     Color{ 10,  95,  70, 255},
-    // added in 1.17 // TODO; appoximate values, update when mc wiki updates
-    Color{ 69,  69,  69, 255},
-    Color{ 85,  85,  85, 255},
-    Color{ 99,  99,  99, 255},
-    Color{ 51,  51,  51, 255},
-    Color{150, 122, 102, 255},
-    Color{184, 148, 125, 255},
-    Color{213, 173, 145, 255},
-    Color{113,  91,  76, 255},
-    Color{ 88, 116, 104, 255},
-    Color{108, 142, 127, 255},
-    Color{125, 165, 148, 255},
-    Color{ 66,  87,  78, 255},
+    // added in 1.17
+    Color{ 70,  70,  70, 255},
+    Color{ 86,  86,  86, 255},
+    Color{100, 100, 100, 255},
+    Color{ 52,  52,  52, 255},
+    Color{152, 123, 103, 255},
+    Color{186, 150, 126, 255},
+    Color{216, 175, 147, 255},
+    Color{114,  92,  77, 255},
+    Color{ 89, 117, 105, 255}, // base color 61 (glow lichen). NOTE. add from here as the MC wiki updates
+    Color{109, 144, 129, 255},
+    Color{127, 167, 150, 255},
+    Color{ 67,  88,  79, 255},
 };
 
 // Note:
