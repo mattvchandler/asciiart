@@ -70,8 +70,6 @@ public:
 
 void Mng::open(std::istream & input, const Args &)
 {
-    this_is_first_image_ = false;
-
     struct Mng_info
     {
         Mng & mng;
@@ -181,6 +179,9 @@ void Mng::open(std::istream & input, const Args &)
     if(disp_status != MNG_NOERROR)
         mng->throw_error(" on retrieving frames: ");
 
-    default_frame_delay_ = decltype(default_frame_delay_){mng_get_ticks(*mng) ? mng_get_ticks(*mng) / 1000.0f : 1.0f / 30.0f};
     mng.reset();
+
+    default_frame_delay_ = decltype(default_frame_delay_){mng_get_ticks(*mng) ? mng_get_ticks(*mng) / 1000.0f : 1.0f / 30.0f};
+    move_image_data(images_.front());
+    images_.erase(std::begin(images_));
 }

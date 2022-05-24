@@ -175,6 +175,7 @@ void Srf::open(std::istream & input, const Args & args)
             throw std::runtime_error{"Error reading SRF: unexpected end of file"};
     }
 }
+// TODO: --mosaic option
 
 const Image & Srf::get_image(std::size_t image_no) const
 {

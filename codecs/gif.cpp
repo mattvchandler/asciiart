@@ -34,8 +34,6 @@ int read_fn(GifFileType* gif_file, GifByteType * data, int length) noexcept
 
 void Gif::open(std::istream & input, const Args &)
 {
-    this_is_first_image_ = false;
-
     int error_code = GIF_OK;
     GifFileType * gif = DGifOpen(&input, read_fn, &error_code);
     if(!gif)
@@ -117,6 +115,8 @@ void Gif::open(std::istream & input, const Args &)
             frame.copy_image_data(*this);
     }
 
+    move_image_data(images_.front());
+    images_.erase(std::begin(images_));
     DGifCloseFile(gif, NULL);
 }
 

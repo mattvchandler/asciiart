@@ -17,8 +17,6 @@ void Ani::open(std::istream & input, const Args & args)
     constexpr auto id_size = 4u;
     constexpr auto anih_size = 36u;
 
-    this_is_first_image_ = false;
-
     input.exceptions(std::ios_base::badbit | std::ios_base::failbit);
     try
     {
@@ -150,8 +148,8 @@ void Ani::open(std::istream & input, const Args & args)
             images_.emplace_back(frames.at(seq.at(i)));
         }
 
-        if(!args.animate && !args.image_no)
-            copy_image_data(images_[0]);
+        move_image_data(images_.front());
+        images_.erase(std::begin(images_));
     }
     catch(std::ios_base::failure & e)
     {

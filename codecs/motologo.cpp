@@ -3,6 +3,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
 
 #include <cstdint>
 
@@ -47,7 +48,7 @@ constexpr auto dir_entry_size = 32u;
 constexpr auto name_size = 24u;
 constexpr auto image_magic_size = 8u;
 
-void MotoLogo::open(std::istream & input, const Args & args)
+void MotoLogo::open(std::istream & input, const Args &)
 {
     input.exceptions(std::ios_base::badbit | std::ios_base::failbit);
     try
@@ -62,16 +63,8 @@ void MotoLogo::open(std::istream & input, const Args & args)
         pos += magic_size + sizeof(directory_size);
 
         const auto num_images = (directory_size - magic_size - sizeof(directory_size)) / dir_entry_size;
-        if(args.image_no && *args.image_no >= num_images)
-            throw std::runtime_error{"Error reading MotoLogo: image " + std::to_string(*args.image_no) + " is out of range (0-" + std::to_string(num_images) + ")"};
-        if(args.get_image_count)
-        {
-            std::cout<<num_images<<'\n';
-            throw Early_exit{};
-        }
-
-        std::uint32_t target_offset{0}, target_size{0};
-        bool target_found = false;
+        auto name_lookup = std::unordered_map<std::string, unsigned int>{};
+        auto locations = std::vector <std::pair<std::uint32_t, std::uint32_t>>{};
 
         for(auto i = 0u; i < num_images; ++i)
         {
@@ -83,96 +76,106 @@ void MotoLogo::open(std::istream & input, const Args & args)
             pos += dir_entry_size;
 
             name.resize(name.find_first_of('\0'));
+            name_lookup[name] = i;
+            locations.emplace_back(offset, size);
 
             if(list_)
             {
                 std::cout<<"  "<<name<<'\n';
-            }
-            else if((args.image_no && *args.image_no == i) ||
-                    (!args.image_no && name == image_name_))
-            {
-                target_offset = offset;
-                target_size = size;
-                target_found = true;
-                break;
             }
         }
 
         if(list_)
             throw Early_exit{};
 
-        if(!target_found)
-            throw std::runtime_error{"Error reading MotoLogo: requested image '" + image_name_ + "' not found in MotoLogo file"};
-
-        input.ignore(target_offset - pos);
-
-         // read image
-        constexpr auto expected_image_magic = std::array{'M', 'o', 't', 'o', 'R', 'u', 'n', '\0'};
-        auto image_magic = std::array<char, image_magic_size>{};
-        input.read(std::data(image_magic), std::size(image_magic));
-        for(auto i = 0u; i < image_magic_size; ++i)
+        for(auto i = 0u; i < num_images; ++i)
         {
-            if(image_magic[i] != expected_image_magic[i])
-                throw std::runtime_error{"Error reading MotoLogo: Bad magic number on Image"};
-        }
+            auto [offset, size] = locations[i];
+            std::cout<<"from "<<pos<<" to "<<offset<<" size "<<size<<'\n';
+            input.ignore(offset - pos);
+            pos = offset;
 
-        std::uint16_t width, height;
-        readb(input, width, std::endian::big);
-        readb(input, height, std::endian::big);
-
-        set_size(width, height);
-
-        auto row = 0u;
-        auto write_pix = [&row, col = 0u, this](std::uint8_t r, std::uint8_t g, std::uint8_t b) mutable
-        {
-            if(row >= height_)
-                throw std::runtime_error{"MotoLogo image data out of range"};
-
-            auto & p = image_data_[row][col];
-            p.r = r;
-            p.g = g;
-            p.b = b;
-            p.a = 255u;
-
-            if(++col == width_)
+            // read image
+            constexpr auto expected_image_magic = std::array{'M', 'o', 't', 'o', 'R', 'u', 'n', '\0'};
+            auto image_magic = std::array<char, image_magic_size>{};
+            input.read(std::data(image_magic), std::size(image_magic)); pos += std::size(image_magic);
+            for(auto j = 0u; j < image_magic_size; ++j)
             {
-                col = 0u;
-                ++row;
+                if(image_magic[j] != expected_image_magic[j])
+                    throw std::runtime_error{"Error reading MotoLogo: Bad magic number on Image"};
             }
-        };
 
-        pos = 0;
-        auto check_pos = [&pos, &target_size]() { if(++pos > target_size) throw std::runtime_error{"MotoLogo image read past size"}; };
-        while(row < height_)
-        {
-            std::uint16_t count;
-            readb(input, count, std::endian::big);
-            if(count & 0x7000u)
-                throw std::runtime_error{"Error reading MotoLogo: bad RLE count"};
+            std::uint16_t width, height;
+            readb(input, width, std::endian::big);
+            readb(input, height, std::endian::big);
+            pos += sizeof(std::uint16_t) * 2;
 
-            bool repeat = count & 0x8000u;
-            count &= 0x0FFFu;
+            auto & img = images_.emplace_back(width, height);
 
-            std::uint8_t r{0}, g{0}, b{0};
-            if(repeat)
+            auto row = 0u;
+            auto write_pix = [&row, col = 0u, &img](std::uint8_t r, std::uint8_t g, std::uint8_t b) mutable
             {
-                readb(input, b); check_pos();
-                readb(input, g); check_pos();
-                readb(input, r); check_pos();
+                if(row >= img.get_height())
+                    throw std::runtime_error{"MotoLogo image data out of range"};
 
-                for(auto i = 0u; i < count; ++i)
-                    write_pix(r, g, b);
-            }
-            else
+                auto & p = img[row][col];
+                p.r = r;
+                p.g = g;
+                p.b = b;
+                p.a = 255u;
+
+                if(++col == img.get_width())
+                {
+                    col = 0u;
+                    ++row;
+                }
+            };
+
+            auto img_pos = 0u;
+            auto check_pos = [&pos, &img_pos, size=size](unsigned int bytes = 1) { if(pos += bytes, img_pos += bytes > size) throw std::runtime_error{"MotoLogo image read past size"}; };
+            while(row < img.get_height())
             {
-                for(auto i = 0u; i < count; ++i)
+                std::uint16_t count;
+                readb(input, count, std::endian::big); check_pos(sizeof(std::uint16_t));
+                if(count & 0x7000u)
+                    throw std::runtime_error{"Error reading MotoLogo: bad RLE count"};
+
+                bool repeat = count & 0x8000u;
+                count &= 0x0FFFu;
+
+                std::uint8_t r{0}, g{0}, b{0};
+                if(repeat)
                 {
                     readb(input, b); check_pos();
                     readb(input, g); check_pos();
                     readb(input, r); check_pos();
-                    write_pix(r, g, b);
+
+                    for(auto i = 0u; i < count; ++i)
+                        write_pix(r, g, b);
+                }
+                else
+                {
+                    for(auto i = 0u; i < count; ++i)
+                    {
+                        readb(input, b); check_pos();
+                        readb(input, g); check_pos();
+                        readb(input, r); check_pos();
+                        write_pix(r, g, b);
+                    }
                 }
             }
+        }
+        if(image_name_)
+        {
+            if(auto target = name_lookup.find(*image_name_); target != std::end(name_lookup))
+                copy_image_data(images_[target->second]);
+            else
+                throw std::runtime_error{"Error reading MotoLogo: requested image '" + *image_name_ + "' not found in MotoLogo file"};
+        }
+        else
+        {
+            move_image_data(images_.front());
+            images_.erase(std::begin(images_));
         }
     }
     catch(std::ios_base::failure & e)
@@ -191,7 +194,7 @@ void MotoLogo::handle_extra_args(const Args & args)
     {
         options.add_options()
             ("list-images", "list all image names contained in input file")
-            ("image-name", "image name to extract", cxxopts::value<std::string>()->default_value("logo_boot"), "IMAGE_NAME");
+            ("image-name", "image name to extract", cxxopts::value<std::string>(), "IMAGE_NAME");
 
         auto sub_args = options.parse(args.extra_args);
 

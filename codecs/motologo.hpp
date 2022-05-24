@@ -21,6 +21,6 @@ public:
 
 private:
     bool list_ {false};
-    std::string image_name_ {"logo_boot"};
+    std::optional<std::string> image_name_;
 };
 #endif // MOTOLOGO_HPP
