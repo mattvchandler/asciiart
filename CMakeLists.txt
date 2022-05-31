@@ -62,6 +62,7 @@ add_executable(asciiart
     codecs/ico.cpp
     codecs/motologo.cpp
     codecs/pcx.cpp
+    codecs/pkmn.cpp
     codecs/pnm.cpp
     codecs/sif.cpp
     codecs/srf.cpp

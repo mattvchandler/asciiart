@@ -175,6 +175,7 @@ static const std::vector<std::string> input_formats =
     "PNG",
     "APNG",
     #endif
+    "Pokemon Gen 1 Compressed sprites (.bin)",
     "PBM", "PGM", "PPM", "PAM", "PFM",
     "SRF",
     "SIF",
@@ -196,9 +197,10 @@ static const std::vector<std::string> output_formats =
     ".avif",
     #endif
     ".bmp",
+    ".bin," // pokemon sprite
     ".cur",".ico",
     #ifdef ZLIB_FOUND
-    ".dat",
+    ".dat", // MCMap
     #endif
     #ifdef OpenEXR_FOUND
     ".exr",
@@ -459,6 +461,7 @@ static const std::vector<std::string> output_formats =
 
         if(args.count("tga")
                 + args.count("pcx")
+                + args.count("pkmn")
     #ifdef SVG_FOUND
                 + args.count("svg")
     #endif
@@ -479,6 +482,8 @@ static const std::vector<std::string> output_formats =
             filetype = Args::Force_file::tga;
         else if(args.count("pcx"))
             filetype = Args::Force_file::pcx;
+        else if(args.count("pkmn"))
+            filetype = Args::Force_file::pkmn;
     #ifdef SVG_FOUND
         else if(args.count("svg"))
             filetype = Args::Force_file::svg;

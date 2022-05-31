@@ -37,6 +37,7 @@
 #include "motologo.hpp"
 #include "openexr.hpp"
 #include "pcx.hpp"
+#include "pkmn.hpp"
 #include "png.hpp"
 #include "pnm.hpp"
 #include "sif.hpp"
@@ -596,6 +597,8 @@ void Image::convert(const Args & args) const
     else if(ext == ".avif")
         Avif::write(out, *this, args.invert);
     #endif
+    else if(ext == ".bin")
+        Pkmn::write(out, *this, args.invert);
     else if(ext == ".bmp")
         Bmp::write(out, *this, args.invert);
     else if(ext == ".cur")
@@ -923,6 +926,10 @@ void Image::move_image_data(Image & other)
             throw std::runtime_error{"Not compiled with WEBP support"};
             #endif
         }
+        else if(extension == ".bin")
+        {
+            img = std::make_unique<Pkmn>();
+        }
         else if(extension == ".dat")
         {
             #ifdef ZLIB_FOUND
@@ -967,6 +974,9 @@ void Image::move_image_data(Image & other)
         {
             throw std::runtime_error{"Unknown input file format"};
         }
+        break;
+    case Args::Force_file::pkmn:
+        img = std::make_unique<Pkmn>();
         break;
     #ifdef ZLIB_FOUND
     case Args::Force_file::mcmap:

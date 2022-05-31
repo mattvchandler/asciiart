@@ -18,8 +18,8 @@ requires(T begin, T end)
 {
     begin == end;
     ++begin;
-    *begin = std::declval<decltype(*begin)>();
-    *begin++ = std::declval<decltype(*begin)>();
+    *begin;
+    *begin++;
     requires std::is_same_v<decltype(begin == end), bool>;
     requires std::is_same_v<decltype(++begin), T&>;
 } &&
@@ -33,10 +33,10 @@ std::output_iterator<T>;
 // poor man's output_iterator
 requires(T begin)
 {
-    *begin = std::declval<decltype(*begin)>();
+    *begin;
     ++begin;
     begin++;
-    *begin++ = std::declval<decltype(*begin)>();
+    *begin++;
     requires std::is_same_v<decltype(++begin), T&>;
 };
 #endif

@@ -34,6 +34,7 @@ struct Args
     #endif
     #ifdef ZLIB_FOUND
         mcmap,
+        pkmn,
     #endif
         aoc_2019_sif,
     } force_file { Force_file::detect };
