@@ -15,6 +15,8 @@ public:
 
 private:
     unsigned int override_tile_width_ {0}, override_tile_height_ {0};
+    bool check_overrun_ {true};
     bool fixed_buffer_ {false};
+    std::string palette_;
 };
 #endif // PKMN_HPP
