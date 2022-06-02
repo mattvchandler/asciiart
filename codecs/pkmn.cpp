@@ -6,18 +6,18 @@
 #include "bitstream.hpp"
 #include "sub_args.hpp"
 
-constexpr auto tile_size = 8u;
-constexpr auto fixed_tile_size = 7u;
+constexpr auto bytes_per_tile = 8u;
 
 // constexpr auto green_palette = std::array<Color, 4>{Color{0xE0, 0xF8, 0xD0}, Color{0x88, 0xC0, 0x70}, Color{0x34, 0x68, 0x56}, Color{0x08, 0x18, 0x20}};
-constexpr auto pocket_palette = std::array<Color, 4>{Color{0xFF}, Color{0xA9}, Color{0x54}, Color{0x00}};
+// constexpr auto pocket_palette = std::array<Color, 4>{Color{0xFF}, Color{0xA9}, Color{0x54}, Color{0x00}};
 // constexpr auto red_palette = std::array<Color, 4>{Color{0xFF, 0xEF, 0xFF}, Color{0xF7, 0xB5, 0x8C}, Color{0x84, 0x73, 0x9C}, Color{0x18, 0x10, 0x10}};
 // constexpr auto blue_palette = std::array<Color, 4>{Color{0xFF, 0xFF, 0xFF}, Color{0x63, 0xA5, 0xFF}, Color{0x00, 0x00, 0xFF}, Color{0x00, 0x00, 0x00}};
-constexpr auto mew_palette = std::array{Color{0xF8, 0xE8, 0xF8}, Color{0xF0, 0xB0, 0x88}, Color{0x80, 0x70, 0x98}, Color{0x18, 0x10, 0x10}};
+constexpr auto sgb_mew_palette = std::array{Color{0xF8, 0xE8, 0xF8}, Color{0xF0, 0xB0, 0x88}, Color{0x80, 0x70, 0x98}, Color{0x18, 0x10, 0x10}};
+// TODO: other SGB palettes from: https://bulbapedia.bulbagarden.net/wiki/List_of_Pok%C3%A9mon_by_color_palette_(Generation_I)
 
 void decompress(Input_bitstream<std::istreambuf_iterator<char>> & bits, std::uint8_t tile_width, std::uint8_t tile_height, std::uint8_t * decompression_buffer, bool check_overrun)
 {
-    const unsigned int decompressed_size = tile_size * tile_size * tile_width * tile_height;
+    const unsigned int decompressed_size = bytes_per_tile * bytes_per_tile * tile_width * tile_height;
     unsigned int bits_decompressed = 0u;
     enum class State: std::uint8_t {RLE=0, DATA=1};
     auto state = static_cast<State>(bits(1));
@@ -25,12 +25,12 @@ void decompress(Input_bitstream<std::istreambuf_iterator<char>> & bits, std::uin
     // we're having the buffer laid out by columns. Each byte is a row in a tile, so each 8 bytes forms a tile. Unfortunately, the data is decompressed into 2 bit wide columns, so this fun gets the bits in the right places (or the console-acurate wrong places in the case of glitces)
     auto bit_pair_write = [tile_height, decompression_buffer, col = 0u, row = 0u](std::uint8_t bits) mutable
     {
-        auto byte_ind = col / tile_size * tile_height * tile_size + row;
-        auto bit_ind = col % tile_size;
+        auto byte_ind = col / bytes_per_tile * tile_height * bytes_per_tile + row;
+        auto bit_ind = col % bytes_per_tile;
 
         decompression_buffer[byte_ind] |= (bits & 0x03u) << (6u - bit_ind);
 
-        if(++row == tile_height * tile_size)
+        if(++row == tile_height * bytes_per_tile)
         {
             row = 0u;
             col+= 2u;
@@ -95,13 +95,13 @@ void decompress(Input_bitstream<std::istreambuf_iterator<char>> & bits, std::uin
 
 void delta_decode(std::uint8_t * buffer, std::uint8_t tile_width, std::uint8_t tile_height)
 {
-    for(auto row = 0u; row < tile_height * tile_size; ++row)
+    for(auto row = 0u; row < tile_height * bytes_per_tile; ++row)
     {
         std::uint8_t state = 0;
-        for(auto col = 0u; col < tile_width * tile_size; col += tile_size)
+        for(auto col = 0u; col < tile_width * bytes_per_tile; col += bytes_per_tile)
         {
-            auto & pix = buffer[col / tile_size * tile_height * tile_size + row];
-            for(auto i = 0u; i < tile_size; ++i)
+            auto & pix = buffer[col / bytes_per_tile * tile_height * bytes_per_tile + row];
+            for(auto i = 0u; i < bytes_per_tile; ++i)
             {
                 auto bit_ind = 7u - i;
                 auto val = (pix >> (bit_ind)) & 0x01;
@@ -119,27 +119,27 @@ void delta_decode(std::uint8_t * buffer, std::uint8_t tile_width, std::uint8_t t
 
 void xor_buf(std::uint8_t * dst, std::uint8_t * src, std::uint8_t tile_width, std::uint8_t tile_height)
 {
-    for(auto i = 0u; i < tile_width * tile_height * tile_size; ++i)
+    for(auto i = 0u; i < tile_width * tile_height * bytes_per_tile; ++i)
         dst[i] = dst[i] ^ src[i];
 }
 
-void copy_and_arrange_buf(std::uint8_t * dst, std::uint8_t * src, std::uint8_t tile_width, std::uint8_t tile_height)
+void copy_and_arrange_buf(std::uint8_t * dst, std::uint8_t * src, std::uint8_t tile_width, std::uint8_t tile_height, std::uint8_t buffer_tile_width, std::uint8_t buffer_tile_height)
 {
-    for(auto i = 0u; i < fixed_tile_size * fixed_tile_size * tile_size; ++i)
+    for(auto i = 0u; i < buffer_tile_width * buffer_tile_height * bytes_per_tile; ++i)
         dst[i] = 0u;
 
-    std::uint8_t y_offset = std::uint8_t{fixed_tile_size} - tile_height;
-    std::uint8_t x_offset = (std::uint8_t{fixed_tile_size} - tile_width + 1) / 2u;
+    std::uint8_t y_offset = std::uint8_t{buffer_tile_height} - tile_height;
+    std::uint8_t x_offset = (std::uint8_t{buffer_tile_width} - tile_width + 1) / 2u;
 
-    std::uint8_t tile_offset = std::uint8_t{fixed_tile_size} * x_offset + y_offset;
-    std::uint8_t byte_offset = std::uint8_t{tile_size} * tile_offset;
+    std::uint8_t tile_offset = std::uint8_t{buffer_tile_height} * x_offset + y_offset;
+    std::uint8_t byte_offset = std::uint8_t{bytes_per_tile} * tile_offset;
 
     for(auto tile_col = 0u; tile_col < tile_width; ++tile_col)
     {
-        for(auto row = 0u; row < tile_height * tile_size; ++row)
+        for(auto row = 0u; row < tile_height * bytes_per_tile; ++row)
         {
-            auto src_ind = tile_col * tile_height * tile_size + row;
-            auto dst_ind = byte_offset + tile_col * fixed_tile_size * tile_size + row;
+            auto src_ind = tile_col * tile_height * bytes_per_tile + row;
+            auto dst_ind = byte_offset + tile_col * buffer_tile_height * bytes_per_tile + row;
             dst[dst_ind] = src[src_ind];
         }
     }
@@ -158,10 +158,13 @@ void Pkmn::open(std::istream & input, const Args &)
         if(tile_width == 0 || tile_height == 0)
             throw std::runtime_error{"Error reading Pkmn sprite: 0 dimension"};
 
+        auto buffer_tile_width = fixed_buffer_ ? 7u : tile_width;
+        auto buffer_tile_height = fixed_buffer_ ? 7u : tile_height;
+
         auto primary_buffer = bits(1); // 0: BP0 in B, 1: BP0 in C0
 
-        const auto buffer_stride = tile_size * fixed_tile_size * fixed_tile_size;
-        auto decompression_buffer = std::vector<std::uint8_t>(2u * buffer_stride + tile_size * std::max(static_cast<unsigned int>(tile_width * tile_height), fixed_tile_size * fixed_tile_size));
+        const auto buffer_stride = bytes_per_tile * buffer_tile_width * buffer_tile_height;
+        auto decompression_buffer = std::vector<std::uint8_t>(2u * buffer_stride + bytes_per_tile * std::max(static_cast<unsigned int>(tile_width * tile_height), buffer_tile_width * buffer_tile_height));
 
         auto buffer_a = std::data(decompression_buffer);
         auto buffer_b = std::data(decompression_buffer) + buffer_stride;
@@ -198,45 +201,30 @@ void Pkmn::open(std::istream & input, const Args &)
 
         if(override_tile_width_ && override_tile_height_)
         {
-            copy_and_arrange_buf(buffer_a, buffer_b, override_tile_width_, override_tile_height_);
-            copy_and_arrange_buf(buffer_b, buffer_c, override_tile_width_, override_tile_height_);
+            copy_and_arrange_buf(buffer_a, buffer_b, override_tile_width_, override_tile_height_, buffer_tile_width, buffer_tile_height);
+            copy_and_arrange_buf(buffer_b, buffer_c, override_tile_width_, override_tile_height_, buffer_tile_width, buffer_tile_height);
         }
         else
         {
-            copy_and_arrange_buf(buffer_a, buffer_b, tile_width, tile_height);
-            copy_and_arrange_buf(buffer_b, buffer_c, tile_width, tile_height);
+            copy_and_arrange_buf(buffer_a, buffer_b, tile_width, tile_height, buffer_tile_width, buffer_tile_height);
+            copy_and_arrange_buf(buffer_b, buffer_c, tile_width, tile_height, buffer_tile_width, buffer_tile_height);
         }
 
-        // TODO: fit to sprite
-        // set_size(fixed_tile_size * tile_size * 3, fixed_tile_size * tile_size);
-
-        // for(auto row = 0u; row < height_; ++row)
-        // {
-        //     for(auto col = 0u; col < width_; col += tile_size)
-        //     {
-        //         auto byte = decompression_buffer[col / tile_size * fixed_tile_size * tile_size + row];
-        //         for(auto i = 0u; i < tile_size; ++i)
-        //         {
-        //             auto bit = (byte >> (7u - i)) & 0x01;
-        //             image_data_[row][col + i] = Color{static_cast<std::uint8_t>(255u - bit * 255u)};
-        //         }
-        //     }
-        // }
-        set_size(fixed_tile_size * tile_size, fixed_tile_size * tile_size);
+        set_size(buffer_tile_width * bytes_per_tile, buffer_tile_height * bytes_per_tile);
 
         for(auto row = 0u; row < height_; ++row)
         {
-            for(auto col = 0u; col < width_; col += tile_size)
+            for(auto col = 0u; col < width_; col += bytes_per_tile)
             {
-                auto byte_ind = col / tile_size * fixed_tile_size * tile_size + row;
+                auto byte_ind = col / bytes_per_tile * buffer_tile_height * bytes_per_tile + row;
                 auto byte0 = buffer_a[byte_ind];
                 auto byte1 = buffer_b[byte_ind];
-                for(auto i = 0u; i < tile_size; ++i)
+                for(auto i = 0u; i < bytes_per_tile; ++i)
                 {
                     auto bit_ind = 7u - i;
                     auto bit0 = (byte0 >> bit_ind) & 0x01;
                     auto bit1 = (byte1 >> bit_ind) & 0x01;
-                    image_data_[row][col + i] = mew_palette[bit1 << 1 | bit0];
+                    image_data_[row][col + i] = sgb_mew_palette[bit1 << 1 | bit0];
                 }
             }
         }
