@@ -10,12 +10,15 @@
 
 constexpr auto tile_dims = 8u;
 
-// constexpr auto green_palette = std::array<Color, 4>{Color{0xE0, 0xF8, 0xD0}, Color{0x88, 0xC0, 0x70}, Color{0x34, 0x68, 0x56}, Color{0x08, 0x18, 0x20}};
-constexpr auto pocket_palette = std::array<Color, 4>{Color{0xFF}, Color{0xA9}, Color{0x54}, Color{0x00}};
-constexpr auto red_palette = std::array<Color, 4>{Color{0xFF, 0xEF, 0xFF}, Color{0xF7, 0xB5, 0x8C}, Color{0x84, 0x73, 0x9C}, Color{0x18, 0x10, 0x10}};
-// constexpr auto blue_palette = std::array<Color, 4>{Color{0xFF, 0xFF, 0xFF}, Color{0x63, 0xA5, 0xFF}, Color{0x00, 0x00, 0xFF}, Color{0x00, 0x00, 0x00}};
-constexpr auto sgb_mew_palette = std::array{Color{0xF8, 0xE8, 0xF8}, Color{0xF0, 0xB0, 0x88}, Color{0x80, 0x70, 0x98}, Color{0x18, 0x10, 0x10}};
-// TODO: other SGB palettes from: https://bulbapedia.bulbagarden.net/wiki/List_of_Pok%C3%A9mon_by_color_palette_(Generation_I)
+
+const std::unordered_map<std::string, std::array<Color, 4>> palettes {
+    {"grey",     {Color{0xFF},             Color{0xA9},             Color{0x54},             Color{0x00}}},
+    {"gb_green", {Color{0xE0, 0xF8, 0xD0}, Color{0x88, 0xC0, 0x70}, Color{0x34, 0x68, 0x56}, Color{0x08, 0x18, 0x20}}},
+    {"red",      {Color{0xFF, 0xEF, 0xFF}, Color{0xF7, 0xB5, 0x8C}, Color{0x84, 0x73, 0x9C}, Color{0x18, 0x10, 0x10}}},
+    {"blue",     {Color{0xFF, 0xFF, 0xFF}, Color{0x63, 0xA5, 0xFF}, Color{0x00, 0x00, 0xFF}, Color{0x00, 0x00, 0x00}}},
+    {"mew",      {Color{0xF8, 0xE8, 0xF8}, Color{0xF0, 0xB0, 0x88}, Color{0x80, 0x70, 0x98}, Color{0x18, 0x10, 0x10}}},
+    // TODO: other SGB palettes from: https://bulbapedia.bulbagarden.net/wiki/List_of_Pok%C3%A9mon_by_color_palette_(Generation_I)
+};
 
 template<Byte_input_iter InputIter>
 void decompress(Input_bitstream<InputIter> & bits, std::uint8_t tile_width, std::uint8_t tile_height, std::uint8_t * decompression_buffer, bool check_overrun)
@@ -311,7 +314,7 @@ void Pkmn::open(std::istream & input, const Args &)
                     auto bit_ind = 7u - i;
                     auto bit0 = (byte0 >> bit_ind) & 0x01;
                     auto bit1 = (byte1 >> bit_ind) & 0x01;
-                    image_data_[row][col + i] = red_palette[bit1 << 1 | bit0];
+                    image_data_[row][col + i] = palettes.at(palette_)[bit1 << 1 | bit0];
                 }
             }
         }
@@ -330,12 +333,20 @@ void Pkmn::handle_extra_args(const Args & args)
     auto options = Sub_args{"Pokemon Gen 1 Sprite"};
     try
     {
+        auto palette_list = std::string{};
+        for(auto &&[s,_]: palettes)
+        {
+            if(!std::empty(palette_list))
+                palette_list += ", ";
+            palette_list += s;
+        }
+
         options.add_options()
-            ("tile-width", "Override width for tile layout (necessary for glitches to show up as in-game) [1-15]", cxxopts::value<unsigned int>(), "WIDTH")
-            ("tile-height", "Override height for tile layout (necessary for glitches to show up as in-game) [1-15]", cxxopts::value<unsigned int>(), "HEIGHT")
-            ("fixed-buffer", "Limit decompression buffer to 56x56 (necessary for glitches to show up as in-game)")
-            ("allow-overrun", "Continue decoding image when too more data is decompressed than expected (necessary for glitches to show up as in-game)");
-        // TODO: palette options
+            ("tile-width",    "Override width for tile layout (necessary for glitches to show up as in-game) [1-15]", cxxopts::value<unsigned int>(), "WIDTH")
+            ("tile-height",   "Override height for tile layout (necessary for glitches to show up as in-game) [1-15]", cxxopts::value<unsigned int>(), "HEIGHT")
+            ("fixed-buffer",  "Limit decompression buffer to 56x56 (necessary for glitches to show up as in-game)")
+            ("allow-overrun", "Continue decoding image when too more data is decompressed than expected (necessary for glitches to show up as in-game)")
+            ("palette",       "Palette to display or convert into. Valid values are: " + palette_list, cxxopts::value<std::string>()->default_value("grey"), "PALETTE");
 
         auto sub_args = options.parse(args.extra_args);
 
@@ -357,6 +368,10 @@ void Pkmn::handle_extra_args(const Args & args)
 
         check_overrun_ = !sub_args.count("allow-overrun");
         fixed_buffer_ = sub_args.count("fixed-buffer");
+        palette_ = sub_args["palette"].as<std::string>();
+        if(!palettes.contains(palette_))
+            throw std::runtime_error{options.help(args.help_text) + "\n'" + palette_ + "' is not valid for --palette. Valid values are: " + palette_list};
+
     }
     catch(const cxxopts::OptionException & e)
     {
@@ -397,11 +412,11 @@ void Pkmn::write(std::ostream & out, const Image & img, bool invert)
         }
     }
 
-    scaled.dither(std::begin(red_palette), std::end(red_palette));
+    scaled.dither(std::begin(palettes.at(palette_)), std::end(palettes.at(palette_)));
 
     auto reverse_palette = std::unordered_map<Color, std::uint8_t>{};
-    for(std::size_t i = 0; i < std::size(red_palette); ++i)
-        reverse_palette[red_palette[i]] = i;
+    for(std::size_t i = 0; i < std::size(palettes.at(palette_)); ++i)
+        reverse_palette[palettes.at(palette_)[i]] = i;
 
     const auto buffer_stride = tile_dims * tile_width * tile_height;
     auto compression_buffer = std::vector<std::uint8_t>(2 * buffer_stride);
