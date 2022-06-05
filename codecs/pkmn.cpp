@@ -384,6 +384,19 @@ void Pkmn::write(std::ostream & out, const Image & img, bool invert)
     }
 
     auto scaled = img.scale(tile_width * tile_dims, tile_height * tile_dims);
+
+    if(invert)
+    {
+        for(std::size_t row = 0u; row < scaled.get_height(); ++row)
+        {
+            for(std::size_t col = 0u; col < scaled.get_width(); ++col)
+            {
+                for(auto c = 0u; c < 3u; ++c)
+                    scaled[row][col][c] = 255u - scaled[row][col][c];
+            }
+        }
+    }
+
     scaled.dither(std::begin(red_palette), std::end(red_palette));
 
     auto reverse_palette = std::unordered_map<Color, std::uint8_t>{};
