@@ -168,8 +168,7 @@ void compress(Output_bitstream<OutputIter> & bits, std::uint8_t tile_width, std:
     }
 }
 
-// TODO; merge?
-void delta_decode(std::uint8_t * buffer, std::uint8_t tile_width, std::uint8_t tile_height)
+void delta_code(std::uint8_t * buffer, std::uint8_t tile_width, std::uint8_t tile_height, bool encode)
 {
     for(auto row = 0u; row < tile_height * tile_dims; ++row)
     {
@@ -181,36 +180,25 @@ void delta_decode(std::uint8_t * buffer, std::uint8_t tile_width, std::uint8_t t
             {
                 auto bit_ind = 7u - i;
                 auto val = (pix >> (bit_ind)) & 0x01u;
-                if(val)
-                    state = !state;
 
-                if(state)
+                bool output;
+
+                if(encode)
+                {
+                    output = val != state;
+                    state = val;
+                }
+                else
+                {
+                    if(val)
+                        state = !state;
+                    output = state;
+                }
+
+                if(output)
                     pix |= 1u << (bit_ind);
                 else
                     pix &= ~(1u << (bit_ind));
-            }
-        }
-    }
-}
-
-void delta_encode(std::uint8_t * buffer, std::uint8_t tile_width, std::uint8_t tile_height)
-{
-    for(auto row = 0u; row < tile_height * tile_dims; ++row)
-    {
-        std::uint8_t last = 0u;
-        for(auto col = 0u; col < tile_width * tile_dims; col += tile_dims)
-        {
-            auto & pix = buffer[col / tile_dims * tile_height * tile_dims + row];
-            for(auto i = 0u; i < tile_dims; ++i)
-            {
-                auto bit_ind = 7u - i;
-                auto val = (pix >> (bit_ind)) & 0x01u;
-                if(val == last)
-                    pix &= ~(1u << (bit_ind));
-                else
-                    pix |= 1u << (bit_ind);
-
-                last = val;
             }
         }
     }
@@ -284,16 +272,16 @@ void Pkmn::open(std::istream & input, const Args &)
         if(primary_buffer)
         {
             if(mode == 0u || mode == 3u)
-                delta_decode(buffer_b, tile_width, tile_height);
-            delta_decode(buffer_c, tile_width, tile_height);
+                delta_code(buffer_b, tile_width, tile_height, false);
+            delta_code(buffer_c, tile_width, tile_height, false);
             if(mode == 2u || mode == 3u)
                 xor_buf(buffer_b, buffer_c, tile_width, tile_height);
         }
         else
         {
             if(mode == 0u || mode == 3u)
-                delta_decode(buffer_c, tile_width, tile_height);
-            delta_decode(buffer_b, tile_width, tile_height);
+                delta_code(buffer_c, tile_width, tile_height, false);
+            delta_code(buffer_b, tile_width, tile_height, false);
             if(mode == 2u || mode == 3u)
                 xor_buf(buffer_c, buffer_b, tile_width, tile_height);
         }
@@ -449,17 +437,17 @@ void Pkmn::write(std::ostream & out, const Image & img, bool invert)
             {
                 if(mode == 2u || mode == 3u)
                     xor_buf(buffer_b, buffer_c, tile_width, tile_height);
-                delta_encode(buffer_c, tile_width, tile_height);
+                delta_code(buffer_c, tile_width, tile_height, true);
                 if(mode == 0u || mode == 3u)
-                    delta_encode(buffer_b, tile_width, tile_height);
+                    delta_code(buffer_b, tile_width, tile_height, true);
             }
             else
             {
                 if(mode == 2u || mode == 3u)
                     xor_buf(buffer_c, buffer_b, tile_width, tile_height);
-                delta_encode(buffer_b, tile_width, tile_height);
+                delta_code(buffer_b, tile_width, tile_height, true);
                 if(mode == 0u || mode == 3u)
-                    delta_encode(buffer_c, tile_width, tile_height);
+                    delta_code(buffer_c, tile_width, tile_height, true);
             }
 
             compress(bits, tile_width, tile_height, primary_buffer ? buffer_c : buffer_b);
