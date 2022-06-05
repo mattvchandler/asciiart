@@ -1,23 +1,26 @@
 #include "pkmn.hpp"
 
-#include <cstdint>
 #include <iterator>
+#include <unordered_map>
+
+#include <cmath>
 
 #include "bitstream.hpp"
 #include "sub_args.hpp"
 
-constexpr auto bytes_per_tile = 8u;
+constexpr auto tile_dims = 8u;
 
 // constexpr auto green_palette = std::array<Color, 4>{Color{0xE0, 0xF8, 0xD0}, Color{0x88, 0xC0, 0x70}, Color{0x34, 0x68, 0x56}, Color{0x08, 0x18, 0x20}};
-// constexpr auto pocket_palette = std::array<Color, 4>{Color{0xFF}, Color{0xA9}, Color{0x54}, Color{0x00}};
-// constexpr auto red_palette = std::array<Color, 4>{Color{0xFF, 0xEF, 0xFF}, Color{0xF7, 0xB5, 0x8C}, Color{0x84, 0x73, 0x9C}, Color{0x18, 0x10, 0x10}};
+constexpr auto pocket_palette = std::array<Color, 4>{Color{0xFF}, Color{0xA9}, Color{0x54}, Color{0x00}};
+constexpr auto red_palette = std::array<Color, 4>{Color{0xFF, 0xEF, 0xFF}, Color{0xF7, 0xB5, 0x8C}, Color{0x84, 0x73, 0x9C}, Color{0x18, 0x10, 0x10}};
 // constexpr auto blue_palette = std::array<Color, 4>{Color{0xFF, 0xFF, 0xFF}, Color{0x63, 0xA5, 0xFF}, Color{0x00, 0x00, 0xFF}, Color{0x00, 0x00, 0x00}};
 constexpr auto sgb_mew_palette = std::array{Color{0xF8, 0xE8, 0xF8}, Color{0xF0, 0xB0, 0x88}, Color{0x80, 0x70, 0x98}, Color{0x18, 0x10, 0x10}};
 // TODO: other SGB palettes from: https://bulbapedia.bulbagarden.net/wiki/List_of_Pok%C3%A9mon_by_color_palette_(Generation_I)
 
-void decompress(Input_bitstream<std::istreambuf_iterator<char>> & bits, std::uint8_t tile_width, std::uint8_t tile_height, std::uint8_t * decompression_buffer, bool check_overrun)
+template<Byte_input_iter InputIter>
+void decompress(Input_bitstream<InputIter> & bits, std::uint8_t tile_width, std::uint8_t tile_height, std::uint8_t * decompression_buffer, bool check_overrun)
 {
-    const unsigned int decompressed_size = bytes_per_tile * bytes_per_tile * tile_width * tile_height;
+    const unsigned int decompressed_size = tile_dims * tile_dims * tile_width * tile_height;
     unsigned int bits_decompressed = 0u;
     enum class State: std::uint8_t {RLE=0, DATA=1};
     auto state = static_cast<State>(bits(1));
@@ -25,12 +28,12 @@ void decompress(Input_bitstream<std::istreambuf_iterator<char>> & bits, std::uin
     // we're having the buffer laid out by columns. Each byte is a row in a tile, so each 8 bytes forms a tile. Unfortunately, the data is decompressed into 2 bit wide columns, so this fun gets the bits in the right places (or the console-acurate wrong places in the case of glitces)
     auto bit_pair_write = [tile_height, decompression_buffer, col = 0u, row = 0u](std::uint8_t bits) mutable
     {
-        auto byte_ind = col / bytes_per_tile * tile_height * bytes_per_tile + row;
-        auto bit_ind = col % bytes_per_tile;
+        auto byte_ind = col / tile_dims * tile_height * tile_dims + row;
+        auto bit_ind = col % tile_dims;
 
         decompression_buffer[byte_ind] |= (bits & 0x03u) << (6u - bit_ind);
 
-        if(++row == tile_height * bytes_per_tile)
+        if(++row == tile_height * tile_dims)
         {
             row = 0u;
             col+= 2u;
@@ -52,7 +55,7 @@ void decompress(Input_bitstream<std::istreambuf_iterator<char>> & bits, std::uin
                 ++bit_count;
             } while(magnitude & 0x1);
 
-            auto value = bits.read<std::uint16_t>(bit_count);
+            auto value = bits.template read<std::uint16_t>(bit_count);
             value += magnitude + 1;
 
             bits_decompressed += 2 * value;
@@ -93,18 +96,91 @@ void decompress(Input_bitstream<std::istreambuf_iterator<char>> & bits, std::uin
     }
 }
 
+template<Byte_output_iter OutputIter>
+void compress(Output_bitstream<OutputIter> & bits, std::uint8_t tile_width, std::uint8_t tile_height, std::uint8_t * compression_buffer)
+{
+    enum class State: std::uint8_t {RLE=0, DATA=1} state = State::RLE;
+    std::uint16_t rle_run = 0u;
+    for(auto col = 0u; col < tile_width * tile_dims; col += 2)
+    {
+        for(auto row = 0u; row < tile_height * tile_dims; ++row)
+        {
+            auto byte_ind = col / tile_dims * tile_height * tile_dims + row;
+            auto bit_ind = col % tile_dims;
+
+            auto p = (compression_buffer[byte_ind] >> (6u - bit_ind)) & 0x3u;
+
+            if(row == 0u && col == 0u)
+            {
+                if(p)
+                    state = State::DATA;
+                else
+                    state = State::RLE;
+
+                bits(static_cast<std::underlying_type_t<State>>(state), 1);
+            }
+
+            if(state == State::RLE)
+            {
+                ++rle_run;
+                if(p)
+                {
+                    std::uint16_t bit_width{0u};
+                    for(auto x = rle_run; x; x >>= 1u, ++bit_width);
+                    --bit_width;
+                    auto v = rle_run ^ (1u << bit_width);
+                    auto l = rle_run - v - 2u;
+
+                    bits(l, bit_width);
+                    bits(v, bit_width);
+
+                    state = State::DATA;
+                    bits(p, 2u);
+                }
+            }
+            else if(state == State::DATA)
+            {
+                if(p)
+                {
+                    bits(p, 2u);
+                }
+                else
+                {
+                    bits(0u, 2u);
+                    state = State::RLE;
+                    rle_run = 1u;
+                }
+            }
+        }
+    }
+    if(state == State::RLE)
+    {
+        ++rle_run;
+
+        std::uint16_t bit_width{0u};
+        for(auto x = rle_run; x; x >>= 1u, ++bit_width);
+        --bit_width;
+        auto v = rle_run ^ (1u << bit_width);
+        auto l = rle_run - v - 2u;
+
+        bits(l, bit_width);
+        bits(v, bit_width);
+    }
+}
+
+// TODO; merge?
 void delta_decode(std::uint8_t * buffer, std::uint8_t tile_width, std::uint8_t tile_height)
 {
-    for(auto row = 0u; row < tile_height * bytes_per_tile; ++row)
+    for(auto row = 0u; row < tile_height * tile_dims; ++row)
     {
-        std::uint8_t state = 0;
-        for(auto col = 0u; col < tile_width * bytes_per_tile; col += bytes_per_tile)
+        std::uint8_t state = 0u;
+        for(auto col = 0u; col < tile_width * tile_dims; col += tile_dims)
         {
-            auto & pix = buffer[col / bytes_per_tile * tile_height * bytes_per_tile + row];
-            for(auto i = 0u; i < bytes_per_tile; ++i)
+            auto & pix = buffer[col / tile_dims * tile_height * tile_dims + row];
+            for(auto i = 0u; i < tile_dims; ++i)
             {
                 auto bit_ind = 7u - i;
-                auto val = (pix >> (bit_ind)) & 0x01;
+                auto val = (pix >> (bit_ind)) & 0x01u;
                 if(val)
                     state = !state;
 
@@ -117,29 +193,52 @@ void delta_decode(std::uint8_t * buffer, std::uint8_t tile_width, std::uint8_t t
     }
 }
 
+void delta_encode(std::uint8_t * buffer, std::uint8_t tile_width, std::uint8_t tile_height)
+{
+    for(auto row = 0u; row < tile_height * tile_dims; ++row)
+    {
+        std::uint8_t last = 0u;
+        for(auto col = 0u; col < tile_width * tile_dims; col += tile_dims)
+        {
+            auto & pix = buffer[col / tile_dims * tile_height * tile_dims + row];
+            for(auto i = 0u; i < tile_dims; ++i)
+            {
+                auto bit_ind = 7u - i;
+                auto val = (pix >> (bit_ind)) & 0x01u;
+                if(val == last)
+                    pix &= ~(1u << (bit_ind));
+                else
+                    pix |= 1u << (bit_ind);
+
+                last = val;
+            }
+        }
+    }
+}
+
 void xor_buf(std::uint8_t * dst, std::uint8_t * src, std::uint8_t tile_width, std::uint8_t tile_height)
 {
-    for(auto i = 0u; i < tile_width * tile_height * bytes_per_tile; ++i)
+    for(auto i = 0u; i < tile_width * tile_height * tile_dims; ++i)
         dst[i] = dst[i] ^ src[i];
 }
 
 void copy_and_arrange_buf(std::uint8_t * dst, std::uint8_t * src, std::uint8_t tile_width, std::uint8_t tile_height, std::uint8_t buffer_tile_width, std::uint8_t buffer_tile_height)
 {
-    for(auto i = 0u; i < buffer_tile_width * buffer_tile_height * bytes_per_tile; ++i)
+    for(auto i = 0u; i < buffer_tile_width * buffer_tile_height * tile_dims; ++i)
         dst[i] = 0u;
 
     std::uint8_t y_offset = std::uint8_t{buffer_tile_height} - tile_height;
     std::uint8_t x_offset = (std::uint8_t{buffer_tile_width} - tile_width + 1) / 2u;
 
     std::uint8_t tile_offset = std::uint8_t{buffer_tile_height} * x_offset + y_offset;
-    std::uint8_t byte_offset = std::uint8_t{bytes_per_tile} * tile_offset;
+    std::uint8_t byte_offset = std::uint8_t{tile_dims} * tile_offset;
 
     for(auto tile_col = 0u; tile_col < tile_width; ++tile_col)
     {
-        for(auto row = 0u; row < tile_height * bytes_per_tile; ++row)
+        for(auto row = 0u; row < tile_height * tile_dims; ++row)
         {
-            auto src_ind = tile_col * tile_height * bytes_per_tile + row;
-            auto dst_ind = byte_offset + tile_col * buffer_tile_height * bytes_per_tile + row;
+            auto src_ind = tile_col * tile_height * tile_dims + row;
+            auto dst_ind = byte_offset + tile_col * buffer_tile_height * tile_dims + row;
             dst[dst_ind] = src[src_ind];
         }
     }
@@ -163,8 +262,8 @@ void Pkmn::open(std::istream & input, const Args &)
 
         auto primary_buffer = bits(1); // 0: BP0 in B, 1: BP0 in C0
 
-        const auto buffer_stride = bytes_per_tile * buffer_tile_width * buffer_tile_height;
-        auto decompression_buffer = std::vector<std::uint8_t>(2u * buffer_stride + bytes_per_tile * std::max(static_cast<unsigned int>(tile_width * tile_height), buffer_tile_width * buffer_tile_height));
+        const auto buffer_stride = tile_dims * buffer_tile_width * buffer_tile_height;
+        auto decompression_buffer = std::vector<std::uint8_t>(2u * buffer_stride + tile_dims * std::max(static_cast<unsigned int>(tile_width * tile_height), buffer_tile_width * buffer_tile_height));
 
         auto buffer_a = std::data(decompression_buffer);
         auto buffer_b = std::data(decompression_buffer) + buffer_stride;
@@ -178,24 +277,24 @@ void Pkmn::open(std::istream & input, const Args &)
         // 3: delta BP1, BP0, XOR into BP1
         auto mode = bits(1);
         if(mode == 1)
-            mode = 0x2 | bits(1);
+            mode = 0x2u | bits(1);
 
         decompress(bits, tile_width, tile_height, primary_buffer ? buffer_b : buffer_c, check_overrun_);
 
         if(primary_buffer)
         {
-            if(mode == 0 || mode == 3)
+            if(mode == 0u || mode == 3u)
                 delta_decode(buffer_b, tile_width, tile_height);
             delta_decode(buffer_c, tile_width, tile_height);
-            if(mode == 2 || mode == 3)
+            if(mode == 2u || mode == 3u)
                 xor_buf(buffer_b, buffer_c, tile_width, tile_height);
         }
         else
         {
-            if(mode == 0 || mode == 3)
+            if(mode == 0u || mode == 3u)
                 delta_decode(buffer_c, tile_width, tile_height);
             delta_decode(buffer_b, tile_width, tile_height);
-            if(mode == 2 || mode == 3)
+            if(mode == 2u || mode == 3u)
                 xor_buf(buffer_c, buffer_b, tile_width, tile_height);
         }
 
@@ -210,21 +309,21 @@ void Pkmn::open(std::istream & input, const Args &)
             copy_and_arrange_buf(buffer_b, buffer_c, tile_width, tile_height, buffer_tile_width, buffer_tile_height);
         }
 
-        set_size(buffer_tile_width * bytes_per_tile, buffer_tile_height * bytes_per_tile);
+        set_size(buffer_tile_width * tile_dims, buffer_tile_height * tile_dims);
 
         for(auto row = 0u; row < height_; ++row)
         {
-            for(auto col = 0u; col < width_; col += bytes_per_tile)
+            for(auto col = 0u; col < width_; col += tile_dims)
             {
-                auto byte_ind = col / bytes_per_tile * buffer_tile_height * bytes_per_tile + row;
+                auto byte_ind = col / tile_dims * buffer_tile_height * tile_dims + row;
                 auto byte0 = buffer_a[byte_ind];
                 auto byte1 = buffer_b[byte_ind];
-                for(auto i = 0u; i < bytes_per_tile; ++i)
+                for(auto i = 0u; i < tile_dims; ++i)
                 {
                     auto bit_ind = 7u - i;
                     auto bit0 = (byte0 >> bit_ind) & 0x01;
                     auto bit1 = (byte1 >> bit_ind) & 0x01;
-                    image_data_[row][col + i] = sgb_mew_palette[bit1 << 1 | bit0];
+                    image_data_[row][col + i] = red_palette[bit1 << 1 | bit0];
                 }
             }
         }
@@ -279,5 +378,109 @@ void Pkmn::handle_extra_args(const Args & args)
 
 void Pkmn::write(std::ostream & out, const Image & img, bool invert)
 {
-    out<<"lol"<<img.get_width()<<invert<<'\n';
+    // TODO: maybe add output-tile-width output-tile-height flags
+
+    unsigned int tile_width, tile_height;
+
+    if(img.get_width() >= img.get_height())
+    {
+        tile_width = std::min(static_cast<unsigned int>(std::ceil(static_cast<float>(img.get_width()) / tile_dims)), true ? 7u : 15u);
+        auto scale_factor = static_cast<float>(tile_width * tile_dims) / img.get_width();
+        tile_height = static_cast<unsigned int>(std::ceil((img.get_height() * scale_factor) / tile_dims));
+    }
+    else
+    {
+        tile_width = std::min(static_cast<unsigned int>(std::ceil(static_cast<float>(img.get_height()) / tile_dims)), true ? 7u : 15u);
+        auto scale_factor = static_cast<float>(tile_width * tile_dims) / img.get_height();
+        tile_height = static_cast<unsigned int>(std::ceil((img.get_width() * scale_factor) / tile_dims));
+    }
+
+    auto scaled = img.scale(tile_width * tile_dims, tile_height * tile_dims);
+    scaled.dither(std::begin(red_palette), std::end(red_palette));
+
+    auto reverse_palette = std::unordered_map<Color, std::uint8_t>{};
+    for(std::size_t i = 0; i < std::size(red_palette); ++i)
+        reverse_palette[red_palette[i]] = i;
+
+    const auto buffer_stride = tile_dims * tile_width * tile_height;
+    auto compression_buffer = std::vector<std::uint8_t>(2 * buffer_stride);
+
+    auto buffer_b = std::data(compression_buffer);
+    auto buffer_c = std::data(compression_buffer) + buffer_stride;
+    for(auto tile_col = 0u; tile_col < tile_width; ++tile_col)
+    {
+        for(auto row = 0u; row < scaled.get_height(); ++row)
+        {
+            auto b0 = std::uint8_t{0}, b1 = std::uint8_t{0};
+            for(auto b = 0u; b < tile_dims; ++b)
+            {
+                b0 <<= 1u;
+                b1 <<= 1u;
+
+                auto c = reverse_palette[scaled[row][tile_col * tile_dims + b]];
+
+                b0 |= c & 0x01u;
+                b1 |= (c >> 1) & 0x01u;
+            }
+
+            auto byte_ind = tile_col * tile_height * tile_dims + row;
+            buffer_b[byte_ind] = b0;
+            buffer_c[byte_ind] = b1;
+        }
+    }
+
+    auto best_compressed_output = std::vector<std::uint8_t>{};
+    for(auto && primary_buffer: {0u, 1u})
+    {
+        for(auto && mode: {0u, 2u, 3u})
+        {
+            auto buffer = compression_buffer;
+            buffer_b = std::data(buffer);
+            buffer_c = std::data(buffer) + buffer_stride;
+
+            auto compressed_out = std::vector<std::uint8_t>{};
+            auto bits = Output_bitstream{std::back_inserter(compressed_out)};
+
+            bits(tile_width, 4);
+            bits(tile_height, 4);
+            bits(primary_buffer, 1);
+
+            if(primary_buffer)
+            {
+                if(mode == 2u || mode == 3u)
+                    xor_buf(buffer_b, buffer_c, tile_width, tile_height);
+                delta_encode(buffer_c, tile_width, tile_height);
+                if(mode == 0u || mode == 3u)
+                    delta_encode(buffer_b, tile_width, tile_height);
+            }
+            else
+            {
+                if(mode == 2u || mode == 3u)
+                    xor_buf(buffer_c, buffer_b, tile_width, tile_height);
+                delta_encode(buffer_b, tile_width, tile_height);
+                if(mode == 0u || mode == 3u)
+                    delta_encode(buffer_c, tile_width, tile_height);
+            }
+
+            compress(bits, tile_width, tile_height, primary_buffer ? buffer_c : buffer_b);
+
+            bits(mode, mode ? 2 : 1);
+
+            compress(bits, tile_width, tile_height, primary_buffer ? buffer_b : buffer_c);
+            bits.flush_current_byte();
+
+            if(std::empty(best_compressed_output) || std::size(compressed_out) < std::size(best_compressed_output))
+                best_compressed_output = std::move(compressed_out);
+        }
+    }
+
+    out.exceptions(std::ios_base::badbit | std::ios_base::failbit);
+    try
+    {
+        out.write(reinterpret_cast<char *>(std::data(best_compressed_output)), std::size(best_compressed_output));
+    }
+    catch(std::ios_base::failure & e)
+    {
+        throw std::runtime_error{"Error writing Pkmn sprite: could not write file"};
+    }
 }

@@ -197,7 +197,7 @@ static const std::vector<std::string> output_formats =
     ".avif",
     #endif
     ".bmp",
-    ".bin," // pokemon sprite
+    ".bin", // pokemon sprite
     ".cur",".ico",
     #ifdef ZLIB_FOUND
     ".dat", // MCMap
