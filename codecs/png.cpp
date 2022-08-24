@@ -348,7 +348,9 @@ void Png::open(std::istream & input, const Args & args)
     }
     libpng.reset();
 
+#ifdef EXIF_FOUND
     transpose_image(animation_info.orientation);
+#endif
 
     if(animation_info.is_apng && (args.animate || args.image_no))
     {
