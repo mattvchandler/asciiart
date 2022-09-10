@@ -135,7 +135,7 @@ void Gif::handle_extra_args(const Args & args)
         if(args.animate && !composed_)
             throw std::runtime_error{options.help(args.help_text) + "\nCan't specify --not-composed with --animate"};
     }
-    catch(const cxxopts::OptionException & e)
+    catch(const cxxopt_exception & e)
     {
         throw std::runtime_error{options.help(args.help_text) + '\n' + e.what()};
     }

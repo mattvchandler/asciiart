@@ -382,7 +382,7 @@ void Pkmn::handle_extra_args(const Args & args)
             throw std::runtime_error{options.help(args.help_text) + "\n'" + palette_ + "' is not valid for --palette. Valid values are: " + palette_list};
 
     }
-    catch(const cxxopts::OptionException & e)
+    catch(const cxxopt_exception & e)
     {
         throw std::runtime_error{options.help(args.help_text) + '\n' + e.what()};
     }

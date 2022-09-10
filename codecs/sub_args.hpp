@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include <cxxopts.hpp>
+#include "../cxxopts_wrapper.hpp"
 
 class Sub_args: public cxxopts::Options
 {

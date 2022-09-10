@@ -225,7 +225,7 @@ void Srf::handle_extra_args(const Args & args)
         if(args.frame_no && mosaic_)
             throw std::runtime_error{options.help(args.help_text) + "\nCan't specify --mosaic with --frame-no"};
     }
-    catch(const cxxopts::OptionException & e)
+    catch(const cxxopt_exception & e)
     {
         throw std::runtime_error{options.help(args.help_text) + '\n' + e.what()};
     }

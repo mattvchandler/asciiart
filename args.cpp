@@ -1,12 +1,13 @@
 #include "args.hpp"
 
 #include <algorithm>
+#include <exception>
 #include <iostream>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 #include <cstdlib>
-
-#include <cxxopts.hpp>
 
 #ifdef HAS_UNISTD
 #include <unistd.h>
@@ -22,114 +23,7 @@
 #include <windows.h>
 #endif
 
-class Optional_pos: public cxxopts::Options
-{
-public:
-    Optional_pos(const std::string & program, const std::string & help_string):
-        cxxopts::Options{program, help_string}{}
-
-    cxxopts::OptionAdder add_positionals()
-    {
-        return {*this, POS_GROUP_NAME};
-    }
-    cxxopts::ParseResult parse(int& argc, char**& argv)
-    {
-        std::string usage;
-
-        for(auto && opt: group_help(POS_GROUP_NAME).options)
-        {
-            parse_positional(opt.l);
-
-            if(opt.is_boolean)
-                throw cxxopts::invalid_option_format_error{"Positional argument " + opt.l + "  must accept value"};
-
-            if(!std::empty(usage))
-                usage += " ";
-
-            std::string usage_name = opt.arg_help.empty() ? opt.l : opt.arg_help;
-            for(auto &&c: usage_name)
-                c = std::toupper(c);
-
-            if(opt.is_container)
-                usage_name += "...";
-
-            if(opt.has_default)
-                usage += "[" + usage_name + "]";
-            else
-                usage += usage_name;
-        }
-
-        positional_help(usage);
-
-        return cxxopts::Options::parse(argc, argv);
-    }
-
-    std::string help(const std::vector<std::string> & groups ={}, const std::string & msg = "")
-    {
-        std::vector<std::string> pos_last_groups = groups;
-
-        if(std::empty(pos_last_groups))
-            pos_last_groups = cxxopts::Options::groups();
-
-        auto pos_i = std::find(std::begin(pos_last_groups), std::end(pos_last_groups), POS_GROUP_NAME);
-        bool has_pos = pos_i != std::end(pos_last_groups);
-        if(has_pos)
-        {
-            pos_last_groups.erase(pos_i);
-            pos_last_groups.push_back(POS_GROUP_NAME);
-        }
-
-        auto txt = cxxopts::Options::help(pos_last_groups);
-
-        if(has_pos)
-        {
-            std::size_t longest = 0;
-            std::vector<std::pair<std::string, cxxopts::HelpOptionDetails>> pos;
-            for(auto && opt: group_help(POS_GROUP_NAME).options)
-            {
-                std::string upper_name = opt.arg_help.empty() ? opt.l : opt.arg_help;
-                for(auto &&c: upper_name)
-                    c = std::toupper(c);
-
-                upper_name = POS_HELP_INDENT + upper_name;
-
-                longest = std::max(longest, std::size(upper_name));
-                pos.emplace_back(upper_name, opt);
-            }
-
-            longest = std::min(longest, static_cast<size_t>(cxxopts::OPTION_LONGEST));
-            auto allowed = size_t{76} - longest - cxxopts::OPTION_DESC_GAP;
-
-            for(auto && [name, opt]: pos)
-            {
-                auto space = std::string(longest + cxxopts::OPTION_DESC_GAP - (std::size(name) > longest ? 0: std::size(name)), ' ');
-                if(std::size(name) > longest)
-                    space = '\n' + space;
-
-                txt += POS_HELP_INDENT + name + space
-                    #if CXXOPTS__VERSION_MAJOR >= 3
-                    + cxxopts::format_description(opt, longest + cxxopts::OPTION_DESC_GAP, allowed, false)
-                    #else
-                    + cxxopts::format_description(opt, longest + cxxopts::OPTION_DESC_GAP, allowed)
-                    #endif
-                    + '\n';
-            }
-        }
-
-        if(!std::empty(msg))
-            txt += '\n' + msg + '\n';
-
-        return txt;
-    }
-    std::string help(const std::string & msg)
-    {
-        return help({}, msg);
-    }
-
-private:
-    inline static const std::string POS_GROUP_NAME = "Positional";
-    inline static const std::string POS_HELP_INDENT = "  ";
-};
+#include "cxxopts_wrapper.hpp"
 
 static const std::vector<std::string> input_formats =
 {
@@ -246,7 +140,7 @@ static const std::vector<std::string> output_formats =
     if(auto sep_pos = prog_name.find_last_of("\\/"); sep_pos != std::string::npos)
         prog_name = prog_name.substr(sep_pos + 1);
 
-    Optional_pos options{prog_name, "Display an image in the terminal, with ANSI colors and/or ASCII art"};
+    cxxopts::Options options{prog_name, "Display an image in the terminal, with ANSI colors and/or ASCII art"};
 
     std::string input_format_list;
     for(std::size_t i = 0; i < std::size(input_formats); ++i)
@@ -321,22 +215,85 @@ static const std::vector<std::string> output_formats =
 
         options.add_options(filetype_group)("sif", "Interpret input as a Space Image Format file (from Advent of Code 2019)");
 
-        options.add_positionals()
+        options.add_options()
             ("input", "Input image path. Read from stdin if -. Supported formats: " + input_format_list, cxxopts::value<std::string>()->default_value("-"));
 
+        options.parse_positional({"input"});
+        options.positional_help("INPUT");
         options.allow_unrecognised_options();
+    }
+    catch(const cxxopt_exception & e) // cxxopts changed the name of its exception class partway through the 3.0 release, so we 're just catching the parent type
+    {
+        std::cerr<<"Error building argument parser: "<<e.what()<<'\n';
+        return {};
+    }
 
+    auto help = [&options, &input_format_list](const std::string & msg = "") -> std::string
+    {
+        auto txt = options.help();
+
+        txt += "\n\n"
+                " Positional arguments:\n"
+                "    INPUT  ";
+
+        auto input_help = "Input image path. Read from stdin if -. Supported formats: " + input_format_list + "\n(default: stdin)";
+
+        const int max_col_width = 80;
+        const auto indent = std::string{"            "};
+        int col = std::size(indent);
+        std::string curr_word;
+
+        auto append_word = [&col, &curr_word, &indent, &txt]()
+        {
+            if(1 + col + std::size(curr_word) > max_col_width)
+            {
+                txt += '\n' + indent + curr_word;
+                col = std::size(indent) + std::size(curr_word);
+            }
+            else
+            {
+                txt += " " + curr_word;
+                col += 1 + std::size(curr_word);
+            }
+            curr_word = "";
+        };
+
+        for(auto && c : input_help)
+        {
+            if(std::isspace(c))
+            {
+                append_word();
+                if(c == '\n')
+                    col = max_col_width;
+            }
+            else
+            {
+                curr_word += c;
+            }
+        }
+        append_word();
+
+        txt += '\n';
+
+        if(!std::empty(msg))
+            txt += '\n' + msg + '\n';
+
+        return txt;
+    };
+
+    try
+    {
         auto args = options.parse(argc, argv);
 
         if(args.count("help"))
         {
-            std::cerr<<options.help()<<'\n';
+            std::cerr<<help()<<'\n';
             return {};
         }
 
         if(args["rows"].as<int>() == 0)
         {
-            std::cerr<<options.help("Value for --rows cannot be 0")<<'\n';
+            std::cerr<<help("Value for --rows cannot be 0")<<'\n';
             return {};
         }
 
@@ -356,19 +313,19 @@ static const std::vector<std::string> output_formats =
         }
         if(cols <= 0)
         {
-            std::cerr<<options.help("Value for --cols must be positive")<<'\n';
+            std::cerr<<help("Value for --cols must be positive")<<'\n';
             return {};
         }
 
         if(args["bg"].as<int>() < 0 || args["bg"].as<int>() > 255)
         {
-            std::cerr<<options.help("Value for --bg must be within 0-255")<<'\n';
+            std::cerr<<help("Value for --bg must be within 0-255")<<'\n';
             return {};
         }
 
         if(args.count("ansi4") + args.count("ansi8") + args.count("ansi24") + args.count("nocolor") > 1)
         {
-            std::cerr<<options.help("Only one color option flag may be specified")<<'\n';
+            std::cerr<<help("Only one color option flag may be specified")<<'\n';
             return {};
         }
 
@@ -400,7 +357,7 @@ static const std::vector<std::string> output_formats =
 
         if(args.count("halfblock") + args.count("space") + (args.count("ascii") || color == Args::Color::NONE ? 1 : 0) > 1)
         {
-            std::cerr<<options.help("Only one of --halfblock, --ascii, or --space may be specified")<<'\n';
+            std::cerr<<help("Only one of --halfblock, --ascii, or --space may be specified")<<'\n';
             return {};
         }
 
@@ -416,31 +373,31 @@ static const std::vector<std::string> output_formats =
 
         if(animate && args.count("output"))
         {
-            std::cerr<<options.help("Can't specify --output with --animate")<<'\n';
+            std::cerr<<help("Can't specify --output with --animate")<<'\n';
             return {};
         }
 
         if(animate && args.count("frame-no"))
         {
-            std::cerr<<options.help("Can't specify --frame-no with --animate")<<'\n';
+            std::cerr<<help("Can't specify --frame-no with --animate")<<'\n';
             return {};
         }
 
         if(animate && args.count("image-count"))
         {
-            std::cerr<<options.help("Can't specify --image-count with --animate")<<'\n';
+            std::cerr<<help("Can't specify --image-count with --animate")<<'\n';
             return {};
         }
 
         if(animate && args.count("frame-count"))
         {
-            std::cerr<<options.help("Can't specify --frame-count with --animate")<<'\n';
+            std::cerr<<help("Can't specify --frame-count with --animate")<<'\n';
             return {};
         }
 
         if(animate && args.count("convert"))
         {
-            std::cerr<<options.help("Can't specify --convert with --animate")<<'\n';
+            std::cerr<<help("Can't specify --convert with --animate")<<'\n';
             return {};
         }
 
@@ -452,7 +409,7 @@ static const std::vector<std::string> output_formats =
                 frame_delay = 1.0f / framerate;
             else
             {
-                std::cerr<<options.help("--framerate must be > 0")<<'\n';
+                std::cerr<<help("--framerate must be > 0")<<'\n';
                 return {};
             }
         }
@@ -474,7 +431,7 @@ static const std::vector<std::string> output_formats =
                 + args.count("sif")
                 > 1)
         {
-            std::cerr<<options.help("Only one file format flag may be specified")<<'\n';
+            std::cerr<<help("Only one file format flag may be specified")<<'\n';
             return {};
         }
 
@@ -521,7 +478,7 @@ static const std::vector<std::string> output_formats =
 
             if(std::size(ext) == 0)
             {
-                std::cerr<<options.help("No conversion type specified");
+                std::cerr<<help("No conversion type specified");
                 return {};
             }
 
@@ -530,7 +487,7 @@ static const std::vector<std::string> output_formats =
 
             if(std::find(std::begin(output_formats), std::end(output_formats), ext) == std::end(output_formats))
             {
-                std::cerr<<options.help("Unsupported conversion type: " + ext);
+                std::cerr<<help("Unsupported conversion type: " + ext);
                 return {};
             }
         }
@@ -561,13 +518,17 @@ static const std::vector<std::string> output_formats =
             .animate               = animate,
             .loop_animation        = static_cast<bool>(args.count("loop")),
             .animation_frame_delay = frame_delay,
+        #if CXXOPTS__VERSION_MAJOR >= 3
             .extra_args            = args.unmatched(),
-            .help_text             = options.help()
+        #else
+            .extra_args            = std::vector<std::string>(argv + 1, argv + argc),
+        #endif
+            .help_text             = help()
         };
     }
-    catch(const cxxopts::OptionException & e)
+    catch(const cxxopt_exception & e)
     {
-        std::cerr<<options.help(e.what())<<'\n';
+        std::cerr<<help(e.what())<<'\n';
         return {};
     }
 }
