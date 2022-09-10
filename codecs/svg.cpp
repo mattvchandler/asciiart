@@ -57,7 +57,15 @@ void Svg::open(std::istream & input, const Args & args)
 
     rsvg_handle_set_dpi(svg_handle, 75.0);
     gdouble width{0.0}, height{0.0};
+#if LIBRSVG_MAJOR_VERSION > 2 || LIBRSVG_MINOR_VERSION >= 52
     rsvg_handle_get_intrinsic_size_in_pixels(svg_handle, &width, &height);
+
+#else
+    RsvgDimensionData dims;
+    rsvg_handle_get_dimensions(svg_handle, &dims);
+    width = dims.width;
+    height = dims.height;
+#endif
 
     cairo_surface_t * bmp = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width, height);
     rs.push(bmp, cairo_surface_destroy);
@@ -69,7 +77,7 @@ void Svg::open(std::istream & input, const Args & args)
     if(cairo_status(cr) != CAIRO_STATUS_SUCCESS)
         throw std::runtime_error {"Error creating SVG cairo object"};
 
-    // if(!rsvg_handle_render_cairo(svg_handle, cr))
+#if LIBRSVG_MAJOR_VERSION > 2 || LIBRSVG_MINOR_VERSION >= 52
     auto viewport = RsvgRectangle {.x=0.0, .y=0.0, .width=width, .height=height};
     if(GError * err = nullptr; !rsvg_handle_render_document(svg_handle, cr, &viewport, &err))
     {
@@ -77,6 +85,12 @@ void Svg::open(std::istream & input, const Args & args)
         g_error_free(err);
         throw std::runtime_error{"Error rendering SVG: " + message};
     }
+#else
+    if(!rsvg_handle_render_cairo(svg_handle, cr))
+    {
+        throw std::runtime_error{"Error rendering SVG"};
+    }
+#endif
 
     set_size(width, height);
     if(static_cast<std::size_t>(cairo_image_surface_get_stride(bmp)) < width_ * 4)

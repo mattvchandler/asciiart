@@ -407,7 +407,9 @@ void Png::open(std::istream & input, const Args & args)
                         png_process_data(*libpng, *libpng, const_cast<png_bytep>(std::data(iend)), std::size(iend));
                         libpng.reset();
 
+                    #ifdef EXIF_FOUND
                         transpose_image(animation_info.orientation);
+                    #endif
 
                         if(composed_)
                         {

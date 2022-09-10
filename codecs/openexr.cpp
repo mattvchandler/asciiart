@@ -43,12 +43,12 @@ public:
         return true;
     }
 
-    virtual Imf::Int64 tellg() override
+    virtual std::uint64_t tellg() override
     {
         return std::distance(std::data(data_), pos_);
     }
 
-    virtual void seekg(Imf::Int64 pos) override
+    virtual void seekg(std::uint64_t pos) override
     {
         if(std::distance(std::data(data_), std::data(data_) + pos) > static_cast<std::ptrdiff_t>(std::size(data_)))
             throw std::runtime_error{"Attempted to read past end of EXR file"};
@@ -78,12 +78,12 @@ public:
         pos_ += n;
     }
 
-    virtual Imf::Int64 tellp() override
+    virtual std::uint64_t tellp() override
     {
         return pos_;
     }
 
-    virtual void seekp(Imf::Int64 pos) override
+    virtual void seekp(std::uint64_t pos) override
     {
         pos_ = pos;
         if(pos_ > std::size(data_))
