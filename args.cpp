@@ -202,6 +202,7 @@ static const std::vector<std::string> output_formats =
         const std::string filetype_group = "Input file detection override (for formats that can't reliably be identified by file signature)";
         options.add_options(filetype_group)("tga", "Interpret input as a TGA file");
         options.add_options(filetype_group)("pcx", "Interpret input as a PCX file");
+        options.add_options(filetype_group)("pkmn", "Interpret input as pokemon gen 1 compressed sprite data");
 
     #ifdef SVG_FOUND
         options.add_options(filetype_group)("svg", "Interpret input as an SVG file");
