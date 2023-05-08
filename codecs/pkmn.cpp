@@ -11,7 +11,6 @@
 
 constexpr auto tile_dims = 8u;
 
-
 const std::map<std::string, std::array<Color, 4>> palettes {
     {"grey",     {Color{0xFF},             Color{0xA9},             Color{0x54},             Color{0x00}}},
     {"gb_green", {Color{0xE0, 0xF8, 0xD0}, Color{0x88, 0xC0, 0x70}, Color{0x34, 0x68, 0x56}, Color{0x08, 0x18, 0x20}}},
@@ -263,7 +262,8 @@ void Pkmn::open(std::istream & input, const Args &)
         auto primary_buffer = bits(1); // 0: BP0 in B, 1: BP0 in C0
 
         const auto buffer_stride = tile_dims * buffer_tile_width * buffer_tile_height;
-        auto decompression_buffer = std::vector<std::uint8_t>(2u * buffer_stride + tile_dims * std::max(static_cast<unsigned int>(tile_width * tile_height), buffer_tile_width * buffer_tile_height));
+        auto decompression_buffer = (override_tile_width_ && override_tile_height_) ? std::vector<std::uint8_t>(2u * buffer_stride + tile_dims * std::max({static_cast<unsigned int>(override_tile_width_ * override_tile_height_), static_cast<unsigned int>(tile_width * tile_height), buffer_tile_width * buffer_tile_height}))
+                                                                                    : std::vector<std::uint8_t>(2u * buffer_stride + tile_dims * std::max(static_cast<unsigned int>(tile_width * tile_height), buffer_tile_width * buffer_tile_height));
 
         auto buffer_a = std::data(decompression_buffer);
         auto buffer_b = std::data(decompression_buffer) + buffer_stride;
