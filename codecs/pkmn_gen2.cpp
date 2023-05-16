@@ -8,6 +8,7 @@
 #include "sub_args.hpp"
 
 constexpr auto tile_dims = 8u;
+constexpr auto tile_bytes = 16u;
 
 void process_cmd(std::istream & input, std::vector<std::uint8_t> & decompressed, std::uint8_t cmd, std::size_t length)
 {
@@ -61,19 +62,18 @@ void process_cmd(std::istream & input, std::vector<std::uint8_t> & decompressed,
             switch(cmd)
             {
                 case 0x4: // repeat
-                {
-                    if(start + length >= std::size(decompressed))
-                        throw std::runtime_error{"Pkmn_gen2: end address out of range"};
-
-                    auto tmp = std::vector(std::begin(decompressed) + start, std::begin(decompressed) + start + length);
-                    decompressed.insert(std::end(decompressed), std::begin(tmp), std::end(tmp));
+                    for(auto i = start; i < start + length; ++i)
+                    {
+                        if(i >= std::size(decompressed))
+                            throw std::runtime_error{"Pkmn_gen2: end address out of range"};
+                        decompressed.emplace_back(decompressed[i]);
+                    }
                     return;
-                }
 
                 case 0x5: // bit-reverse repeat
                 {
-                    if(start + length >= std::size(decompressed))
-                        throw std::runtime_error{"Pkmn_gen2: end address out of range"};
+                    // if(start + length >= std::size(decompressed))
+                    //     throw std::runtime_error{"Pkmn_gen2: end address out of range"};
 
                     auto reversebits = [](std::uint8_t b)
                     {
@@ -88,17 +88,22 @@ void process_cmd(std::istream & input, std::vector<std::uint8_t> & decompressed,
                     };
 
                     for(auto i = start; i < start + length; ++i)
+                    {
+                        if(i >= std::size(decompressed))
+                            throw std::runtime_error{"Pkmn_gen2: end address out of range"};
                         decompressed.emplace_back(reversebits(decompressed[i]));
+                    }
 
                     return;
                 }
 
                 case 0x6: // backwards repeat
-                    if(start - length >= std::size(decompressed))
-                        throw std::runtime_error{"Pkmn_gen2: end address out of range"};
-
                     for(auto i = start + 1; i-- > start - length + 1;)
+                    {
+                        if(i >= std::size(decompressed))
+                            throw std::runtime_error{"Pkmn_gen2: end address out of range"};
                         decompressed.emplace_back(decompressed[i]);
+                    }
                     return;
             }
             return;
@@ -187,12 +192,12 @@ void Pkmn_gen2::open(std::istream & input, const Args &)
 
         auto tiles = lz3_decompress(input);
 
-        if(std::size(tiles) % 16 != 0)
+        if(std::size(tiles) % tile_bytes != 0)
             throw std::runtime_error{"Pkmn_gen2 decompressed sprite data has odd size (" + std::to_string(std::size(tiles)) + " bytes)"};
 
         if(tile_width == 0 || tile_height == 0)
         {
-            auto num_tiles = std::size(tiles) / 16;
+            auto num_tiles = std::size(tiles) / tile_bytes;
             const auto size_map = std::map<std::uint8_t, std::pair<std::uint8_t, std::uint8_t>> {
                 {24, {6, 4}},
                 {25, {5, 5}},
@@ -211,15 +216,15 @@ void Pkmn_gen2::open(std::istream & input, const Args &)
             }
         }
 
-        if(tile_width * tile_height != std::size(tiles) / 16)
-            throw std::runtime_error{"Pkmn_gen2 specified tile size does not fit decompressed image data"};
+        while(tile_width * tile_height > std::size(tiles) / tile_bytes)
+            tiles.emplace_back(0);
 
         set_size(tile_dims * tile_width, tile_dims * tile_height);
 
         if(!palette_set_)
-            palette_entries_ = Pkmn_gen1::palettes.at("grayscale");
+            palette_entries_ = Pkmn_gen1::palettes.at("greyscale");
 
-        for(auto i = 0u, tile_col = 0u, row = 0u; i < std::size(tiles); i += 2u, ++row)
+        for(auto i = 0u, tile_col = 0u, row = 0u; i < tile_width * tile_height * tile_bytes; i += 2u, ++row)
         {
             if(row == tile_height * tile_dims)
             {
