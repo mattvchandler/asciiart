@@ -239,12 +239,24 @@ void print_image(const Image & img, const Args & args, std::ostream & out)
         char_vals = get_char_values(font_path, args.font_size);
     }
 
+    int rows = 0, cols = 0;
+
+    if(!args.cols)
+        cols = std::min({80, get_screen_cols(), static_cast<int>(img.get_width())});
+    else
+        cols = *args.cols;
+
+    if(!args.rows)
+        rows = -1;
+    else
+        rows = *args.rows;
+
     const auto bg = args.bg / 255.0f;
-    auto disp_height = args.rows > 0 ? args.rows : img.get_height() * args.cols / img.get_width() / 2;
+    auto disp_height = rows > 0 ? rows : img.get_height() * cols / img.get_width() / 2;
     if(args.disp_char == Args::Disp_char::HALF_BLOCK)
         disp_height *= 2;
 
-    auto scaled_img = img.scale(args.cols, disp_height);
+    auto scaled_img = img.scale(cols, disp_height);
 
     for(std::size_t row = 0; row < scaled_img.get_height(); ++row)
     {

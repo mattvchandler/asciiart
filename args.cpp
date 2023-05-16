@@ -163,8 +163,8 @@ static const std::vector<std::string> output_formats =
     {
         options.add_options()
             ("h,help",     "Show this message and quit")
-            ("r,rows",     "# of output rows. Enter a negative value to preserve aspect ratio with --cols", cxxopts::value<int>()->default_value("-1"),        "ROWS")
-            ("c,cols",     "# of output cols",                                                              cxxopts::value<int>()->default_value("80"),        "COLS")
+            ("r,rows",     "# of output rows. Enter a negative value to preserve aspect ratio with --cols", cxxopts::value<int>(),                             "ROWS")
+            ("c,cols",     "# of output cols",                                                              cxxopts::value<int>(),                             "COLS")
             ("b,bg",       "Background color value for transparent images (0-255)",                         cxxopts::value<int>()->default_value("0"),         "BG")
             ("i,invert",   "Invert colors")
             ("o,output",   "Output text file path. Output to stdout if '-'",                                cxxopts::value<std::string>()->default_value("-"), "OUTPUT_FILE")
@@ -294,27 +294,13 @@ static const std::vector<std::string> output_formats =
             return {};
         }
 
-        if(args["rows"].as<int>() == 0)
+        if(args.count("rows") && args["rows"].as<int>() == 0)
         {
             std::cerr<<help("Value for --rows cannot be 0")<<'\n';
             return {};
         }
 
-        auto cols = args["cols"].as<int>();
-        if(args["cols"].has_default())
-        {
-            if(auto columns_env = std::getenv("COLUMNS"); columns_env != nullptr)
-                cols = std::min(cols, std::stoi(std::string{columns_env}));
-            #ifdef HAS_IOCTL
-            else if(winsize ws; ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) >= 0)
-                cols = std::min(cols, static_cast<int>(ws.ws_col));
-            #endif
-            #ifdef HAS_WINDOWS
-            else if(CONSOLE_SCREEN_BUFFER_INFO csbi; GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi))
-                cols = std::min(cols, static_cast<int>(csbi.srWindow.Right - csbi.srWindow.Left + 1));
-            #endif
-        }
-        if(cols <= 0)
+        if(args.count("cols") && args["cols"].as<int>() <= 0)
         {
             std::cerr<<help("Value for --cols must be positive")<<'\n';
             return {};
@@ -508,8 +494,8 @@ static const std::vector<std::string> output_formats =
             .font_name             = {},
             .font_size             = {},
         #endif
-            .rows                  = args["rows"].as<int>(),
-            .cols                  = cols,
+            .rows                  = args.count("rows") ? std::optional(args["rows"].as<int>()) : std::nullopt,
+            .cols                  = args.count("cols") ? std::optional(args["cols"].as<int>()) : std::nullopt,
             .bg                    = static_cast<unsigned char>(args["bg"].as<int>()),
             .invert                = static_cast<bool>(args.count("invert")),
             .display               = !static_cast<bool>(args.count("no-display")),
@@ -537,4 +523,20 @@ static const std::vector<std::string> output_formats =
         std::cerr<<help(e.what())<<'\n';
         return {};
     }
+}
+
+int get_screen_cols()
+{
+    if(auto columns_env = std::getenv("COLUMNS"); columns_env != nullptr)
+        return std::stoi(std::string{columns_env});
+    #ifdef HAS_IOCTL
+    else if(winsize ws; ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) >= 0)
+        return static_cast<int>(ws.ws_col);
+    #endif
+    #ifdef HAS_WINDOWS
+    else if(CONSOLE_SCREEN_BUFFER_INFO csbi; GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi))
+        return static_cast<int>(csbi.srWindow.Right - csbi.srWindow.Left + 1);
+    #endif
+
+    return 0;
 }

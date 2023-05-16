@@ -14,8 +14,8 @@ struct Args
     std::string output_filename; // - for stdout
     std::string font_name;       // use fontconfig to find, freetype to open
     float       font_size;       // font size requested, in points
-    int rows;                    // output rows
-    int cols;                    // output cols
+    std::optional<int> rows;     // output rows
+    std::optional<int> cols;     // output cols
     unsigned char bg;            // BG color value
     bool invert;                 // invert colors
     bool display;                // display the image
@@ -52,5 +52,7 @@ struct Args
 };
 
 [[nodiscard]] std::optional<Args> parse_args(int argc, char * argv[]);
+
+int get_screen_cols();
 
 #endif // ARGS_HPP
