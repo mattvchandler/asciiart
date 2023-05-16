@@ -1,7 +1,6 @@
-#include "pkmn.hpp"
+#include "pkmn_gen1.hpp"
 
 #include <iterator>
-#include <map>
 #include <unordered_map>
 
 #include <cmath>
@@ -11,7 +10,7 @@
 
 constexpr auto tile_dims = 8u;
 
-const std::map<std::string, std::array<Color, 4>> palettes {
+const std::map<std::string, std::array<Color, 4>> Pkmn_gen1::palettes {
     // pure greyscale. Approximately what you would see on a Gameboy Pocket
     {"greyscale", {Color{0xFF},             Color{0xA9},             Color{0x54},             Color{0x00}}},
     // Approximately what you would see on the original Gameboy's green LCD
@@ -248,7 +247,7 @@ void copy_and_arrange_buf(std::uint8_t * dst, std::uint8_t * src, std::uint8_t t
     }
 }
 
-void Pkmn::open(std::istream & input, const Args &)
+void Pkmn_gen1::open(std::istream & input, const Args &)
 {
     input.exceptions(std::ios_base::badbit | std::ios_base::failbit);
     try
@@ -342,7 +341,7 @@ void Pkmn::open(std::istream & input, const Args &)
     }
 }
 
-void Pkmn::handle_extra_args(const Args & args)
+void Pkmn_gen1::handle_extra_args(const Args & args)
 {
     auto options = Sub_args{"Pokemon Gen 1 Sprite"};
     try
@@ -360,7 +359,7 @@ void Pkmn::handle_extra_args(const Args & args)
             ("tile-height",   "Override height for tile layout (necessary for glitches to show up as in-game) [1-15]", cxxopts::value<unsigned int>(), "HEIGHT")
             ("fixed-buffer",  "Limit decompression buffer to 56x56 (necessary for glitches to show up as in-game)")
             ("allow-overrun", "Continue decoding image when too more data is decompressed than expected (necessary for glitches to show up as in-game)")
-            ("palette",       "Palette to display or convert into. Valid values are: " + palette_list, cxxopts::value<std::string>()->default_value("grey"), "PALETTE");
+            ("palette",       "Palette to display or convert into. Valid values are: " + palette_list, cxxopts::value<std::string>()->default_value("greyscale"), "PALETTE");
 
         auto sub_args = options.parse(args.extra_args);
 
@@ -393,7 +392,7 @@ void Pkmn::handle_extra_args(const Args & args)
     }
 }
 
-void Pkmn::write(std::ostream & out, const Image & img, bool invert)
+void Pkmn_gen1::write(std::ostream & out, const Image & img, bool invert)
 {
     // TODO: maybe add output-tile-width output-tile-height flags
 

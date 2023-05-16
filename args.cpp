@@ -69,7 +69,8 @@ static const std::vector<std::string> input_formats =
     "PNG",
     "APNG",
     #endif
-    "Pokemon Gen 1 Compressed sprites (.bin)",
+    "Pokemon Gen 1 Compressed sprites",
+    "Pokemon Gen 2 Compressed sprites",
     "PBM", "PGM", "PPM", "PAM", "PFM",
     "SRF",
     "SIF",
@@ -91,7 +92,7 @@ static const std::vector<std::string> output_formats =
     ".avif",
     #endif
     ".bmp",
-    ".bin", // pokemon sprite
+    ".bin", // pokemon sprite // TODO: add as an output flag
     ".cur",".ico",
     #ifdef ZLIB_FOUND
     ".dat", // MCMap
@@ -202,7 +203,8 @@ static const std::vector<std::string> output_formats =
         const std::string filetype_group = "Input file detection override (for formats that can't reliably be identified by file signature)";
         options.add_options(filetype_group)("tga", "Interpret input as a TGA file");
         options.add_options(filetype_group)("pcx", "Interpret input as a PCX file");
-        options.add_options(filetype_group)("pkmn", "Interpret input as pokemon gen 1 compressed sprite data");
+        options.add_options(filetype_group)("pkmn1", "Interpret input as pokemon gen 1 compressed sprite data");
+        options.add_options(filetype_group)("pkmn2", "Interpret input as pokemon gen 2 compressed sprite data");
 
     #ifdef SVG_FOUND
         options.add_options(filetype_group)("svg", "Interpret input as an SVG file");
@@ -419,7 +421,8 @@ static const std::vector<std::string> output_formats =
 
         if(args.count("tga")
                 + args.count("pcx")
-                + args.count("pkmn")
+                + args.count("pkmn1")
+                + args.count("pkmn2")
     #ifdef SVG_FOUND
                 + args.count("svg")
     #endif
@@ -440,8 +443,10 @@ static const std::vector<std::string> output_formats =
             filetype = Args::Force_file::tga;
         else if(args.count("pcx"))
             filetype = Args::Force_file::pcx;
-        else if(args.count("pkmn"))
-            filetype = Args::Force_file::pkmn;
+        else if(args.count("pkmn1"))
+            filetype = Args::Force_file::pkmn_gen1;
+        else if(args.count("pkmn2"))
+            filetype = Args::Force_file::pkmn_gen2;
     #ifdef SVG_FOUND
         else if(args.count("svg"))
             filetype = Args::Force_file::svg;
