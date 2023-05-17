@@ -22,6 +22,6 @@ private:
     bool check_overrun_ {true};
     bool fixed_buffer_ {false};
 
-    inline static std::string palette_ {"greyscale"}; // TODO: need handle_extra_args for output
+    inline static std::array<Color, 4> palette_entries_;
 };
 #endif // PKMN_GEN1_HPP

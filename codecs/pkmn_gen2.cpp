@@ -72,8 +72,8 @@ void process_cmd(std::istream & input, std::vector<std::uint8_t> & decompressed,
 
                 case 0x5: // bit-reverse repeat
                 {
-                    // if(start + length >= std::size(decompressed))
-                    //     throw std::runtime_error{"Pkmn_gen2: end address out of range"};
+                    if(start + length >= std::size(decompressed))
+                        throw std::runtime_error{"Pkmn_gen2: end address out of range"};
 
                     auto reversebits = [](std::uint8_t b)
                     {

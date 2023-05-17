@@ -40,7 +40,7 @@ void decompress(Input_bitstream<InputIter> & bits, std::uint8_t tile_width, std:
     enum class State: std::uint8_t {RLE=0, DATA=1};
     auto state = static_cast<State>(bits(1));
 
-    // we're having the buffer laid out by columns. Each byte is a row in a tile, so each 8 bytes forms a tile. Unfortunately, the data is decompressed into 2 bit wide columns, so this fun gets the bits in the right places (or the console-acurate wrong places in the case of glitces)
+    // we're having the buffer laid out by columns. Each byte is a row in a tile, so each 8 bytes forms a tile. Unfortunately, the data is decompressed into 2 bit wide columns, so this fun gets the bits in the right places (or the console-acurate wrong places in the case of glitches)
     auto bit_pair_write = [tile_height, decompression_buffer, col = 0u, row = 0u](std::uint8_t bits) mutable
     {
         auto byte_ind = col / tile_dims * tile_height * tile_dims + row;
@@ -263,7 +263,7 @@ void Pkmn_gen1::open(std::istream & input, const Args &)
         auto buffer_tile_width = fixed_buffer_ ? 7u : tile_width;
         auto buffer_tile_height = fixed_buffer_ ? 7u : tile_height;
 
-        auto primary_buffer = bits(1); // 0: BP0 in B, 1: BP0 in C0
+        auto primary_buffer = bits(1); // 0: BP0 in B, 1: BP0 in C
 
         const auto buffer_stride = tile_dims * buffer_tile_width * buffer_tile_height;
         auto decompression_buffer = (override_tile_width_ && override_tile_height_) ? std::vector<std::uint8_t>(2u * buffer_stride + tile_dims * std::max({static_cast<unsigned int>(override_tile_width_ * override_tile_height_), static_cast<unsigned int>(tile_width * tile_height), buffer_tile_width * buffer_tile_height}))
@@ -327,7 +327,7 @@ void Pkmn_gen1::open(std::istream & input, const Args &)
                     auto bit_ind = 7u - i;
                     auto bit0 = (byte0 >> bit_ind) & 0x01;
                     auto bit1 = (byte1 >> bit_ind) & 0x01;
-                    image_data_[row][col + i] = palettes.at(palette_)[bit1 << 1 | bit0];
+                    image_data_[row][col + i] = palette_entries_[bit1 << 1 | bit0];
                 }
             }
         }
@@ -359,7 +359,9 @@ void Pkmn_gen1::handle_extra_args(const Args & args)
             ("tile-height",   "Override height for tile layout (necessary for glitches to show up as in-game) [1-15]", cxxopts::value<unsigned int>(), "HEIGHT")
             ("fixed-buffer",  "Limit decompression buffer to 56x56 (necessary for glitches to show up as in-game)")
             ("allow-overrun", "Continue decoding image when too more data is decompressed than expected (necessary for glitches to show up as in-game)")
-            ("palette",       "Palette to display or convert into. Valid values are: " + palette_list, cxxopts::value<std::string>()->default_value("greyscale"), "PALETTE");
+            ("palette",       "Palette to display or convert into. Valid values are: " + palette_list, cxxopts::value<std::string>()->default_value("greyscale"), "PALETTE")
+            ("palette-colors", "Specify a comma-seperated list of palette RGB values [0-255]. 4 colors (12 values) should be specified. If 2 colors (6 values) are entered, they are assumed to be the middle 2 color indexes, and the first is assumed to be white and the last to be black. Overrides --palette",
+                                cxxopts::value<std::vector<unsigned int>>(), "COLORS");
 
         auto sub_args = options.parse(args.extra_args);
 
@@ -381,10 +383,36 @@ void Pkmn_gen1::handle_extra_args(const Args & args)
 
         check_overrun_ = !sub_args.count("allow-overrun");
         fixed_buffer_ = sub_args.count("fixed-buffer");
-        palette_ = sub_args["palette"].as<std::string>();
-        if(!palettes.contains(palette_))
-            throw std::runtime_error{options.help(args.help_text) + "\n'" + palette_ + "' is not valid for --palette. Valid values are: " + palette_list};
 
+        auto palette = sub_args["palette"].as<std::string>();
+        if(!palettes.contains(palette))
+            throw std::runtime_error{options.help(args.help_text) + "\n'" + palette + "' is not valid for --palette. Valid values are: " + palette_list};
+
+        if(sub_args.count("palette-colors"))
+        {
+            auto & colors = sub_args["palette-colors"].as<std::vector<unsigned int>>();
+            auto color_count = std::size(colors);
+
+            if(color_count != 12 && color_count != 6)
+                throw std::runtime_error{options.help(args.help_text) + "\nMust specify 12 or 6 RGB values for --palette-colors. " + std::to_string(color_count) + " specified"};
+
+            for(auto i = 0u; i < color_count; ++i)
+            {
+                auto c = colors[i];
+                if(c > 255)
+                    throw std::runtime_error{options.help(args.help_text) + "\n--palette-colors entry (" + std::to_string(c) + ") out of range [0-255]"};
+
+                palette_entries_[color_count == 12 ? i / 3 : i / 3 + 1][i % 3] = c;
+            }
+
+            if(color_count == 6)
+            {
+                palette_entries_[0] = Color{0xff};
+                palette_entries_[3] = Color{0x00};
+            }
+        }
+        else
+            palette_entries_ = palettes.at(palette);
     }
     catch(const cxxopt_exception & e)
     {
@@ -425,11 +453,11 @@ void Pkmn_gen1::write(std::ostream & out, const Image & img, bool invert)
         }
     }
 
-    scaled.dither(std::begin(palettes.at(palette_)), std::end(palettes.at(palette_)));
+    scaled.dither(std::begin(palette_entries_), std::end(palette_entries_));
 
     auto reverse_palette = std::unordered_map<Color, std::uint8_t>{};
-    for(std::size_t i = 0; i < std::size(palettes.at(palette_)); ++i)
-        reverse_palette[palettes.at(palette_)[i]] = i;
+    for(std::size_t i = 0; i < std::size(palette_entries_); ++i)
+        reverse_palette[palette_entries_[i]] = i;
 
     const auto buffer_stride = tile_dims * tile_width * tile_height;
     auto compression_buffer = std::vector<std::uint8_t>(2 * buffer_stride);
