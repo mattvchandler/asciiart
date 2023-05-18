@@ -80,9 +80,7 @@ void MotoLogo::open(std::istream & input, const Args &)
             locations.emplace_back(offset, size);
 
             if(list_)
-            {
                 std::cout<<"  "<<name<<'\n';
-            }
         }
 
         if(list_)
@@ -91,7 +89,6 @@ void MotoLogo::open(std::istream & input, const Args &)
         for(auto i = 0u; i < num_images; ++i)
         {
             auto [offset, size] = locations[i];
-            std::cout<<"from "<<pos<<" to "<<offset<<" size "<<size<<'\n';
             input.ignore(offset - pos);
             pos = offset;
 
