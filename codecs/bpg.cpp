@@ -33,8 +33,7 @@ void Bpg::open(std::istream & input, const Args &)
             for(auto i = 0; i < 6; ++i)
                 exif_buf[i] = "Exif\0\0"[i];
             std::copy(ext->buf, ext->buf + ext->buf_len, std::begin(exif_buf) + 6);
-            orientation = exif::get_orientation(std::data(exif_buf), std::size(exif_buf));
-            break;
+            orientation = exif::get_orientation(std::data(exif_buf), std::size(exif_buf)).value_or(orientation);
         }
         ext = ext->next;
     }

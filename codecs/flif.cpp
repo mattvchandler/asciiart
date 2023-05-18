@@ -38,7 +38,7 @@ void Flif::open(std::istream & input, const Args &)
     std::size_t metadata_size = 0;
     if(flif_image_get_metadata(image, "eXif", &metadata, &metadata_size))
     {
-        orientation = exif::get_orientation(metadata, metadata_size);
+        orientation = exif::get_orientation(metadata, metadata_size).value_or(orientation);
         flif_image_free_metadata(image, metadata);
     }
     #endif

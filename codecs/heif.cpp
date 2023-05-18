@@ -23,7 +23,7 @@ void Heif::open(std::istream & input, const Args &)
         {
             auto metadata = handle.get_metadata(id);
             // libheif documentation says to skip the first 4 bytes of exif metadata
-            orientation = exif::get_orientation(std::data(metadata) + 4, std::size(metadata) - 4);
+            orientation = exif::get_orientation(std::data(metadata) + 4, std::size(metadata) - 4).value_or(orientation);
         }
         #endif // EXIF_FOUND
 

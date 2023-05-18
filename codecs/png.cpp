@@ -271,7 +271,7 @@ void Png::open(std::istream & input, const Args & args)
                     exif_buf[i] = "Exif\0\0"[i];
                 std::copy(data, data + chunk->size, std::begin(exif_buf) + 6);
 
-                animation_info->orientation = exif::get_orientation(std::data(exif_buf), std::size(exif_buf));
+                animation_info->orientation = exif::get_orientation(std::data(exif_buf), std::size(exif_buf)).value_or(animation_info->orientation);
             }
             return 1;
         #else

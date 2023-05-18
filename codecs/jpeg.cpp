@@ -344,7 +344,7 @@ void Jpeg::open(std::istream & input, const Args & args)
         #ifdef EXIF_FOUND
             // get orientation from EXIF, if it exists
             case JPEG_APP0 + 1:
-                orientation = exif::get_orientation(marker->data, marker->data_length);
+                orientation = exif::get_orientation(marker->data, marker->data_length).value_or(orientation);
                 break;
         #endif
             case JPEG_APP0 + 2:

@@ -8,10 +8,9 @@
 
 namespace exif
 {
-    Orientation get_orientation(const unsigned char * data , std::size_t len)
+    std::optional<Orientation> get_orientation(const unsigned char * data , std::size_t len)
     {
-        Orientation orientation {Orientation::r_0};
-
+        auto orientation = std::optional<Orientation>{};
         auto exif_data = exif_data_new_from_data(data, len);
         if(exif_data)
         {
@@ -24,7 +23,7 @@ namespace exif
                     exif_data_unref(exif_data);
                     std::vector<char> desc(256);
                     exif_entry_get_value(orientation_entry, std::data(desc), std::size(desc));
-                    throw std::runtime_error{"Unsupported EXIF rotation: " + std::string{std::data(desc)} + " (" + std::to_string(static_cast<std::underlying_type_t<Orientation>>(orientation)) + ")"};
+                    throw std::runtime_error{"Unsupported EXIF rotation: " + std::string{std::data(desc)} + " (" + std::to_string(static_cast<std::underlying_type_t<Orientation>>(*orientation)) + ")"};
                 }
             }
             exif_data_unref(exif_data);

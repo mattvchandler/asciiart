@@ -31,7 +31,7 @@ void Avif::open(std::istream & input, const Args &)
         auto orientation { exif::Orientation::r_0};
         #ifdef EXIF_FOUND
         if(decoder->image->exif.size > 0)
-            orientation = exif::get_orientation(decoder->image->exif.data, decoder->image->exif.size);
+            orientation = exif::get_orientation(decoder->image->exif.data, decoder->image->exif.size).value_or(orientation);
         #endif // EXIF_FOUND
 
         set_size(decoder->image->width, decoder->image->height);

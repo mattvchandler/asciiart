@@ -282,7 +282,7 @@ void Jp2::open(std::istream & input, const Args &)
         std::vector<unsigned char> exif_buf(std::distance(offset, std::end(reader.data)) - std::size(exif_start_str) + std::size(exif_replacement_str));
         std::copy(std::begin(exif_replacement_str), std::end(exif_replacement_str), std::begin(exif_buf));
         std::copy(offset + std::size(exif_start_str), std::end(reader.data), std::begin(exif_buf) + std::size(exif_replacement_str));
-        orientation = exif::get_orientation(std::data(exif_buf), std::size(exif_buf));
+        orientation = exif::get_orientation(std::data(exif_buf), std::size(exif_buf)).value_or(orientation);
     }
 
     transpose_image(orientation);
