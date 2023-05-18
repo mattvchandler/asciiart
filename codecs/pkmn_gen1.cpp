@@ -51,7 +51,7 @@ void decompress(Input_bitstream<InputIter> & bits, std::uint8_t tile_width, std:
         if(++row == tile_height * tile_dims)
         {
             row = 0u;
-            col+= 2u;
+            col += 2u;
         }
     };
 
@@ -230,10 +230,10 @@ void copy_and_arrange_buf(std::uint8_t * dst, std::uint8_t * src, std::uint8_t t
     for(auto i = 0u; i < buffer_tile_width * buffer_tile_height * tile_dims; ++i)
         dst[i] = 0u;
 
-    std::uint8_t y_offset = std::uint8_t{buffer_tile_height} - tile_height;
-    std::uint8_t x_offset = (std::uint8_t{buffer_tile_width} - tile_width + 1) / 2u;
+    std::uint8_t y_offset = buffer_tile_height - tile_height;
+    std::uint8_t x_offset = (buffer_tile_width - tile_width + 1) / 2u;
 
-    std::uint8_t tile_offset = std::uint8_t{buffer_tile_height} * x_offset + y_offset;
+    std::uint8_t tile_offset = buffer_tile_height * x_offset + y_offset;
     std::uint8_t byte_offset = std::uint8_t{tile_dims} * tile_offset;
 
     for(auto tile_col = 0u; tile_col < tile_width; ++tile_col)
@@ -266,8 +266,7 @@ void Pkmn_gen1::open(std::istream & input, const Args &)
         auto primary_buffer = bits(1); // 0: BP0 in B, 1: BP0 in C
 
         const auto buffer_stride = tile_dims * buffer_tile_width * buffer_tile_height;
-        auto decompression_buffer = (override_tile_width_ && override_tile_height_) ? std::vector<std::uint8_t>(2u * buffer_stride + tile_dims * std::max({static_cast<unsigned int>(override_tile_width_ * override_tile_height_), static_cast<unsigned int>(tile_width * tile_height), buffer_tile_width * buffer_tile_height}))
-                                                                                    : std::vector<std::uint8_t>(2u * buffer_stride + tile_dims * std::max(static_cast<unsigned int>(tile_width * tile_height), buffer_tile_width * buffer_tile_height));
+        auto decompression_buffer = std::vector<std::uint8_t>(2u * buffer_stride + tile_dims * std::max({static_cast<unsigned int>(override_tile_width_ * override_tile_height_), static_cast<unsigned int>(tile_width * tile_height), buffer_tile_width * buffer_tile_height}));
 
         auto buffer_a = std::data(decompression_buffer);
         auto buffer_b = std::data(decompression_buffer) + buffer_stride;

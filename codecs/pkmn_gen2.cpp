@@ -63,18 +63,11 @@ void process_cmd(std::istream & input, std::vector<std::uint8_t> & decompressed,
             {
                 case 0x4: // repeat
                     for(auto i = start; i < start + length; ++i)
-                    {
-                        if(i >= std::size(decompressed))
-                            throw std::runtime_error{"Pkmn_gen2: end address out of range"};
                         decompressed.emplace_back(decompressed[i]);
-                    }
                     return;
 
                 case 0x5: // bit-reverse repeat
                 {
-                    if(start + length >= std::size(decompressed))
-                        throw std::runtime_error{"Pkmn_gen2: end address out of range"};
-
                     auto reversebits = [](std::uint8_t b)
                     {
                         auto b2 = decltype(b){0};
@@ -88,11 +81,7 @@ void process_cmd(std::istream & input, std::vector<std::uint8_t> & decompressed,
                     };
 
                     for(auto i = start; i < start + length; ++i)
-                    {
-                        if(i >= std::size(decompressed))
-                            throw std::runtime_error{"Pkmn_gen2: end address out of range"};
                         decompressed.emplace_back(reversebits(decompressed[i]));
-                    }
 
                     return;
                 }
