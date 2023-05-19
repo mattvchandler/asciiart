@@ -21,7 +21,7 @@ Supports a variety of image formats:
 * OpenEXR (requires libopenexr)
 * PCX
 * PNG / APNG (requires libpng)
-* Pokemeon Gen 1 Compressed sprites
+* Pokemeon Gen 1 & 2 Compressed sprites
 * PPM / PGM / PBM / PAM / PFM
 * [SIF](https://adventofcode.com/2019/day/8)
 * SRF (Garmin GPS vehicle icon file)
