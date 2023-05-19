@@ -51,6 +51,7 @@ void Ico::open(std::istream & input, const Args & args)
         {
             #ifdef PNG_FOUND
             Png png_img;
+            input.exceptions(std::ios_base::goodbit); // disable our own IO exceptions - PNG handles it differently
             png_img.open(input, args);
             move_image_data(png_img);
             #else
