@@ -1,6 +1,5 @@
 #include "jxl.hpp"
 
-#include <iostream>
 #include <stdexcept>
 
 #include <cstdint>
@@ -8,14 +7,8 @@
 #include <jxl/decode_cxx.h>
 #include <jxl/encode_cxx.h>
 
-#ifdef EXIF_FOUND
-#include "exif.hpp"
-#endif
-
 void Jxl::open(std::istream & input, const Args &)
 {
-    std::cerr<<"Warning: JPEG XL input support is experimental. Success will vary depending on the image and jpeg xl library version\n";
-
     auto decoder = JxlDecoderMake(nullptr);
     if(!decoder)
         throw std::runtime_error {"Could not create JPEG XL decoder"};
@@ -28,32 +21,85 @@ void Jxl::open(std::istream & input, const Args &)
         0                  // align
     };
 
-    auto data = Image::read_input_to_memory(input);
+    JxlBasicInfo info{};
+    std::array<std::uint8_t, 65536> input_buffer{};
+    std::size_t input_size {0};
+    std::vector<std::uint8_t> buffer{};
 
     if(JxlDecoderSubscribeEvents(decoder.get(), JXL_DEC_BASIC_INFO | JXL_DEC_FULL_IMAGE) != JXL_DEC_SUCCESS)
         throw std::runtime_error {"Error subscibing to JPEG XL events"};
 
-    if(JxlDecoderSetInput(decoder.get(), std::data(data), std::size(data)) != JXL_DEC_SUCCESS)
-        throw std::runtime_error {"Error supplying JPEG XL input data"};
+    // NOTE: libjxl automatically will apply rotation if needed, so we don't have to mess about with Exif ourselves. Yay!
+    // If for some reason we ever do need to get it, we add JXL_DEC_BOX to the JxlDecoderSubscribeEvents call, add JXL_DEC_BOX and JXL_DEC_BOX_NEED_MORE_OUTPUT to the switch below,
+    // For JXL_DEC_BOX, we check for Exif with JxlDecoderGetBoxType and set a buffer with JxlDecoderSetBoxBuffer
+    // For JXL_DEC_BOX_NEED_MORE_OUTPUT, we get the number of unused bytes in our buffer with JxlDecoderReleaseBoxBuffer, increase the buffer size, call JxlDecoderSetBoxBuffer again with an offset to where it had left off
+    // After we get SUCCESS, we need to check the offset at the start of the exif buffer (32-bit big endian number, usually 0), drop that many + 4 bytes (for the offset), and then prepend "Exif\0\0" to the front. libexif will take it from there
+    // JxlDecoderReleaseBoxBuffer doesn't need to be called before the decoder is destroyed - it will be automatically cleaned by the decode destructor
 
-    if(JxlDecoderProcessInput(decoder.get()) != JXL_DEC_BASIC_INFO)
-        throw std::runtime_error {"Error decoding JPEG XL header. Invalid data"};
+    for(bool decoding = true; decoding;)
+    {
+        auto status = JxlDecoderProcessInput(decoder.get());
 
-    std::size_t buffer_size {0};
-    if(JxlDecoderImageOutBufferSize(decoder.get(), &format, &buffer_size) != JXL_DEC_SUCCESS)
-        throw std::runtime_error {"Error getting JPEG XL decompressed size"};
+        switch(status)
+        {
+            case JXL_DEC_SUCCESS:
+            case JXL_DEC_FULL_IMAGE: // right now we're quitting becuase we don't care about anything after the full image, but if we did, we'd want to handle JXL_DEC_FULL_IMAGE separately from JXL_DEC_SUCCESS
+                                     // This would come up when we're ready to handle multiple images or animations (In which case this signals the end of a single image/frame, and more remain)
+                decoding = false;
+                break;
 
-    JxlBasicInfo info{};
-    if(JxlDecoderGetBasicInfo(decoder.get(), &info) != JXL_DEC_SUCCESS)
-        throw std::runtime_error {"Error decoding JPEG XL data. Unable to read JPEG XL basic info"};
+            case JXL_DEC_BASIC_INFO:
+                if(JxlDecoderGetBasicInfo(decoder.get(), &info) != JXL_DEC_SUCCESS)
+                    throw std::runtime_error {"Error decoding JPEG XL data. Unable to read JPEG XL basic info"};
+                break;
 
-    std::vector<std::uint8_t> buffer(buffer_size);
+            case JXL_DEC_NEED_MORE_INPUT:
+            {
+                if(input.eof())
+                    throw std::runtime_error {"Error decoding JPEG XL image: Unexpected end of input"};
 
-    if(JxlDecoderSetImageOutBuffer(decoder.get(), &format, std::data(buffer), std::size(buffer)) != JXL_DEC_SUCCESS)
-        throw std::runtime_error {"Error setting JPEG XL buffer"};
+                auto remaining = JxlDecoderReleaseInput(decoder.get());
 
-    if(JxlDecoderProcessInput(decoder.get()) != JXL_DEC_FULL_IMAGE)
-        throw std::runtime_error {"Error decoding JPEG XL image data. Invalid data"};
+                if(remaining)
+                {
+                    auto leftovers = std::vector(std::begin(input_buffer) + input_size - remaining, std::begin(input_buffer) + input_size);
+                    std::copy(std::begin(leftovers), std::end(leftovers), std::begin(input_buffer));
+                }
+
+                input.read(reinterpret_cast<char *>(std::data(input_buffer)) + remaining, std::size(input_buffer) - remaining);
+                if(input.bad())
+                    throw std::runtime_error {"Error reading Jpeg XL file"};
+                input_size = input.gcount() + remaining;
+
+                if(JxlDecoderSetInput(decoder.get(), std::data(input_buffer), input_size) != JXL_DEC_SUCCESS)
+                    throw std::runtime_error {"Error supplying JPEG XL input data"};
+
+                if(input.eof())
+                    JxlDecoderCloseInput(decoder.get());
+
+                break;
+            }
+            case JXL_DEC_NEED_IMAGE_OUT_BUFFER:
+            {
+                std::size_t buffer_size {0};
+                if(JxlDecoderImageOutBufferSize(decoder.get(), &format, &buffer_size) != JXL_DEC_SUCCESS)
+                    throw std::runtime_error {"Error getting JPEG XL decompressed size"};
+
+                buffer.resize(buffer_size);
+
+                if(JxlDecoderSetImageOutBuffer(decoder.get(), &format, std::data(buffer), std::size(buffer)) != JXL_DEC_SUCCESS)
+                    throw std::runtime_error {"Error setting JPEG XL buffer"};
+
+                break;
+            }
+
+            case JXL_DEC_ERROR:
+                throw std::runtime_error {"Error decoding JPEG XL image"};
+
+            default:
+                throw std::runtime_error {"Unhandled status for JPEG XL ProcessInput: " + std::to_string(status)};
+        }
+    }
 
     set_size(info.xsize, info.ysize);
 
@@ -69,8 +115,6 @@ void Jxl::open(std::istream & input, const Args &)
 
 void Jxl::write(std::ostream & out, const Image & img, bool invert)
 {
-    std::cerr<<"Warning: JPEG XL output support is experimental. Success will vary depending on the image and jpeg xl library version\n";
-
     auto encoder = JxlEncoderMake(nullptr);
     if(!encoder)
         throw std::runtime_error {"Could not create JPEG XL encoder"};
@@ -82,13 +126,27 @@ void Jxl::write(std::ostream & out, const Image & img, bool invert)
         JXL_LITTLE_ENDIAN, // endianness
         0                  // align
     };
+
     JxlBasicInfo info {};
+    JxlEncoderInitBasicInfo(&info);
     info.xsize = static_cast<std::uint32_t>(img.get_width());
     info.ysize = static_cast<std::uint32_t>(img.get_height());
     info.num_color_channels = 3;
     info.num_extra_channels = 1;
     info.bits_per_sample = 8;
     info.alpha_bits = 8;
+
+    if(JxlEncoderSetBasicInfo(encoder.get(), &info) != JXL_ENC_SUCCESS)
+        throw std::runtime_error {"Could not set JPEG XL basic info"};
+
+    JxlColorEncoding color;
+    JxlColorEncodingSetToSRGB(&color, false);
+    if(JxlEncoderSetColorEncoding(encoder.get(), &color) != JXL_ENC_SUCCESS)
+        throw std::runtime_error {"Could not set JPEG XL color encoding"};
+
+    auto encoder_opts = JxlEncoderFrameSettingsCreate(encoder.get(), nullptr);
+    if(!encoder_opts)
+        throw std::runtime_error {"Could not create JPEG XL encoder options"};
 
     std::vector<std::uint8_t> data(img.get_width() * img.get_height() * 4);
 
@@ -106,47 +164,32 @@ void Jxl::write(std::ostream & out, const Image & img, bool invert)
         }
     }
 
-    auto encoder_opts = JxlEncoderOptionsCreate(encoder.get(), nullptr);
-    if(!encoder_opts)
-        throw std::runtime_error {"Could not create JPEG XL encoder options"};
-
-    if(JxlEncoderSetBasicInfo(encoder.get(), &info) != JXL_ENC_SUCCESS)
-        throw std::runtime_error {"Could not set JPEG XL basic info"};
-
-    JxlColorEncoding color;
-    JxlColorEncodingSetToSRGB(&color, false);
-    if(JxlEncoderSetColorEncoding(encoder.get(), &color) != JXL_ENC_SUCCESS)
-        throw std::runtime_error {"Could not set JPEG XL color encoding"};
-
     if(JxlEncoderAddImageFrame(encoder_opts, &format, std::data(data), std::size(data) * sizeof(decltype(data)::value_type)) != JXL_ENC_SUCCESS)
         throw std::runtime_error {"Could not add JPEG XL image data"};
 
     JxlEncoderCloseInput(encoder.get());
 
-    std::vector<std::uint8_t> output_buffer(1024);
-    std::size_t output_offset = 0;
+    std::array<std::uint8_t, 65536> output_buffer;
 
-    while(true)
+    for(bool encoding = true; encoding;)
     {
-        std::uint8_t * next_out = std::data(output_buffer) + output_offset;
-        std::size_t avail_out = std::size(output_buffer) - output_offset;
+        std::uint8_t * next_out = std::data(output_buffer);
+        std::size_t avail_out = std::size(output_buffer);
 
         auto status = JxlEncoderProcessOutput(encoder.get(), &next_out, &avail_out);
-        if(status == JXL_ENC_SUCCESS)
+        switch(status)
         {
-            output_buffer.resize(next_out - std::data(output_buffer));
-            break;
-        }
-        else if(status == JXL_ENC_NEED_MORE_OUTPUT)
-        {
-            output_offset = next_out - std::data(output_buffer);
-            output_buffer.resize(std::size(output_buffer) * 2);
-        }
-        else
-        {
-            throw std::runtime_error {"Could not encode JPEG XL data"};
+            case JXL_ENC_SUCCESS:
+                out.write(reinterpret_cast<const char *>(std::data(output_buffer)), next_out - std::data(output_buffer));
+                encoding = false;
+                break;
+
+            case JXL_ENC_NEED_MORE_OUTPUT:
+                out.write(reinterpret_cast<const char *>(std::data(output_buffer)), next_out - std::data(output_buffer));
+                break;
+
+            default:
+                throw std::runtime_error {"Could not encode JPEG XL data"};
         }
     }
-
-    out.write(reinterpret_cast<const char *>(std::data(output_buffer)), std::size(output_buffer));
 }
