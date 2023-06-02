@@ -179,7 +179,14 @@ void Pkmn_gen2::open(std::istream & input, const Args &)
         else
             input.putback(detect_header);
 
-        auto tiles = lz3_decompress(input);
+        auto tiles = std::vector<std::uint8_t>{};
+        if(uncompressed_)
+        {
+            input.exceptions(std::ios_base::badbit); // disable EOF exception
+            tiles = read_input_to_memory(input);
+        }
+        else
+            tiles = lz3_decompress(input);
 
         if(std::size(tiles) % tile_bytes != 0)
             throw std::runtime_error{"Pkmn_gen2 decompressed sprite data has odd size (" + std::to_string(std::size(tiles)) + " bytes)"};
@@ -252,6 +259,7 @@ void Pkmn_gen2::handle_extra_args(const Args & args)
         }
 
         options.add_options()
+            ("uncompressed",   "Specify that the input is uncompressed 2bpp gameboy tiles (as used in a few Crystal version sprites)")
             ("tile-width",     "Specify width for tile layout [1-15]",  cxxopts::value<unsigned int>(), "WIDTH")
             ("tile-height",    "Specify height for tile layout [1-15]", cxxopts::value<unsigned int>(), "HEIGHT")
             ("palette",        "Palette to display or convert into. Valid values are: " + palette_list, cxxopts::value<std::string>(), "PALETTE")
@@ -259,6 +267,8 @@ void Pkmn_gen2::handle_extra_args(const Args & args)
                                                                         cxxopts::value<std::vector<unsigned int>>(), "COLORS");
 
         auto sub_args = options.parse(args.extra_args);
+
+        uncompressed_ = sub_args.count("uncompressed");
 
         if(( sub_args.count("tile-width") && !sub_args.count("tile-height")) ||
            (!sub_args.count("tile-width") &&  sub_args.count("tile-height")))

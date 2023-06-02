@@ -14,6 +14,7 @@ public:
 private:
     unsigned int tile_width_ {0}, tile_height_ {0};
 
+    bool uncompressed_ {false};
     bool palette_set_ {false};
     std::array<Color, 4> palette_entries_;
 };
