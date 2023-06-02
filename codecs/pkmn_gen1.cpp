@@ -59,19 +59,17 @@ void decompress(Input_bitstream<InputIter> & bits, std::uint8_t tile_width, std:
     {
         if(state == State::RLE)
         {
-            std::uint16_t magnitude{0u};
-            unsigned int bit_count = 0u;
-            do
+            std::uint8_t bit_count = 1u;
+            while(true)
             {
-                if(magnitude & 0x8000u)
-                    throw std::runtime_error{"Error reading Pkmn sprite: overlong RLE packet"};
-                magnitude <<= 1;
-                magnitude |= bits(1);
+                auto b = bits(1);
+                if(!b)
+                    break;
                 ++bit_count;
-            } while(magnitude & 0x1);
+            }
 
             auto value = bits.template read<std::uint16_t>(bit_count);
-            value += magnitude + 1;
+            value += (1 << bit_count) - 1;
 
             bits_decompressed += 2 * value;
             if(bits_decompressed > decompressed_size)
@@ -190,7 +188,7 @@ void delta_code(std::uint8_t * buffer, std::uint8_t tile_width, std::uint8_t til
         std::uint8_t state = 0u;
         for(auto col = 0u; col < tile_width * tile_dims; col += tile_dims)
         {
-            auto & pix = buffer[col / tile_dims * tile_height * tile_dims + row];
+            auto & pix = buffer[col / tile_dims * (tile_height != 32 ? tile_height : 0) * tile_dims + row];
             for(auto i = 0u; i < tile_dims; ++i)
             {
                 auto bit_ind = 7u - i;
@@ -257,8 +255,18 @@ void Pkmn_gen1::open(std::istream & input, const Args &)
         auto tile_width = bits(4);
         auto tile_height = bits(4);
 
-        if(tile_width == 0 || tile_height == 0)
-            throw std::runtime_error{"Error reading Pkmn sprite: 0 dimension"};
+        if(check_overrun_)
+        {
+            if(tile_width == 0 || tile_height == 0)
+                throw std::runtime_error{"Error reading Pkmn sprite: 0 dimension"};
+        }
+        else
+        {
+            if(tile_width == 0)
+                tile_width = 32;
+            if(tile_height == 0)
+                tile_height = 32;
+        }
 
         auto buffer_tile_width = fixed_buffer_ ? 7u : tile_width;
         auto buffer_tile_height = fixed_buffer_ ? 7u : tile_height;
