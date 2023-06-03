@@ -229,7 +229,7 @@ void copy_and_arrange_buf(std::uint8_t * dst, std::uint8_t * src, std::uint8_t t
         dst[i] = 0u;
 
     std::uint8_t y_offset = buffer_tile_height - tile_height;
-    std::uint8_t x_offset = (buffer_tile_width - tile_width + 1) / 2u;
+    std::uint8_t x_offset = static_cast<std::uint8_t>(buffer_tile_width - tile_width + 1) / 2u;
 
     std::uint8_t tile_offset = buffer_tile_height * x_offset + y_offset;
     std::uint8_t byte_offset = std::uint8_t{tile_dims} * tile_offset;
