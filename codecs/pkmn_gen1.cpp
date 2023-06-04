@@ -280,6 +280,10 @@ void Pkmn_gen1::open(std::istream & input, const Args &)
         auto buffer_b = std::data(decompression_buffer) + buffer_stride;
         auto buffer_c = std::data(decompression_buffer) + 2u * buffer_stride;
 
+        // in-game, the decompression buffer is followed by the hall of fame data (initialized to 0xff). This gives us more accurate results for glitch pokemon sprites
+        for(auto i = std::begin(decompression_buffer) + 3u * buffer_stride; i != std::end(decompression_buffer); ++i)
+            *i = 0xff;
+
         decompress(bits, tile_width, tile_height, primary_buffer ? buffer_c : buffer_b, check_overrun_);
 
         // Modes:
