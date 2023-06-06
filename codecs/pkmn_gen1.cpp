@@ -223,16 +223,21 @@ void xor_buf(std::uint8_t * dst, std::uint8_t * src, std::uint8_t tile_width, st
         dst[i] = dst[i] ^ src[i];
 }
 
+std::uint8_t copy_and_arrange_byte_offset(std::uint8_t tile_width, std::uint8_t tile_height, std::uint8_t buffer_tile_width, std::uint8_t buffer_tile_height)
+{
+    std::uint8_t y_offset = buffer_tile_height - tile_height;
+    std::uint8_t x_offset = static_cast<std::uint8_t>(buffer_tile_width - tile_width + 1) / 2u;
+
+    std::uint8_t tile_offset = buffer_tile_height * x_offset + y_offset;
+    return std::uint8_t{tile_dims} * tile_offset;
+}
+
 void copy_and_arrange_buf(std::uint8_t * dst, std::uint8_t * src, std::uint8_t tile_width, std::uint8_t tile_height, std::uint8_t buffer_tile_width, std::uint8_t buffer_tile_height)
 {
     for(auto i = 0u; i < buffer_tile_width * buffer_tile_height * tile_dims; ++i)
         dst[i] = 0u;
 
-    std::uint8_t y_offset = buffer_tile_height - tile_height;
-    std::uint8_t x_offset = static_cast<std::uint8_t>(buffer_tile_width - tile_width + 1) / 2u;
-
-    std::uint8_t tile_offset = buffer_tile_height * x_offset + y_offset;
-    std::uint8_t byte_offset = std::uint8_t{tile_dims} * tile_offset;
+    auto byte_offset = copy_and_arrange_byte_offset(tile_width, tile_height, buffer_tile_width, buffer_tile_height);
 
     for(auto tile_col = 0u; tile_col < tile_width; ++tile_col)
     {
@@ -274,7 +279,20 @@ void Pkmn_gen1::open(std::istream & input, const Args &)
         auto primary_buffer = bits(1); // 0: BP0 in B, 1: BP0 in C
 
         const auto buffer_stride = tile_dims * buffer_tile_width * buffer_tile_height;
-        auto decompression_buffer = std::vector<std::uint8_t>(2u * buffer_stride + tile_dims * std::max({static_cast<unsigned int>(override_tile_width_ * override_tile_height_), static_cast<unsigned int>(tile_width * tile_height), buffer_tile_width * buffer_tile_height}));
+
+        auto max_ind = 0u;
+        if(override_tile_width_ && override_tile_height_)
+        {
+            auto arr_offset = copy_and_arrange_byte_offset(override_tile_width_, override_tile_height_, buffer_tile_width, buffer_tile_height);
+            max_ind = std::max((override_tile_width_ - 1) * override_tile_height_ * tile_dims + override_tile_height_ * tile_dims, arr_offset + (override_tile_width_ - 1) * buffer_tile_height * tile_dims + override_tile_height_ * tile_dims - buffer_stride);
+        }
+        else
+        {
+            auto arr_offset = copy_and_arrange_byte_offset(tile_width, tile_height, buffer_tile_width, buffer_tile_height);
+            max_ind = std::max((tile_width - 1) * tile_height * tile_dims + tile_height * tile_dims, arr_offset + (tile_width - 1) * buffer_tile_height * tile_dims + tile_height * tile_dims - buffer_stride);
+        }
+
+        auto decompression_buffer = std::vector<std::uint8_t>(2u * buffer_stride + std::max({static_cast<unsigned int>(tile_dims * override_tile_width_ * override_tile_height_), static_cast<unsigned int>(tile_dims * tile_width * tile_height), tile_dims * buffer_tile_width * buffer_tile_height, max_ind}));
 
         auto buffer_a = std::data(decompression_buffer);
         auto buffer_b = std::data(decompression_buffer) + buffer_stride;
