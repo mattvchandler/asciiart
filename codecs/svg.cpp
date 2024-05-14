@@ -59,6 +59,17 @@ void Svg::open(std::istream & input, const Args & args)
     gdouble width{0.0}, height{0.0};
 #if LIBRSVG_MAJOR_VERSION > 2 || (LIBRSVG_MAJOR_VERSION == 2 && LIBRSVG_MINOR_VERSION >= 52)
     rsvg_handle_get_intrinsic_size_in_pixels(svg_handle, &width, &height);
+    if(width == 0 || height == 0)
+    {
+        gboolean has_viewbox;
+        RsvgRectangle viewbox;
+        rsvg_handle_get_intrinsic_dimensions(svg_handle, nullptr, nullptr, nullptr, nullptr, &has_viewbox, &viewbox);
+        if(has_viewbox)
+        {
+            width = viewbox.width;
+            height = viewbox.height;
+        }
+    }
 
 #else
     RsvgDimensionData dims;
