@@ -41,8 +41,10 @@ void Avif::open(std::istream & input, const Args &)
         rgb.format = AVIF_RGB_FORMAT_RGBA;
         rgb.depth = 8;
 
-        avifRGBImageAllocatePixels(&rgb);
-        avifImageYUVToRGB(decoder->image, &rgb);
+        if(auto result = avifRGBImageAllocatePixels(&rgb); result != AVIF_RESULT_OK)
+            throw std::runtime_error{"Error allocationg AVIF pixels: " + std::string{avifResultToString(result)}};
+        if(auto result = avifImageYUVToRGB(decoder->image, &rgb); result != AVIF_RESULT_OK)
+            throw std::runtime_error{"Error converting AVIF to RGB: " + std::string{avifResultToString(result)}};
 
         for(std::size_t row = 0; row < height_; ++row)
         {
@@ -76,7 +78,8 @@ void Avif::write(std::ostream & out, const Image & img, bool invert)
     image->matrixCoefficients      = AVIF_MATRIX_COEFFICIENTS_BT709;
     image->yuvRange                = AVIF_RANGE_FULL;
 
-    avifImageAllocatePlanes(image, AVIF_PLANES_YUV);
+    if(auto result = avifImageAllocatePlanes(image, AVIF_PLANES_YUV); result != AVIF_RESULT_OK)
+        throw std::runtime_error{"Error allocationg AVIF planes: " + std::string{avifResultToString(result)}};
 
     avifRGBImage rgb;
     avifRGBImageSetDefaults(&rgb, image);
@@ -84,7 +87,8 @@ void Avif::write(std::ostream & out, const Image & img, bool invert)
     rgb.depth  = 8;
     rgb.format = AVIF_RGB_FORMAT_RGBA;
 
-    avifRGBImageAllocatePixels(&rgb);
+    if(auto result = avifRGBImageAllocatePixels(&rgb); result != AVIF_RESULT_OK)
+        throw std::runtime_error{"Error allocationg AVIF pixels: " + std::string{avifResultToString(result)}};
 
     rgb.rowBytes = img.get_width() * 4;
 
@@ -105,8 +109,8 @@ void Avif::write(std::ostream & out, const Image & img, bool invert)
         }
     }
 
-    avifImageRGBToYUV(image, &rgb);
-    avifRGBImageFreePixels(&rgb);
+    if(auto result = avifImageRGBToYUV(image, &rgb); result != AVIF_RESULT_OK)
+        throw std::runtime_error{"Error converting AVIF to YUV: " + std::string{avifResultToString(result)}};
 
     avifRWData output     = AVIF_DATA_EMPTY;
     auto encoder          = avifEncoderCreate();
